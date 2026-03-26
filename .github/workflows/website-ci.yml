@@ -24,21 +24,31 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          html_path = Path("index.html")
-          if not html_path.exists():
-              raise SystemExit("index.html not found")
+          from pathlib import Path
 
-          text = html_path.read_text(encoding="utf-8")
+          pages = {
+              "index.html": [
+                  "<!DOCTYPE html>",
+                  "<title>",
+                  'meta name="description"',
+                  "support@bluecollar-systems.com",
+              ],
+              "feedback.html": [
+                  "<!DOCTYPE html>",
+                  "<title>",
+                  'meta name="description"',
+                  "support@bluecollar-systems.com",
+              ],
+          }
 
-          required_tokens = [
-              "<!DOCTYPE html>",
-              "<title>",
-              'meta name="description"',
-              "support@bluecollar-systems.com",
-          ]
-          missing = [token for token in required_tokens if token not in text]
-          if missing:
-              raise SystemExit(f"Missing required tokens: {missing}")
+          for page, tokens in pages.items():
+              path = Path(page)
+              if not path.exists():
+                  raise SystemExit(f"{page} not found")
+              text = path.read_text(encoding="utf-8")
+              missing = [t for t in tokens if t not in text]
+              if missing:
+                  raise SystemExit(f"{page} missing required tokens: {missing}")
 
           print("Static HTML checks passed.")
           PY

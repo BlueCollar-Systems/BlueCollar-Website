@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Feedback | BlueCollar Systems</title>
+    <meta name="description" content="Share feedback, report bugs, or request features for BlueCollar Systems tools — Steel Logic, SketchUp PDF Importer, and FreeCAD PDF Importer.">
+    <meta name="theme-color" content="#1a202c">
+    <link rel="canonical" href="https://bluecollar-systems.com/feedback">
+
+    <meta property="og:title" content="Feedback | BlueCollar Systems">
+    <meta property="og:description" content="Share feedback or report issues with BlueCollar Systems tools.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://bluecollar-systems.com/feedback">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .bg-industrial { background-color: #1a202c; }
+        .accent-steel { color: #63b3ed; }
+        .btn-safety { background-color: #ed8936; }
+        .btn-safety:hover { background-color: #dd6b20; }
+        html { scroll-behavior: smooth; }
+    </style>
+</head>
+<body class="bg-industrial text-gray-100 font-sans">
+
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded focus:z-50">Skip to content</a>
+
+    <nav class="sticky top-0 bg-gray-900/90 backdrop-blur-md border-b border-gray-800 z-50" aria-label="Main navigation">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="/" class="font-bold text-xl tracking-tighter uppercase">BLUECOLLAR <span class="accent-steel">SYSTEMS</span></a>
+            <button class="md:hidden text-gray-300 hover:text-white focus:outline-none" aria-label="Toggle menu" onclick="document.getElementById('nav-menu').classList.toggle('hidden')">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div id="nav-menu" class="hidden md:flex gap-8 text-sm font-medium text-gray-400 max-md:absolute max-md:top-full max-md:left-0 max-md:right-0 max-md:bg-gray-900 max-md:border-b max-md:border-gray-800 max-md:flex-col max-md:px-6 max-md:py-4 max-md:gap-4">
+                <a href="/" class="hover:text-white transition">Home</a>
+                <a href="/#toolkit" class="hover:text-white transition">Toolkit</a>
+                <a href="/#steel-logic" class="hover:text-white transition">Steel Logic</a>
+                <a href="/#about" class="hover:text-white transition">About</a>
+                <a href="/#contact" class="hover:text-white transition">Contact</a>
+                <a href="feedback.html" class="hover:text-white transition">Feedback</a>
+            </div>
+        </div>
+    </nav>
+
+    <main id="main-content">
+
+    <header class="max-w-4xl mx-auto px-6 py-16 text-center">
+        <h1 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight uppercase">Feedback</h1>
+        <p class="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
+            Help us build better tools. Report bugs, request features, or share what's working well.
+        </p>
+    </header>
+
+    <section class="max-w-4xl mx-auto px-6 pb-20">
+        <div class="grid md:grid-cols-2 gap-8 mb-12">
+
+            <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700">
+                <div class="text-3xl mb-4">&#9993;</div>
+                <h2 class="text-xl font-bold mb-3">Email Us Directly</h2>
+                <p class="text-gray-400 mb-6">Best for detailed bug reports, screenshots, or PDF samples that aren't importing correctly.</p>
+                <a href="mailto:support@bluecollar-systems.com" class="inline-block bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg font-semibold transition">
+                    support@bluecollar-systems.com
+                </a>
+            </div>
+
+            <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700">
+                <div class="text-3xl mb-4">&#128736;</div>
+                <h2 class="text-xl font-bold mb-3">GitHub Issues</h2>
+                <p class="text-gray-400 mb-6">File a bug or feature request directly on the relevant project repository.</p>
+                <div class="flex flex-col gap-3">
+                    <a href="https://github.com/BlueCollar-Systems/SU-PDFimporter/issues" target="_blank" rel="noopener" class="inline-block bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold transition text-sm">
+                        SketchUp PDF Importer &rarr;
+                    </a>
+                    <a href="https://github.com/BlueCollar-Systems/FC-PDFimporter/issues" target="_blank" rel="noopener" class="inline-block bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold transition text-sm">
+                        FreeCAD PDF Importer &rarr;
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700">
+            <h2 class="text-xl font-bold mb-3">What makes a great bug report</h2>
+            <ul class="text-gray-400 space-y-2 list-disc list-inside">
+                <li>Which tool and version you're using (Steel Logic, SU Importer v3.5, FC Importer v3.5, etc.)</li>
+                <li>What you expected to happen vs. what actually happened</li>
+                <li>Steps to reproduce the issue</li>
+                <li>For importer bugs: the PDF file (or a sample), the preset you used, and a screenshot of the result</li>
+                <li>Your platform (SketchUp 2024/2025, FreeCAD 0.21/1.0, Android, iOS, etc.)</li>
+            </ul>
+        </div>
+    </section>
+
+    </main>
+
+    <footer class="text-center py-12 border-t border-gray-800 text-gray-400 text-sm px-6">
+        <p class="mb-4">&copy; 2026 BlueCollar Systems. Built for the shop floor.</p>
+        <p class="max-w-2xl mx-auto text-xs uppercase tracking-tighter text-gray-400">
+            Disclaimer: All structural data provided by BlueCollar Systems tools is for reference only.
+            All output should be verified by a licensed professional engineer before fabrication or construction.
+        </p>
+    </footer>
+
+</body>
+</html>
