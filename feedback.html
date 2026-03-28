@@ -14,6 +14,13 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://bluecollar-systems.com/feedback">
 
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Feedback | BlueCollar Systems">
+    <meta name="twitter:description" content="Share feedback or report issues with BlueCollar Systems tools.">
+
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .bg-industrial { background-color: #1a202c; }
@@ -30,7 +37,7 @@
     <nav class="sticky top-0 bg-gray-900/90 backdrop-blur-md border-b border-gray-800 z-50" aria-label="Main navigation">
         <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
             <a href="/" class="font-bold text-xl tracking-tighter uppercase">BLUECOLLAR <span class="accent-steel">SYSTEMS</span></a>
-            <button class="md:hidden text-gray-300 hover:text-white focus:outline-none" aria-label="Toggle menu" onclick="document.getElementById('nav-menu').classList.toggle('hidden')">
+            <button id="nav-toggle" class="md:hidden text-gray-300 hover:text-white focus:outline-none" aria-label="Toggle menu" aria-expanded="false" aria-controls="nav-menu">
                 <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
             <div id="nav-menu" class="hidden md:flex gap-8 text-sm font-medium text-gray-400 max-md:absolute max-md:top-full max-md:left-0 max-md:right-0 max-md:bg-gray-900 max-md:border-b max-md:border-gray-800 max-md:flex-col max-md:px-6 max-md:py-4 max-md:gap-4">
@@ -39,7 +46,7 @@
                 <a href="/#steel-logic" class="hover:text-white transition">Steel Logic</a>
                 <a href="/#about" class="hover:text-white transition">About</a>
                 <a href="/#contact" class="hover:text-white transition">Contact</a>
-                <a href="feedback.html" class="hover:text-white transition">Feedback</a>
+                <a href="feedback.html" class="hover:text-white transition text-white" aria-current="page">Feedback</a>
             </div>
         </div>
     </nav>
@@ -70,10 +77,10 @@
                 <h2 class="text-xl font-bold mb-3">GitHub Issues</h2>
                 <p class="text-gray-400 mb-6">File a bug or feature request directly on the relevant project repository.</p>
                 <div class="flex flex-col gap-3">
-                    <a href="https://github.com/BlueCollar-Systems/SU-PDFimporter/issues" target="_blank" rel="noopener" class="inline-block bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold transition text-sm">
+                    <a href="https://github.com/BlueCollar-Systems/SU-PDFimporter/issues" target="_blank" rel="noopener" class="inline-block bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded font-semibold transition text-sm">
                         SketchUp PDF Importer &rarr;
                     </a>
-                    <a href="https://github.com/BlueCollar-Systems/FC-PDFimporter/issues" target="_blank" rel="noopener" class="inline-block bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold transition text-sm">
+                    <a href="https://github.com/BlueCollar-Systems/FC-PDFimporter/issues" target="_blank" rel="noopener" class="inline-block bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded font-semibold transition text-sm">
                         FreeCAD PDF Importer &rarr;
                     </a>
                 </div>
@@ -83,7 +90,7 @@
 
         <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700">
             <h2 class="text-xl font-bold mb-3">What makes a great bug report</h2>
-            <ul class="text-gray-400 space-y-2 list-disc list-inside">
+            <ul role="list" class="text-gray-400 space-y-2 list-disc list-inside">
                 <li>Which tool and version you're using (Steel Logic, SU Importer v3.5, FC Importer v3.5, etc.)</li>
                 <li>What you expected to happen vs. what actually happened</li>
                 <li>Steps to reproduce the issue</li>
@@ -103,5 +110,25 @@
         </p>
     </footer>
 
+<script>
+(function() {
+  var btn = document.getElementById('nav-toggle');
+  var menu = document.getElementById('nav-menu');
+  if (!btn || !menu) return;
+  btn.addEventListener('click', function() {
+    var open = !menu.classList.contains('hidden');
+    menu.classList.toggle('hidden');
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    if (!open) { var first = menu.querySelector('a'); if (first) first.focus(); }
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && !menu.classList.contains('hidden')) {
+      menu.classList.add('hidden');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.focus();
+    }
+  });
+})();
+</script>
 </body>
 </html>

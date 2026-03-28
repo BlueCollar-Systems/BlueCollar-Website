@@ -24,8 +24,6 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          from pathlib import Path
-
           pages = {
               "index.html": [
                   "<!DOCTYPE html>",
