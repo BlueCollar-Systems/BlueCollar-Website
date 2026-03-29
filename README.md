@@ -25,7 +25,7 @@ Open `index.html` in a browser. No build step required.
 
 ## Deployment
 
-Deployed via Cloudflare Pages on push to `main`.
+Deployed via Cloudflare Pages (production deployments may be triggered from the dashboard or by repo integration, depending on current project settings).
 
 ## License
 
