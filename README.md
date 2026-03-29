@@ -25,7 +25,13 @@ Open `index.html` in a browser. No build step required.
 
 ## Deployment
 
-Deployed via Cloudflare Pages (production deployments may be triggered from the dashboard or by repo integration, depending on current project settings).
+Deployed to Cloudflare Pages via GitHub Actions.
+
+- Pushes to `main` run `website-ci`.
+- `static-checks` must pass before `deploy-pages` runs.
+- `deploy-pages` publishes with Wrangler to the `bluecollar-website` Pages project.
+
+See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for app launch/update steps (Google Play + iOS).
 
 ## License
 
