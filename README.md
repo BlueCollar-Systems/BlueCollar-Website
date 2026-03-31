@@ -30,6 +30,7 @@ Deployed to Cloudflare Pages via GitHub Actions.
 - Pushes to `main` run `website-ci`.
 - `static-checks` must pass before `deploy-pages` runs.
 - `deploy-pages` publishes with Wrangler to the `bluecollar-website` Pages project.
+- Pushes to `main`/`master` also run `auto-release` to bump `VERSION` and publish a GitHub Release snapshot zip.
 
 See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for app launch/update steps (Google Play + iOS).
 
