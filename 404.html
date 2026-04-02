@@ -10,13 +10,9 @@
     <meta name="robots" content="noindex">
     <link rel="icon" href="/favicon.ico" sizes="any">
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .bg-industrial { background-color: #1a202c; }
-        .accent-steel { color: #63b3ed; }
-    </style>
+    <link rel="stylesheet" href="/styles.css">
 </head>
-<body class="bg-industrial text-gray-100 font-sans min-h-screen flex flex-col">
+<body class="bg-industrial text-gray-100 min-h-screen flex flex-col">
 
     <nav class="bg-gray-900/90 border-b border-gray-800" aria-label="Main navigation">
         <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
@@ -36,7 +32,7 @@
     </main>
 
     <footer class="text-center py-8 border-t border-gray-800 text-gray-400 text-sm px-6">
-        <p>&copy; 2026 BlueCollar Systems. Built for the shop floor.</p>
+        <p>&copy; <script>document.write(new Date().getFullYear())</script> BlueCollar Systems. Built for the shop floor.</p>
     </footer>
 
 </body>

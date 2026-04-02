@@ -13,25 +13,22 @@
     <meta property="og:description" content="Share feedback or report issues with BlueCollar Systems tools.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://bluecollar-systems.com/feedback">
+    <meta property="og:image" content="https://bluecollar-systems.com/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
 
-    <meta name="twitter:card" content="summary">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Feedback | BlueCollar Systems">
     <meta name="twitter:description" content="Share feedback or report issues with BlueCollar Systems tools.">
+    <meta name="twitter:image" content="https://bluecollar-systems.com/og-image.png">
 
     <meta name="robots" content="index, follow">
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .bg-industrial { background-color: #1a202c; }
-        .accent-steel { color: #63b3ed; }
-        .btn-safety { background-color: #ed8936; }
-        .btn-safety:hover { background-color: #dd6b20; }
-        html { scroll-behavior: smooth; }
-    </style>
+    <link rel="stylesheet" href="/styles.css">
 </head>
-<body class="bg-industrial text-gray-100 font-sans">
+<body class="bg-industrial text-gray-100">
 
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded focus:z-50">Skip to content</a>
 
@@ -47,7 +44,7 @@
                 <a href="/#steel-logic" class="hover:text-white transition">Steel Logic</a>
                 <a href="/#about" class="hover:text-white transition">About</a>
                 <a href="/#contact" class="hover:text-white transition">Contact</a>
-                <a href="feedback.html" class="hover:text-white transition text-white" aria-current="page">Feedback</a>
+                <a href="/feedback" class="hover:text-white transition text-white" aria-current="page">Feedback</a>
             </div>
         </div>
     </nav>
@@ -92,7 +89,7 @@
         <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700">
             <h2 class="text-xl font-bold mb-3">What makes a great bug report</h2>
             <ul role="list" class="text-gray-400 space-y-2 list-disc list-inside">
-                <li>Which tool and version you're using (Steel Logic, SU Importer v3.5, FC Importer v3.5, etc.)</li>
+                <li>Which tool and version you're using (Steel Logic, SU Importer v3.6, FC Importer v3.6, etc.)</li>
                 <li>What you expected to happen vs. what actually happened</li>
                 <li>Steps to reproduce the issue</li>
                 <li>For importer bugs: the PDF file (or a sample), the preset you used, and a screenshot of the result</li>
@@ -104,32 +101,13 @@
     </main>
 
     <footer class="text-center py-12 border-t border-gray-800 text-gray-400 text-sm px-6">
-        <p class="mb-4">&copy; 2026 BlueCollar Systems. Built for the shop floor.</p>
+        <p class="mb-4">&copy; <script>document.write(new Date().getFullYear())</script> BlueCollar Systems. Built for the shop floor.</p>
         <p class="max-w-2xl mx-auto text-xs uppercase tracking-tighter text-gray-400">
             Disclaimer: All structural data provided by BlueCollar Systems tools is for reference only.
             All output should be verified by a licensed professional engineer before fabrication or construction.
         </p>
     </footer>
 
-<script>
-(function() {
-  var btn = document.getElementById('nav-toggle');
-  var menu = document.getElementById('nav-menu');
-  if (!btn || !menu) return;
-  btn.addEventListener('click', function() {
-    var open = !menu.classList.contains('hidden');
-    menu.classList.toggle('hidden');
-    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
-    if (!open) { var first = menu.querySelector('a'); if (first) first.focus(); }
-  });
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && !menu.classList.contains('hidden')) {
-      menu.classList.add('hidden');
-      btn.setAttribute('aria-expanded', 'false');
-      btn.focus();
-    }
-  });
-})();
-</script>
+<script src="/nav.js"></script>
 </body>
 </html>
