@@ -23,6 +23,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Verify repo_context_builder_core.py hash
+        run: |
+          EXPECTED_SHA="8fe18c896c63372b5c2d7c17c383b548e9573c9b7592019cd72159f2b08505de"
+          test -f repo_context_builder_core.py || { echo "ERROR: repo_context_builder_core.py missing"; exit 1; }
+          ACTUAL_SHA=$(sha256sum repo_context_builder_core.py | awk '{print $1}')
+          if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+            echo "ERROR: repo_context_builder_core.py hash mismatch"
+            echo "expected=$EXPECTED_SHA"
+            echo "actual=$ACTUAL_SHA"
+            exit 1
+          fi
+
       - name: Validate index.html basics
         run: |
           python - <<'PY'
@@ -53,6 +65,49 @@ jobs:
                   raise SystemExit(f"{page} missing required tokens: {missing}")
 
           print("Static HTML checks passed.")
+          PY
+
+      - name: Validate sitemap completeness
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urlparse
+          import xml.etree.ElementTree as ET
+
+          sitemap = Path("sitemap.xml")
+          if not sitemap.exists():
+              raise SystemExit("sitemap.xml not found")
+
+          tree = ET.parse(sitemap)
+          root = tree.getroot()
+          ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+
+          listed_paths = set()
+          for loc in root.findall("sm:url/sm:loc", ns):
+              value = (loc.text or "").strip()
+              if not value:
+                  continue
+              parsed = urlparse(value)
+              path = parsed.path or "/"
+              if path.endswith("/") and path != "/":
+                  path = path[:-1]
+              listed_paths.add(path)
+
+          html_files = sorted(
+              p for p in Path(".").glob("*.html") if p.name.lower() != "404.html"
+          )
+          missing = []
+          for html in html_files:
+              route = "/" if html.name == "index.html" else f"/{html.stem}"
+              if route not in listed_paths:
+                  missing.append(f"{html.name} -> {route}")
+
+          if missing:
+              raise SystemExit(
+                  "sitemap.xml is missing page entries:\n" + "\n".join(missing)
+              )
+
+          print("Sitemap completeness check passed.")
           PY
 
   deploy-pages:
