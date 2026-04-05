@@ -1,2 +1,2 @@
-/feedback /feedback.html 200
-/shapes /shapes.html 200
+# Intentionally left blank.
+# Cloudflare Pages clean URLs handle *.html -> /path routing automatically.
