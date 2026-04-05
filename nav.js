@@ -15,4 +15,13 @@
       btn.focus();
     }
   });
+  document.addEventListener('click', function(e) {
+    if (!menu.classList.contains('hidden') &&
+        !menu.contains(e.target) &&
+        e.target !== btn &&
+        !btn.contains(e.target)) {
+      menu.classList.add('hidden');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
 })();

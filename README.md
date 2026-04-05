@@ -16,8 +16,8 @@ Static marketing site for **BlueCollar Systems** — precision software for fabr
 ## Tech Stack
 
 - Vanilla HTML5
-- [Tailwind CSS](https://tailwindcss.com) (CDN)
-- Zero build dependencies
+- Custom utility-class CSS (Tailwind-style naming, zero build dependencies)
+- No JavaScript framework
 
 ## Development
 
