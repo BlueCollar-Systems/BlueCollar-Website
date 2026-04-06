@@ -4,3 +4,7 @@ LICENSE
 VERSION
 .gitignore
 .github/
+0build_master_output_*
+repo_context_builder_core.py
+dev_logs/
+__pycache__/

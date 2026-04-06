@@ -21,3 +21,6 @@ dist/
 
 # Python
 __pycache__/
+
+# Dev artifacts
+dev_logs/
