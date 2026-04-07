@@ -26,12 +26,12 @@
   });
 })();
 
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
   var el = document.getElementById('copyright-year');
   if (el) el.textContent = new Date().getFullYear();
-})();
+});
 
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
   function parseDate(value) {
     if (!value) return null;
     var d = new Date(value);
@@ -107,4 +107,4 @@
     .catch(function() {
       // Metadata is progressive enhancement; keep static fallback content.
     });
-})();
+});

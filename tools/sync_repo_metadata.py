@@ -93,12 +93,46 @@ def build_metadata(token: str | None) -> dict[str, Any]:
     }
 
 
+def stamp_html_versions(payload: dict[str, Any]) -> None:
+    """Write latest release tags into static HTML as fallback content."""
+    import re
+
+    repos = payload.get("repos", {})
+    index = Path("index.html")
+    if not index.exists():
+        return
+
+    html = index.read_text(encoding="utf-8")
+    changed = False
+    for repo_key, repo_data in repos.items():
+        release = (repo_data or {}).get("latest_release")
+        if not release or not release.get("tag"):
+            continue
+        tag = release["tag"]
+        # Match: data-repo-version="<repo_key>">anything</span>
+        pattern = (
+            r'(data-repo-version="'
+            + re.escape(repo_key)
+            + r'"[^>]*>)[^<]*(</span>)'
+        )
+        new_html, n = re.subn(pattern, rf"\g<1>{tag}\2", html)
+        if n > 0:
+            html = new_html
+            changed = True
+            print(f"  stamped {repo_key} -> {tag}")
+
+    if changed:
+        index.write_text(html, encoding="utf-8")
+        print("updated index.html with static version badges")
+
+
 def main() -> int:
     token = os.getenv("GH_TOKEN") or os.getenv("GITHUB_TOKEN")
     output = Path("repo-metadata.json")
     payload = build_metadata(token)
     output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"wrote {output}")
+    stamp_html_versions(payload)
     return 0
 
 
