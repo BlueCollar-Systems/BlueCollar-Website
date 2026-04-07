@@ -7,6 +7,8 @@ on:
       - master
   repository_dispatch:
     types:
+      - product-update
+      - product-release
       - steel-shapes-update
       - steel-shapes-release
   pull_request:
@@ -110,6 +112,33 @@ jobs:
           print("Sitemap completeness check passed.")
           PY
 
+      - name: Validate dynamic release link policy
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          checked_files = ["index.html", "shapes.html"]
+          banned = "/releases/download/v"
+          violations = []
+          for name in checked_files:
+              text = Path(name).read_text(encoding="utf-8")
+              if banned in text:
+                  violations.append(name)
+
+          if violations:
+              raise SystemExit(
+                  "Found hardcoded versioned GitHub release links in: "
+                  + ", ".join(violations)
+              )
+
+          print("Dynamic release link policy check passed.")
+          PY
+
+      - name: Build repository metadata snapshot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python tools/sync_repo_metadata.py
+
   deploy-pages:
     needs: static-checks
     if: |
@@ -122,6 +151,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Build repository metadata snapshot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python tools/sync_repo_metadata.py
 
       - name: Deploy to Cloudflare Pages
         env:
