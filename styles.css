@@ -178,6 +178,7 @@ ul[role="list"] { list-style-position: inside; }
 }
 
 .pb-20 { padding-bottom: 5rem; }
+.footer-version { opacity: 0.5; }
 
 /* ─── Hidden utility ─── */
 .hidden { display: none !important; }
