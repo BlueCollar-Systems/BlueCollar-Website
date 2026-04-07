@@ -1,0 +1,131 @@
+{
+  "generated_at": "2026-04-07T21:18:35+00:00",
+  "repos": {
+    "BlueCollar-Systems/BL-PDFimporter": {
+      "default_branch": "main",
+      "error": null,
+      "latest_release": {
+        "assets": [
+          {
+            "content_type": "application/zip",
+            "name": "pdf_vector_importer_v1.0.0.zip",
+            "size": 35849,
+            "url": "https://github.com/BlueCollar-Systems/BL-PDFimporter/releases/download/v1.0.0/pdf_vector_importer_v1.0.0.zip"
+          }
+        ],
+        "name": "PDF Vector Importer for Blender v1.0.0",
+        "published_at": "2026-04-04T09:16:39Z",
+        "tag": "v1.0.0",
+        "url": "https://github.com/BlueCollar-Systems/BL-PDFimporter/releases/tag/v1.0.0"
+      },
+      "pushed_at": "2026-04-07T19:53:27Z",
+      "repo_url": "https://github.com/BlueCollar-Systems/BL-PDFimporter"
+    },
+    "BlueCollar-Systems/FC-PDFimporter": {
+      "default_branch": "main",
+      "error": null,
+      "latest_release": {
+        "assets": [
+          {
+            "content_type": "application/zip",
+            "name": "PDFVectorImporter_v4.0.3.zip",
+            "size": 109639,
+            "url": "https://github.com/BlueCollar-Systems/FC-PDFimporter/releases/download/v4.0.3/PDFVectorImporter_v4.0.3.zip"
+          }
+        ],
+        "name": "v4.0.3 \u2014 PDF Vector Importer for FreeCAD",
+        "published_at": "2026-04-04T09:23:46Z",
+        "tag": "v4.0.3",
+        "url": "https://github.com/BlueCollar-Systems/FC-PDFimporter/releases/tag/v4.0.3"
+      },
+      "pushed_at": "2026-04-07T03:10:24Z",
+      "repo_url": "https://github.com/BlueCollar-Systems/FC-PDFimporter"
+    },
+    "BlueCollar-Systems/LC-PDFimporter": {
+      "default_branch": "main",
+      "error": null,
+      "latest_release": {
+        "assets": [
+          {
+            "content_type": "application/zip",
+            "name": "pdf2dxf-1.0.0.zip",
+            "size": 40091,
+            "url": "https://github.com/BlueCollar-Systems/LC-PDFimporter/releases/download/v1.0.0/pdf2dxf-1.0.0.zip"
+          }
+        ],
+        "name": "PDF to DXF Converter v1.0.0",
+        "published_at": "2026-04-04T09:17:21Z",
+        "tag": "v1.0.0",
+        "url": "https://github.com/BlueCollar-Systems/LC-PDFimporter/releases/tag/v1.0.0"
+      },
+      "pushed_at": "2026-04-07T19:53:57Z",
+      "repo_url": "https://github.com/BlueCollar-Systems/LC-PDFimporter"
+    },
+    "BlueCollar-Systems/SU-PDFimporter": {
+      "default_branch": "main",
+      "error": null,
+      "latest_release": {
+        "assets": [
+          {
+            "content_type": "application/octet-stream",
+            "name": "bc_pdf_vector_importer_v3.6.7.rbz",
+            "size": 114050,
+            "url": "https://github.com/BlueCollar-Systems/SU-PDFimporter/releases/download/v3.6.7/bc_pdf_vector_importer_v3.6.7.rbz"
+          }
+        ],
+        "name": "v3.6.7 \u2014 PDF Vector Importer for SketchUp",
+        "published_at": "2026-04-05T21:15:06Z",
+        "tag": "v3.6.7",
+        "url": "https://github.com/BlueCollar-Systems/SU-PDFimporter/releases/tag/v3.6.7"
+      },
+      "pushed_at": "2026-04-07T19:52:31Z",
+      "repo_url": "https://github.com/BlueCollar-Systems/SU-PDFimporter"
+    },
+    "BlueCollar-Systems/Steel-Shapes": {
+      "error": "not_found_or_private",
+      "latest_release": null,
+      "repo_url": "https://github.com/BlueCollar-Systems/Steel-Shapes"
+    },
+    "BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes": {
+      "default_branch": "main",
+      "error": null,
+      "latest_release": {
+        "assets": [
+          {
+            "content_type": "application/zip",
+            "name": "Structural-Steel-DXF-DWG-Shapes-v1.0.0.zip",
+            "size": 9111669,
+            "url": "https://github.com/BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes/releases/download/v1.0.0/Structural-Steel-DXF-DWG-Shapes-v1.0.0.zip"
+          }
+        ],
+        "name": "v1.0.0 - Initial Public DXF/DWG Pack",
+        "published_at": "2026-04-05T22:28:02Z",
+        "tag": "v1.0.0",
+        "url": "https://github.com/BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes/releases/tag/v1.0.0"
+      },
+      "pushed_at": "2026-04-07T09:59:20Z",
+      "repo_url": "https://github.com/BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes"
+    },
+    "BlueCollar-Systems/Structural-Steel-SU-Shapes": {
+      "default_branch": "main",
+      "error": null,
+      "latest_release": {
+        "assets": [
+          {
+            "content_type": "application/zip",
+            "name": "Structural-Steel-SU-Shapes-v1.0.0.zip",
+            "size": 6344612,
+            "url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes/releases/download/v1.0.0/Structural-Steel-SU-Shapes-v1.0.0.zip"
+          }
+        ],
+        "name": "v1.0.0 - Initial Public Shape Pack",
+        "published_at": "2026-04-05T22:27:45Z",
+        "tag": "v1.0.0",
+        "url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes/releases/tag/v1.0.0"
+      },
+      "pushed_at": "2026-04-07T09:40:41Z",
+      "repo_url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes"
+    }
+  },
+  "source_event": "local"
+}
