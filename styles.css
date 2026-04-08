@@ -179,9 +179,39 @@ ul[role="list"] { list-style-position: inside; }
 
 .pb-20 { padding-bottom: 5rem; }
 .footer-version { opacity: 0.5; }
+.text-left { text-align: left; }
+.underline { text-decoration: underline; }
+.no-underline { text-decoration: none; }
+.font-mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
 
 /* ─── Hidden utility ─── */
 .hidden { display: none !important; }
 
 /* ─── Fill-current for SVGs ─── */
 .fill-current { fill: currentColor; }
+
+/* ─── Mobile optimizations (below 640px) ─── */
+@media (max-width: 639px) {
+  /* Reduce oversized headings on small screens */
+  .text-4xl { font-size: 1.75rem; line-height: 2.25rem; }
+  .text-3xl { font-size: 1.5rem; line-height: 2rem; }
+  .text-2xl { font-size: 1.25rem; line-height: 1.75rem; }
+
+  /* Tighten section padding on mobile */
+  .py-20 { padding-top: 3rem; padding-bottom: 3rem; }
+  .py-16 { padding-top: 2.5rem; padding-bottom: 2.5rem; }
+  .py-24 { padding-top: 3.5rem; padding-bottom: 3.5rem; }
+  .p-10 { padding: 1.5rem; }
+  .p-8 { padding: 1.25rem; }
+  .mb-12 { margin-bottom: 2rem; }
+
+  /* Prevent horizontal overflow from wide buttons */
+  .flex-wrap { flex-wrap: wrap; }
+  .gap-4 { gap: 0.75rem; }
+
+  /* Stack grid cards on narrow screens */
+  .grid { gap: 1rem; }
+
+  /* Ensure hero text doesn't overflow */
+  header h1 { font-size: 1.75rem; line-height: 2.25rem; }
+}
