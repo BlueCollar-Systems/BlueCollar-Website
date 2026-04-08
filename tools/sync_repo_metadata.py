@@ -60,9 +60,22 @@ def _safe_latest_release(repo: str, token: str | None) -> dict[str, Any] | None:
     }
 
 
-def build_metadata(token: str | None) -> dict[str, Any]:
+def _load_previous_repos(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    repos = payload.get("repos")
+    return repos if isinstance(repos, dict) else {}
+
+
+def build_metadata(token: str | None, previous_repos: dict[str, Any] | None = None) -> dict[str, Any]:
+    previous_repos = previous_repos or {}
     repos: dict[str, Any] = {}
     for repo in REPOS:
+        previous = previous_repos.get(repo, {}) if isinstance(previous_repos, dict) else {}
         repo_api = f"https://api.github.com/repos/{repo}"
         try:
             repo_data = _json_get(repo_api, token)
@@ -71,13 +84,21 @@ def build_metadata(token: str | None) -> dict[str, Any]:
             if exc.code == 404:
                 repos[repo] = {
                     "error": "not_found_or_private",
-                    "repo_url": f"https://github.com/{repo}",
-                    "latest_release": None,
+                    "default_branch": previous.get("default_branch"),
+                    "pushed_at": previous.get("pushed_at"),
+                    "repo_url": previous.get("repo_url", f"https://github.com/{repo}"),
+                    "latest_release": previous.get("latest_release"),
+                    "from_previous_snapshot": bool(previous),
                 }
+                if previous.get("latest_release"):
+                    print(f"  using previous release snapshot for {repo} (repo not accessible with current token)")
                 continue
             raise
 
         latest_release = _safe_latest_release(repo, token)
+        if latest_release is None and previous.get("latest_release"):
+            latest_release = previous["latest_release"]
+            print(f"  using previous release snapshot for {repo} (no latest release via API)")
         repos[repo] = {
             "error": repo_error,
             "default_branch": repo_data.get("default_branch"),
@@ -109,11 +130,11 @@ def stamp_html_versions(payload: dict[str, Any]) -> None:
         if not release or not release.get("tag"):
             continue
         tag = release["tag"]
-        # Match: data-repo-version="<repo_key>">anything</span>
+        # Match: data-repo-version="<repo_key>">anything</span|p|...>
         pattern = (
             r'(data-repo-version="'
             + re.escape(repo_key)
-            + r'"[^>]*>)[^<]*(</span>)'
+            + r'"[^>]*>)[^<]*(</[A-Za-z0-9]+>)'
         )
         new_html, n = re.subn(pattern, rf"\g<1>{tag}\2", html)
         if n > 0:
@@ -129,7 +150,7 @@ def stamp_html_versions(payload: dict[str, Any]) -> None:
 def main() -> int:
     token = os.getenv("GH_TOKEN") or os.getenv("GITHUB_TOKEN")
     output = Path("repo-metadata.json")
-    payload = build_metadata(token)
+    payload = build_metadata(token, _load_previous_repos(output))
     output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"wrote {output}")
     stamp_html_versions(payload)

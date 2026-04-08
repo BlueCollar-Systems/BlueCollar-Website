@@ -136,7 +136,7 @@ jobs:
 
       - name: Build repository metadata snapshot
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
         run: python tools/sync_repo_metadata.py
 
   deploy-pages:
@@ -154,7 +154,7 @@ jobs:
 
       - name: Build repository metadata snapshot
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
         run: python tools/sync_repo_metadata.py
 
       - name: Deploy to Cloudflare Pages
