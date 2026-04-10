@@ -147,6 +147,7 @@ ul[role="list"] { list-style-position: inside; }
 .hover\:underline:hover { text-decoration: underline; }
 .hover\:bg-blue-600:hover { background-color: #2563eb; }
 .hover\:bg-gray-600:hover { background-color: #4b5563; }
+.hover\:opacity-90:hover { opacity: 0.9; }
 .hover\:border-blue-400:hover { border-color: #63b3ed; }
 .group:hover .group-hover\:text-blue-400 { color: #63b3ed; }
 
