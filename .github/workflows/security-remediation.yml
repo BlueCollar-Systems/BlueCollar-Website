@@ -1,0 +1,43 @@
+name: security-remediation
+
+on:
+  workflow_dispatch:
+    inputs:
+      dmarc_policy:
+        description: "DMARC policy to apply"
+        required: true
+        default: "quarantine"
+        type: choice
+        options:
+          - none
+          - quarantine
+          - reject
+      dmarc_pct:
+        description: "DMARC pct value (0-100)"
+        required: true
+        default: "25"
+        type: string
+      enable_turnstile:
+        description: "Attempt Turnstile widget auto-provision"
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Apply Cloudflare security remediations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TARGET_DOMAIN: bluecollar-systems.com
+          DMARC_POLICY: ${{ github.event.inputs.dmarc_policy }}
+          DMARC_PCT: ${{ github.event.inputs.dmarc_pct }}
+          ENABLE_TURNSTILE: ${{ github.event.inputs.enable_turnstile }}
+          DMARC_STRICT: "true"
+        run: |
+          python tools/remediate_cloudflare_security.py
