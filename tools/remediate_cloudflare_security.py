@@ -93,6 +93,23 @@ def _errors_to_text(resp: dict[str, Any]) -> str:
     return "; ".join(str(e.get("message") or e) for e in errs)
 
 
+def _augment_permission_hint(message: str, area: str) -> str:
+    msg_lower = message.lower()
+    if "authentication error" not in msg_lower and "unauthorized" not in msg_lower:
+        return message
+    if area == "dmarc":
+        return (
+            f"{message}. Likely missing token scope for DNS write "
+            "(Zone DNS:Edit)."
+        )
+    if area == "turnstile":
+        return (
+            f"{message}. Likely missing token scope for Turnstile widget management "
+            "(Account-level challenges/Turnstile edit)."
+        )
+    return message
+
+
 def _build_dmarc_content(
     policy: str,
     pct: int,
@@ -141,6 +158,7 @@ def main() -> int:
         "dmarc": {"status": "not_run"},
         "turnstile": {"status": "not_run"},
     }
+    had_errors = False
 
     # Resolve zone id if not provided
     if not zone_id:
@@ -150,95 +168,104 @@ def main() -> int:
         if not zone_res.get("success"):
             summary["dmarc"] = {
                 "status": "error",
-                "message": f"Zone lookup failed: {_errors_to_text(zone_res)}",
+                "message": _augment_permission_hint(
+                    f"Zone lookup failed: {_errors_to_text(zone_res)}", "dmarc"
+                ),
             }
-            print(json.dumps(summary, indent=2))
-            return 1
+            had_errors = True
         zone_results = zone_res.get("result") or []
-        if not zone_results:
+        if not had_errors and not zone_results:
             summary["dmarc"] = {
                 "status": "error",
                 "message": f"No active zone found for {domain}",
             }
-            print(json.dumps(summary, indent=2))
-            return 1
-        zone_id = zone_results[0]["id"]
+            had_errors = True
+        if not had_errors:
+            zone_id = zone_results[0]["id"]
     summary["zone_id"] = zone_id
 
-    # DMARC read existing
+    # DMARC read/update
     dmarc_name = f"_dmarc.{domain}"
-    rec_res = _cf_request(
-        token,
-        "GET",
-        f"/zones/{zone_id}/dns_records",
-        query={"type": "TXT", "name": dmarc_name, "per_page": 50},
-    )
-    if not rec_res.get("success"):
+    if not zone_id:
         summary["dmarc"] = {
-            "status": "error",
-            "message": f"DMARC record lookup failed: {_errors_to_text(rec_res)}",
+            "status": "skipped",
+            "reason": "Zone id unavailable",
         }
-        print(json.dumps(summary, indent=2))
-        return 1
-
-    records = rec_res.get("result") or []
-    existing = records[0] if records else None
-    existing_content = existing.get("content") if existing else None
-    rua = _extract_rua(existing_content) or fallback_rua
-    target_content = _build_dmarc_content(
-        policy=policy,
-        pct=pct,
-        rua=rua,
-        strict_alignment=strict_alignment,
-    )
-
-    dmarc_body = {
-        "type": "TXT",
-        "name": dmarc_name,
-        "content": target_content,
-        "ttl": 1,
-    }
-
-    if existing:
-        write_res = _cf_request(
-            token,
-            "PUT",
-            f"/zones/{zone_id}/dns_records/{existing['id']}",
-            body=dmarc_body,
-        )
-        action = "updated"
     else:
-        write_res = _cf_request(
-            token, "POST", f"/zones/{zone_id}/dns_records", body=dmarc_body
+        rec_res = _cf_request(
+            token,
+            "GET",
+            f"/zones/{zone_id}/dns_records",
+            query={"type": "TXT", "name": dmarc_name, "per_page": 50},
         )
-        action = "created"
+        if not rec_res.get("success"):
+            summary["dmarc"] = {
+                "status": "error",
+                "message": _augment_permission_hint(
+                    f"DMARC record lookup failed: {_errors_to_text(rec_res)}", "dmarc"
+                ),
+            }
+            had_errors = True
+        else:
+            records = rec_res.get("result") or []
+            existing = records[0] if records else None
+            existing_content = existing.get("content") if existing else None
+            rua = _extract_rua(existing_content) or fallback_rua
+            target_content = _build_dmarc_content(
+                policy=policy,
+                pct=pct,
+                rua=rua,
+                strict_alignment=strict_alignment,
+            )
 
-    if not write_res.get("success"):
-        summary["dmarc"] = {
-            "status": "error",
-            "message": f"DMARC {action} failed: {_errors_to_text(write_res)}",
-            "proposed_content": target_content,
-            "existing_content": existing_content,
-        }
-        print(json.dumps(summary, indent=2))
-        return 1
+            dmarc_body = {
+                "type": "TXT",
+                "name": dmarc_name,
+                "content": target_content,
+                "ttl": 1,
+            }
 
-    verify_res = _cf_request(
-        token,
-        "GET",
-        f"/zones/{zone_id}/dns_records",
-        query={"type": "TXT", "name": dmarc_name, "per_page": 1},
-    )
-    verified_content = None
-    if verify_res.get("success") and verify_res.get("result"):
-        verified_content = verify_res["result"][0].get("content")
+            if existing:
+                write_res = _cf_request(
+                    token,
+                    "PUT",
+                    f"/zones/{zone_id}/dns_records/{existing['id']}",
+                    body=dmarc_body,
+                )
+                action = "updated"
+            else:
+                write_res = _cf_request(
+                    token, "POST", f"/zones/{zone_id}/dns_records", body=dmarc_body
+                )
+                action = "created"
 
-    summary["dmarc"] = {
-        "status": "ok",
-        "action": action,
-        "record_name": dmarc_name,
-        "content": verified_content or target_content,
-    }
+            if not write_res.get("success"):
+                summary["dmarc"] = {
+                    "status": "error",
+                    "message": _augment_permission_hint(
+                        f"DMARC {action} failed: {_errors_to_text(write_res)}", "dmarc"
+                    ),
+                    "proposed_content": target_content,
+                    "existing_content": existing_content,
+                }
+                had_errors = True
+            else:
+                verify_res = _cf_request(
+                    token,
+                    "GET",
+                    f"/zones/{zone_id}/dns_records",
+                    query={"type": "TXT", "name": dmarc_name, "per_page": 1},
+                )
+                verified_content = None
+                if verify_res.get("success") and verify_res.get("result"):
+                    verified_content = verify_res["result"][0].get("content")
+
+                summary["dmarc"] = {
+                    "status": "ok",
+                    "action": action,
+                    "record_name": dmarc_name,
+                    "content": verified_content or target_content,
+                }
 
     # Turnstile best-effort
     if not enable_turnstile:
@@ -255,8 +282,11 @@ def main() -> int:
         if not list_res.get("success"):
             summary["turnstile"] = {
                 "status": "error",
-                "message": f"Widget list failed: {_errors_to_text(list_res)}",
+                "message": _augment_permission_hint(
+                    f"Widget list failed: {_errors_to_text(list_res)}", "turnstile"
+                ),
             }
+            had_errors = True
         else:
             widgets = list_res.get("result") or []
             domain_set = {domain, f"www.{domain}"}
@@ -300,11 +330,15 @@ def main() -> int:
                 else:
                     summary["turnstile"] = {
                         "status": "error",
-                        "message": f"Widget create failed: {_errors_to_text(create_res)}",
+                        "message": _augment_permission_hint(
+                            f"Widget create failed: {_errors_to_text(create_res)}",
+                            "turnstile",
+                        ),
                     }
+                    had_errors = True
 
     print(json.dumps(summary, indent=2))
-    return 0
+    return 1 if had_errors else 0
 
 
 if __name__ == "__main__":
