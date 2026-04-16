@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - master
+  schedule:
+    - cron: "17 */6 * * *"
   repository_dispatch:
     types:
       - product-update
@@ -143,6 +145,7 @@ jobs:
     needs: static-checks
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'schedule' ||
       github.event_name == 'repository_dispatch' ||
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -159,6 +162,48 @@ jobs:
 
       - name: Deploy to Cloudflare Pages
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN || secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx --yes wrangler@4.83.0 pages deploy . --project-name bluecollar-website --branch main
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          account_id = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+          token = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
+          if not account_id:
+              print("::error::CLOUDFLARE_ACCOUNT_ID is missing.")
+              raise SystemExit(1)
+          if not token:
+              print("::error::No Cloudflare API token secret found. Configure CLOUDFLARE_PAGES_API_TOKEN, CLOUDFLARE_API_TOKEN, or CF_API_TOKEN.")
+              raise SystemExit(1)
+
+          url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects/bluecollar-website"
+          req = urllib.request.Request(
+              url,
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Accept": "application/json",
+                  "User-Agent": "bluecollar-website-ci/1.0",
+              },
+          )
+
+          try:
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  data = json.loads(resp.read().decode("utf-8"))
+          except urllib.error.HTTPError as exc:
+              body = exc.read().decode("utf-8", errors="replace")
+              print("::error::Cloudflare auth precheck failed. Update the deploy token with at least Account > Cloudflare Pages:Edit and Account Settings:Read permissions for this account.")
+              print(body)
+              raise SystemExit(1)
+
+          if not data.get("success"):
+              print("::error::Cloudflare auth precheck returned an unsuccessful response. Update token permissions (Account > Cloudflare Pages:Edit and Account Settings:Read).")
+              print(json.dumps(data))
+              raise SystemExit(1)
+
+          print("Cloudflare deploy credentials validated.")
+          PY
+          npx --yes wrangler@4.83.0 pages deploy . --project-name bluecollar-website --branch main

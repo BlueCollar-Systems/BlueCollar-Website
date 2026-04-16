@@ -61,6 +61,9 @@ gh run view <RUN_ID> -R BlueCollar-Systems/BlueCollar-Website --log
 ## Notes
 
 - Deploy job needs repo secrets:
-  - `CLOUDFLARE_API_TOKEN`
+  - `CLOUDFLARE_PAGES_API_TOKEN` (preferred) or `CLOUDFLARE_API_TOKEN` / `CF_API_TOKEN`
   - `CLOUDFLARE_ACCOUNT_ID` (stored in GitHub repo secrets)
 - Rotate the Cloudflare API token after exposure or team access changes.
+- Required Cloudflare token permissions:
+  - `Account > Cloudflare Pages:Edit`
+  - `Account Settings:Read`

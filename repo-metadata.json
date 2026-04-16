@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-07T22:55:54+00:00",
+  "generated_at": "2026-04-16T02:45:49+00:00",
   "repos": {
     "BlueCollar-Systems/BL-PDFimporter": {
       "default_branch": "main",
@@ -8,17 +8,17 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "name": "pdf_vector_importer_v1.0.0.zip",
-            "size": 35849,
-            "url": "https://github.com/BlueCollar-Systems/BL-PDFimporter/releases/download/v1.0.0/pdf_vector_importer_v1.0.0.zip"
+            "name": "pdf_vector_importer_v1.0.6.zip",
+            "size": 56495,
+            "url": "https://github.com/BlueCollar-Systems/BL-PDFimporter/releases/download/v1.0.6/pdf_vector_importer_v1.0.6.zip"
           }
         ],
-        "name": "PDF Vector Importer for Blender v1.0.0",
-        "published_at": "2026-04-04T09:16:39Z",
-        "tag": "v1.0.0",
-        "url": "https://github.com/BlueCollar-Systems/BL-PDFimporter/releases/tag/v1.0.0"
+        "name": "PDF Vector Importer for Blender v1.0.6",
+        "published_at": "2026-04-14T10:24:24Z",
+        "tag": "v1.0.6",
+        "url": "https://github.com/BlueCollar-Systems/BL-PDFimporter/releases/tag/v1.0.6"
       },
-      "pushed_at": "2026-04-07T21:31:43Z",
+      "pushed_at": "2026-04-16T02:14:16Z",
       "repo_url": "https://github.com/BlueCollar-Systems/BL-PDFimporter"
     },
     "BlueCollar-Systems/FC-PDFimporter": {
@@ -28,17 +28,17 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "name": "PDFVectorImporter_v4.0.3.zip",
-            "size": 109639,
-            "url": "https://github.com/BlueCollar-Systems/FC-PDFimporter/releases/download/v4.0.3/PDFVectorImporter_v4.0.3.zip"
+            "name": "PDFVectorImporter_v4.0.9.zip",
+            "size": 117304,
+            "url": "https://github.com/BlueCollar-Systems/FC-PDFimporter/releases/download/v4.0.9/PDFVectorImporter_v4.0.9.zip"
           }
         ],
-        "name": "v4.0.3 \u2014 PDF Vector Importer for FreeCAD",
-        "published_at": "2026-04-04T09:23:46Z",
-        "tag": "v4.0.3",
-        "url": "https://github.com/BlueCollar-Systems/FC-PDFimporter/releases/tag/v4.0.3"
+        "name": "v4.0.9 \u2014 PDF Vector Importer for FreeCAD",
+        "published_at": "2026-04-14T10:24:31Z",
+        "tag": "v4.0.9",
+        "url": "https://github.com/BlueCollar-Systems/FC-PDFimporter/releases/tag/v4.0.9"
       },
-      "pushed_at": "2026-04-07T21:31:07Z",
+      "pushed_at": "2026-04-16T02:14:47Z",
       "repo_url": "https://github.com/BlueCollar-Systems/FC-PDFimporter"
     },
     "BlueCollar-Systems/LC-PDFimporter": {
@@ -48,17 +48,17 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "name": "pdf2dxf-1.0.0.zip",
-            "size": 40091,
-            "url": "https://github.com/BlueCollar-Systems/LC-PDFimporter/releases/download/v1.0.0/pdf2dxf-1.0.0.zip"
+            "name": "pdf2dxf-1.0.6.zip",
+            "size": 98416,
+            "url": "https://github.com/BlueCollar-Systems/LC-PDFimporter/releases/download/v1.0.6/pdf2dxf-1.0.6.zip"
           }
         ],
-        "name": "PDF to DXF Converter v1.0.0",
-        "published_at": "2026-04-04T09:17:21Z",
-        "tag": "v1.0.0",
-        "url": "https://github.com/BlueCollar-Systems/LC-PDFimporter/releases/tag/v1.0.0"
+        "name": "PDF to DXF Converter v1.0.6",
+        "published_at": "2026-04-14T10:24:30Z",
+        "tag": "v1.0.6",
+        "url": "https://github.com/BlueCollar-Systems/LC-PDFimporter/releases/tag/v1.0.6"
       },
-      "pushed_at": "2026-04-07T21:30:52Z",
+      "pushed_at": "2026-04-16T02:14:32Z",
       "repo_url": "https://github.com/BlueCollar-Systems/LC-PDFimporter"
     },
     "BlueCollar-Systems/SU-PDFimporter": {
@@ -68,22 +68,25 @@
         "assets": [
           {
             "content_type": "application/octet-stream",
-            "name": "bc_pdf_vector_importer_v3.6.7.rbz",
-            "size": 114050,
-            "url": "https://github.com/BlueCollar-Systems/SU-PDFimporter/releases/download/v3.6.7/bc_pdf_vector_importer_v3.6.7.rbz"
+            "name": "bc_pdf_vector_importer_v3.6.13.rbz",
+            "size": 117837,
+            "url": "https://github.com/BlueCollar-Systems/SU-PDFimporter/releases/download/v3.6.13/bc_pdf_vector_importer_v3.6.13.rbz"
           }
         ],
-        "name": "v3.6.7 \u2014 PDF Vector Importer for SketchUp",
-        "published_at": "2026-04-05T21:15:06Z",
-        "tag": "v3.6.7",
-        "url": "https://github.com/BlueCollar-Systems/SU-PDFimporter/releases/tag/v3.6.7"
+        "name": "v3.6.13 \u2014 PDF Vector Importer for SketchUp",
+        "published_at": "2026-04-14T10:24:14Z",
+        "tag": "v3.6.13",
+        "url": "https://github.com/BlueCollar-Systems/SU-PDFimporter/releases/tag/v3.6.13"
       },
-      "pushed_at": "2026-04-07T21:28:03Z",
+      "pushed_at": "2026-04-16T02:14:56Z",
       "repo_url": "https://github.com/BlueCollar-Systems/SU-PDFimporter"
     },
     "BlueCollar-Systems/Steel-Shapes": {
+      "default_branch": null,
       "error": "not_found_or_private",
+      "from_previous_snapshot": true,
       "latest_release": null,
+      "pushed_at": null,
       "repo_url": "https://github.com/BlueCollar-Systems/Steel-Shapes"
     },
     "BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes": {
@@ -103,7 +106,7 @@
         "tag": "v1.0.0",
         "url": "https://github.com/BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes/releases/tag/v1.0.0"
       },
-      "pushed_at": "2026-04-07T21:29:02Z",
+      "pushed_at": "2026-04-07T23:05:09Z",
       "repo_url": "https://github.com/BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes"
     },
     "BlueCollar-Systems/Structural-Steel-SU-Shapes": {
@@ -123,7 +126,7 @@
         "tag": "v1.0.0",
         "url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes/releases/tag/v1.0.0"
       },
-      "pushed_at": "2026-04-07T21:28:12Z",
+      "pushed_at": "2026-04-07T23:05:03Z",
       "repo_url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes"
     }
   },
