@@ -136,6 +136,9 @@ jobs:
           print("Dynamic release link policy check passed.")
           PY
 
+      - name: Validate static metadata fallbacks
+        run: python tools/validate_static_metadata.py
+
       - name: Build repository metadata snapshot
         env:
           GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}

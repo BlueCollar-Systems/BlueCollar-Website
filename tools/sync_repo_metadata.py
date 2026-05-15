@@ -119,32 +119,34 @@ def stamp_html_versions(payload: dict[str, Any]) -> None:
     import re
 
     repos = payload.get("repos", {})
-    index = Path("index.html")
-    if not index.exists():
-        return
+    for page in sorted(Path(".").glob("*.html")):
+        html = page.read_text(encoding="utf-8")
+        changed = False
+        for repo_key, repo_data in repos.items():
+            release = (repo_data or {}).get("latest_release")
+            if not release or not release.get("tag"):
+                continue
+            tag = release["tag"]
+            # Match: data-repo-version="<repo_key>">anything</span|p|...>
+            pattern = re.compile(
+                r'(data-repo-version="'
+                + re.escape(repo_key)
+                + r'"[^>]*>)([^<]*)(</[A-Za-z0-9]+>)'
+            )
 
-    html = index.read_text(encoding="utf-8")
-    changed = False
-    for repo_key, repo_data in repos.items():
-        release = (repo_data or {}).get("latest_release")
-        if not release or not release.get("tag"):
-            continue
-        tag = release["tag"]
-        # Match: data-repo-version="<repo_key>">anything</span|p|...>
-        pattern = (
-            r'(data-repo-version="'
-            + re.escape(repo_key)
-            + r'"[^>]*>)[^<]*(</[A-Za-z0-9]+>)'
-        )
-        new_html, n = re.subn(pattern, rf"\g<1>{tag}\2", html)
-        if n > 0:
-            html = new_html
-            changed = True
-            print(f"  stamped {repo_key} -> {tag}")
+            def repl(match: re.Match[str]) -> str:
+                current = match.group(2).strip().lower()
+                value = f"Latest: {tag}" if current.startswith("latest:") else tag
+                return f"{match.group(1)}{value}{match.group(3)}"
 
-    if changed:
-        index.write_text(html, encoding="utf-8")
-        print("updated index.html with static version badges")
+            html, n = pattern.subn(repl, html)
+            if n > 0:
+                changed = True
+                print(f"  stamped {page.name}: {repo_key} -> {tag}")
+
+        if changed:
+            page.write_text(html, encoding="utf-8")
+            print(f"updated {page.name} with static version badges")
 
 
 def main() -> int:

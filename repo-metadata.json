@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16T02:45:49+00:00",
+  "generated_at": "2026-05-13T10:41:20+00:00",
   "repos": {
     "BlueCollar-Systems/BL-PDFimporter": {
       "default_branch": "main",
@@ -18,7 +18,7 @@
         "tag": "v1.0.6",
         "url": "https://github.com/BlueCollar-Systems/BL-PDFimporter/releases/tag/v1.0.6"
       },
-      "pushed_at": "2026-04-16T02:14:16Z",
+      "pushed_at": "2026-05-13T10:23:51Z",
       "repo_url": "https://github.com/BlueCollar-Systems/BL-PDFimporter"
     },
     "BlueCollar-Systems/FC-PDFimporter": {
@@ -38,7 +38,7 @@
         "tag": "v4.0.9",
         "url": "https://github.com/BlueCollar-Systems/FC-PDFimporter/releases/tag/v4.0.9"
       },
-      "pushed_at": "2026-04-16T02:14:47Z",
+      "pushed_at": "2026-04-21T21:10:05Z",
       "repo_url": "https://github.com/BlueCollar-Systems/FC-PDFimporter"
     },
     "BlueCollar-Systems/LC-PDFimporter": {
@@ -58,7 +58,7 @@
         "tag": "v1.0.6",
         "url": "https://github.com/BlueCollar-Systems/LC-PDFimporter/releases/tag/v1.0.6"
       },
-      "pushed_at": "2026-04-16T02:14:32Z",
+      "pushed_at": "2026-05-13T10:23:10Z",
       "repo_url": "https://github.com/BlueCollar-Systems/LC-PDFimporter"
     },
     "BlueCollar-Systems/SU-PDFimporter": {
@@ -68,17 +68,17 @@
         "assets": [
           {
             "content_type": "application/octet-stream",
-            "name": "bc_pdf_vector_importer_v3.6.13.rbz",
-            "size": 117837,
-            "url": "https://github.com/BlueCollar-Systems/SU-PDFimporter/releases/download/v3.6.13/bc_pdf_vector_importer_v3.6.13.rbz"
+            "name": "bc_pdf_vector_importer_v3.7.1.rbz",
+            "size": 119187,
+            "url": "https://github.com/BlueCollar-Systems/SU-PDFimporter/releases/download/v3.7.1/bc_pdf_vector_importer_v3.7.1.rbz"
           }
         ],
-        "name": "v3.6.13 \u2014 PDF Vector Importer for SketchUp",
-        "published_at": "2026-04-14T10:24:14Z",
-        "tag": "v3.6.13",
-        "url": "https://github.com/BlueCollar-Systems/SU-PDFimporter/releases/tag/v3.6.13"
+        "name": "v3.7.1 \u2014 PDF Vector Importer for SketchUp",
+        "published_at": "2026-04-17T22:03:48Z",
+        "tag": "v3.7.1",
+        "url": "https://github.com/BlueCollar-Systems/SU-PDFimporter/releases/tag/v3.7.1"
       },
-      "pushed_at": "2026-04-16T02:14:56Z",
+      "pushed_at": "2026-04-17T22:03:46Z",
       "repo_url": "https://github.com/BlueCollar-Systems/SU-PDFimporter"
     },
     "BlueCollar-Systems/Steel-Shapes": {
