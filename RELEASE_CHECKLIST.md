@@ -60,10 +60,24 @@ gh run view <RUN_ID> -R BlueCollar-Systems/BlueCollar-Website --log
 
 ## Notes
 
-- Deploy job needs repo secrets:
-  - `CLOUDFLARE_PAGES_API_TOKEN` (preferred) or `CLOUDFLARE_API_TOKEN` / `CF_API_TOKEN`
-  - `CLOUDFLARE_ACCOUNT_ID` (stored in GitHub repo secrets)
-- Rotate the Cloudflare API token after exposure or team access changes.
-- Required Cloudflare token permissions:
-  - `Account > Cloudflare Pages:Edit`
-  - `Account Settings:Read`
+### BlueCollar-Website secrets
+
+- **Deploy:** `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_PAGES_API_TOKEN` (or `CLOUDFLARE_API_TOKEN` / `CF_API_TOKEN`)
+- **Release sync:** `REPO_METADATA_TOKEN` (recommended) — read access to product repos for `tools/sync_repo_metadata.py`
+- Rotate Cloudflare tokens after exposure or team access changes.
+- Cloudflare token permissions: **Account → Cloudflare Pages: Edit**, **Account Settings: Read**
+
+### Product repo secrets (SU / FC / BL / LC PDF importers)
+
+- **`WEBSITE_DISPATCH_TOKEN`** — triggers `repository_dispatch` on `BlueCollar-Website` after `auto-release` or `release: published`
+- Without it, the live site still updates on cron (every 6h), website `main` pushes, or manual `website-ci` dispatch
+
+### Verify download metadata after a product release
+
+```bash
+curl -sS https://bluecollar-systems.com/repo-metadata.json | python -m json.tool | head -40
+```
+
+Confirm `generated_at` is recent and `latest_release.tag` matches the new GitHub release.
+
+See [README.md](README.md#github-actions-secrets-bluecollar-website-repo) for full secret tables.
