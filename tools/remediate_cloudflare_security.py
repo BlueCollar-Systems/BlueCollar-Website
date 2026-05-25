@@ -154,6 +154,7 @@ def main() -> int:
     strict_alignment = _bool_env("DMARC_STRICT", default=True)
     enable_turnstile = _bool_env("ENABLE_TURNSTILE", default=True)
     enable_security_txt = _bool_env("ENABLE_SECURITY_TXT", default=True)
+    require_security_txt_update = _bool_env("REQUIRE_SECURITY_TXT_UPDATE", default=False)
     fallback_rua = os.getenv(
         "DMARC_RUA",
         "mailto:2fdc58aa85a44ab59fdd0874b1548894@dmarc-reports.cloudflare.net",
@@ -228,14 +229,15 @@ def main() -> int:
         )
         if not security_res.get("success"):
             summary["securitytxt"] = {
-                "status": "error",
+                "status": "manual_action_required",
                 "message": _augment_permission_hint(
                     f"security.txt update failed: {_errors_to_text(security_res)}",
                     "securitytxt",
                 ),
                 "proposed_content": security_body,
             }
-            had_errors = True
+            if require_security_txt_update:
+                had_errors = True
         else:
             verify_res = _cf_request(
                 token,
