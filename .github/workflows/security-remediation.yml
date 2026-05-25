@@ -22,6 +22,11 @@ on:
         required: true
         default: true
         type: boolean
+      enable_security_txt:
+        description: "Enable Cloudflare-managed security.txt"
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   remediate:
@@ -38,6 +43,7 @@ jobs:
           DMARC_POLICY: ${{ github.event.inputs.dmarc_policy }}
           DMARC_PCT: ${{ github.event.inputs.dmarc_pct }}
           ENABLE_TURNSTILE: ${{ github.event.inputs.enable_turnstile }}
+          ENABLE_SECURITY_TXT: ${{ github.event.inputs.enable_security_txt }}
           DMARC_STRICT: "true"
         run: |
           python tools/remediate_cloudflare_security.py

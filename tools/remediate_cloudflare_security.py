@@ -6,8 +6,9 @@ This script is intended to run in GitHub Actions using repository secrets:
 - CLOUDFLARE_ACCOUNT_ID (optional for Turnstile)
 
 Primary goals:
-1) Harden DMARC from monitoring-only to a staged policy.
-2) Ensure a Turnstile widget exists for the production domain (best effort).
+1) Ensure Cloudflare-managed security.txt is enabled for the production domain.
+2) Harden DMARC from monitoring-only to a staged policy.
+3) Ensure a Turnstile widget exists for the production domain (best effort).
 """
 
 from __future__ import annotations
@@ -107,6 +108,11 @@ def _augment_permission_hint(message: str, area: str) -> str:
             f"{message}. Likely missing token scope for Turnstile widget management "
             "(Account-level challenges/Turnstile edit)."
         )
+    if area == "securitytxt":
+        return (
+            f"{message}. Likely missing token scope for Security Center settings "
+            "(Zone Settings/Security Center edit)."
+        )
     return message
 
 
@@ -147,14 +153,25 @@ def main() -> int:
 
     strict_alignment = _bool_env("DMARC_STRICT", default=True)
     enable_turnstile = _bool_env("ENABLE_TURNSTILE", default=True)
+    enable_security_txt = _bool_env("ENABLE_SECURITY_TXT", default=True)
     fallback_rua = os.getenv(
         "DMARC_RUA",
         "mailto:2fdc58aa85a44ab59fdd0874b1548894@dmarc-reports.cloudflare.net",
+    ).strip()
+    security_contact = os.getenv(
+        "SECURITY_TXT_CONTACT", "mailto:support@bluecollar-systems.com"
+    ).strip()
+    security_policy = os.getenv(
+        "SECURITY_TXT_POLICY", f"https://{domain}/feedback"
+    ).strip()
+    security_expires = os.getenv(
+        "SECURITY_TXT_EXPIRES", "2027-05-25T23:59:59Z"
     ).strip()
 
     summary: dict[str, Any] = {
         "domain": domain,
         "zone_id": None,
+        "securitytxt": {"status": "not_run"},
         "dmarc": {"status": "not_run"},
         "turnstile": {"status": "not_run"},
     }
@@ -183,6 +200,57 @@ def main() -> int:
         if not had_errors:
             zone_id = zone_results[0]["id"]
     summary["zone_id"] = zone_id
+
+    # Cloudflare-managed security.txt. The static site also serves the same
+    # file at /.well-known/security.txt, but the dashboard insight checks this
+    # Security Center setting directly.
+    if not enable_security_txt:
+        summary["securitytxt"] = {"status": "skipped", "reason": "disabled"}
+    elif not zone_id:
+        summary["securitytxt"] = {
+            "status": "skipped",
+            "reason": "Zone id unavailable",
+        }
+    else:
+        security_body = {
+            "enabled": True,
+            "contact": [security_contact],
+            "canonical": [f"https://{domain}/.well-known/security.txt"],
+            "expires": security_expires,
+            "preferred_languages": "en",
+            "policy": [security_policy],
+        }
+        security_res = _cf_request(
+            token,
+            "PUT",
+            f"/zones/{zone_id}/security-center/securitytxt",
+            body=security_body,
+        )
+        if not security_res.get("success"):
+            summary["securitytxt"] = {
+                "status": "error",
+                "message": _augment_permission_hint(
+                    f"security.txt update failed: {_errors_to_text(security_res)}",
+                    "securitytxt",
+                ),
+                "proposed_content": security_body,
+            }
+            had_errors = True
+        else:
+            verify_res = _cf_request(
+                token,
+                "GET",
+                f"/zones/{zone_id}/security-center/securitytxt",
+            )
+            summary["securitytxt"] = {
+                "status": "ok",
+                "action": "enabled",
+                "config": (
+                    verify_res.get("result")
+                    if verify_res.get("success")
+                    else security_body
+                ),
+            }
 
     # DMARC read/update
     dmarc_name = f"_dmarc.{domain}"
