@@ -10,6 +10,25 @@ from pathlib import Path
 VERSION_PATTERN = re.compile(
     r'data-repo-version="([^"]+)"[^>]*>([^<]*)</[A-Za-z0-9]+>'
 )
+_TAG_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
+
+
+def _parse_semver(text: str) -> tuple[int, int, int] | None:
+    match = _TAG_RE.search(text.strip())
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
+
+
+def _label_covers_release(label: str, tag: str) -> bool:
+    """True when the static fallback is at least the published release tag."""
+    if tag in label:
+        return True
+    label_ver = _parse_semver(label)
+    tag_ver = _parse_semver(tag)
+    if label_ver is None or tag_ver is None:
+        return False
+    return label_ver >= tag_ver
 
 
 def main() -> int:
@@ -33,9 +52,9 @@ def main() -> int:
             if not tag:
                 continue
             checked += 1
-            if tag not in label:
+            if not _label_covers_release(label, tag):
                 failures.append(
-                    f"{page}: {repo_key} static label {label!r} does not include {tag!r}"
+                    f"{page}: {repo_key} static label {label!r} is behind release {tag!r}"
                 )
 
     if failures:
