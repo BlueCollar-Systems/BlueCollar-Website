@@ -36,16 +36,21 @@ document.addEventListener('DOMContentLoaded', function() {
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  function findZipAsset(assets, preferredName) {
+  function findDownloadAsset(assets, preferredName) {
     if (!Array.isArray(assets)) return null;
     if (preferredName) {
       for (var i = 0; i < assets.length; i++) {
         if (assets[i] && assets[i].name === preferredName) return assets[i];
       }
     }
+    var extensions = ['.rbz', '.zip', '.aab', '.apk'];
     for (var j = 0; j < assets.length; j++) {
       var a = assets[j];
-      if (a && typeof a.name === 'string' && a.name.toLowerCase().endsWith('.zip')) return a;
+      if (!a || typeof a.name !== 'string') continue;
+      var lowerName = a.name.toLowerCase();
+      for (var k = 0; k < extensions.length; k++) {
+        if (lowerName.endsWith(extensions[k])) return a;
+      }
     }
     return null;
   }
@@ -94,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var preferredName = el.getAttribute('data-asset-name');
         var repo = repos[repoKey];
         if (!repo || !repo.latest_release) return;
-        var asset = findZipAsset(repo.latest_release.assets, preferredName);
+        var asset = findDownloadAsset(repo.latest_release.assets, preferredName);
         if (asset && asset.url) {
           el.href = asset.url;
         } else if (repo.latest_release.url) {
