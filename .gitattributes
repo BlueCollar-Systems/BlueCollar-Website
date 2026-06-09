@@ -1,0 +1,27 @@
+# Normalize line endings: store text as LF in the repo.
+# Keeps CRLF/LF churn from showing as false "modified" files on Windows checkouts.
+* text=auto eol=lf
+
+*.html text eol=lf
+*.css  text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+*.py   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+
+# Binary assets - never normalize
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.svg  text eol=lf
+*.pdf  binary
+*.zip  binary
+*.woff binary
+*.woff2 binary
