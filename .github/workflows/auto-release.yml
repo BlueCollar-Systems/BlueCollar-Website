@@ -34,6 +34,7 @@ jobs:
         id: version
         run: |
           python - <<'PY'
+          import datetime
           import os
           import pathlib
           import re
@@ -48,6 +49,23 @@ jobs:
           new_version = f"{major}.{minor}.{patch + 1}"
           version_file.write_text(new_version + "\n", encoding="utf-8")
 
+          index = pathlib.Path("index.html")
+          if index.exists():
+              index_text = index.read_text(encoding="utf-8")
+              index_text = re.sub(
+                  r'(footer-version">v)(\d+\.\d+\.\d+)',
+                  rf"\g<1>{new_version}",
+                  index_text,
+                  count=1,
+              )
+              index_text = re.sub(
+                  r"(&middot;\s*Updated\s+)[A-Za-z]+ \d{4}",
+                  rf"\g<1>{datetime.date.today().strftime('%B %Y')}",
+                  index_text,
+                  count=1,
+              )
+              index.write_text(index_text, encoding="utf-8")
+
           out = pathlib.Path(os.environ["GITHUB_OUTPUT"])
           out.write_text(f"old_version={current}\nversion={new_version}\n", encoding="utf-8")
           PY
@@ -56,7 +74,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add VERSION
+          git add VERSION index.html
           git diff --cached --quiet && echo "No changes to commit" && exit 0
           git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
           git push
