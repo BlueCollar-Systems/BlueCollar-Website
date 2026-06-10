@@ -70,11 +70,16 @@ jobs:
           out.write_text(f"old_version={current}\nversion={new_version}\n", encoding="utf-8")
           PY
 
+      - name: Sync product repo badges into HTML fallbacks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python tools/sync_repo_metadata.py
+
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add VERSION index.html
+          git add VERSION index.html shapes.html repo-metadata.json
           git diff --cached --quiet && echo "No changes to commit" && exit 0
           git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
           git push
