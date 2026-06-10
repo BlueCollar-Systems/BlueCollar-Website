@@ -5,6 +5,13 @@ on:
     branches:
       - main
       - master
+    # Docs/CI-only pushes should not mint a public release (board Q-08-a /
+    # ANS-09-1). Shipped content (*.html, assets) still releases normally.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".github/**"
+      - "_archived/**"
   workflow_dispatch:
 
 permissions:
@@ -16,7 +23,7 @@ concurrency:
 
 jobs:
   release:
-    if: "!startsWith(github.event.head_commit.message, 'chore: bump version to')"
+    if: "!startsWith(github.event.head_commit.message, 'chore: bump version to') && !contains(github.event.head_commit.message, '[skip release]')"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

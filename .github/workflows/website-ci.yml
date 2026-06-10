@@ -141,7 +141,7 @@ jobs:
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -150,6 +150,25 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
         run: python tools/sync_repo_metadata.py
+
+      # The metadata sync stamps fresh release tags into the static HTML
+      # fallbacks before deploy, so the LIVE site is always current — but the
+      # repo copy used to rot until someone hand-bumped it (board Q-09-e).
+      # Committing the stamped files back retires that recurring task.
+      # GITHUB_TOKEN pushes do not retrigger workflows, so no loop and no
+      # release is minted for badge stamps.
+      - name: Commit stamped version badges back to repo
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- *.html repo-metadata.json
+          if git diff --cached --quiet; then
+            echo "Repo badges already current."
+          else
+            git commit -m "chore: stamp release badges from metadata sync [skip release]"
+            git push origin "HEAD:main" || echo "::warning::Badge stamp push failed (non-fatal; live deploy is unaffected)."
+          fi
 
       - name: Deploy to Cloudflare Pages
         env:
