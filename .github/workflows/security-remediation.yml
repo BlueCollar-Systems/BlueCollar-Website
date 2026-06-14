@@ -57,6 +57,11 @@ on:
         required: true
         default: true
         type: boolean
+      enable_hsts_response_rule:
+        description: "Set HSTS via response header transform rule"
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   remediate:
@@ -83,6 +88,7 @@ jobs:
           ENABLE_WWW_CNAME: ${{ github.event.inputs.enable_www_cname }}
           ENABLE_PAGES_WWW_DOMAIN: ${{ github.event.inputs.enable_pages_www_domain }}
           HSTS_VIA_PAGES_HEADERS: ${{ github.event.inputs.hsts_via_pages_headers }}
+          ENABLE_HSTS_RESPONSE_RULE: ${{ github.event.inputs.enable_hsts_response_rule }}
           DMARC_STRICT: "true"
         run: |
           python tools/remediate_cloudflare_security.py

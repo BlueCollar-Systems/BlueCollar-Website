@@ -158,6 +158,140 @@ def _setting_value(result: dict[str, Any] | None) -> Any:
     return result.get("value")
 
 
+HSTS_HEADER_VALUE = "max-age=31536000; includeSubDomains; preload"
+HSTS_RESPONSE_RULE_REF = "bluecollar_hsts_preload"
+
+
+def _hsts_response_rule(domain: str) -> dict[str, Any]:
+    hosts = [domain, f"www.{domain}"]
+    host_checks = " or ".join(f'http.host eq "{host}"' for host in hosts)
+    return {
+        "ref": HSTS_RESPONSE_RULE_REF,
+        "description": "Force 1-year HSTS with preload on production hosts",
+        "expression": f"({host_checks})",
+        "action": "rewrite",
+        "action_parameters": {
+            "headers": {
+                "Strict-Transport-Security": {
+                    "operation": "set",
+                    "value": HSTS_HEADER_VALUE,
+                }
+            }
+        },
+    }
+
+
+def _ensure_hsts_response_rule(
+    token: str, zone_id: str, domain: str
+) -> tuple[dict[str, Any], bool]:
+    """Return (summary_fragment, had_error)."""
+    target_rule = _hsts_response_rule(domain)
+    entry_res = _cf_request(
+        token,
+        "GET",
+        f"/zones/{zone_id}/rulesets/phases/http_response_headers_transform/entrypoint",
+    )
+    if entry_res.get("success"):
+        ruleset = entry_res.get("result") or {}
+        rules = list(ruleset.get("rules") or [])
+        existing = next(
+            (r for r in rules if r.get("ref") == HSTS_RESPONSE_RULE_REF), None
+        )
+        if existing:
+            same = (
+                existing.get("expression") == target_rule["expression"]
+                and (existing.get("action_parameters") or {})
+                .get("headers", {})
+                .get("Strict-Transport-Security", {})
+                .get("value")
+                == HSTS_HEADER_VALUE
+            )
+            if same:
+                return (
+                    {
+                        "status": "ok",
+                        "action": "already_set",
+                        "ruleset_id": ruleset.get("id"),
+                    },
+                    False,
+                )
+            rules = [
+                target_rule if r.get("ref") == HSTS_RESPONSE_RULE_REF else r
+                for r in rules
+            ]
+        else:
+            rules.append(target_rule)
+        update_res = _cf_request(
+            token,
+            "PUT",
+            f"/zones/{zone_id}/rulesets/{ruleset['id']}",
+            body={"rules": rules},
+        )
+        if not update_res.get("success"):
+            return (
+                {
+                    "status": "error",
+                    "message": _augment_permission_hint(
+                        f"HSTS response rule update failed: {_errors_to_text(update_res)}",
+                        "hsts",
+                    ),
+                },
+                True,
+            )
+        return (
+            {
+                "status": "ok",
+                "action": "updated" if existing else "created",
+                "ruleset_id": ruleset.get("id"),
+            },
+            False,
+        )
+
+    if entry_res.get("_http_status") not in {0, 404}:
+        return (
+            {
+                "status": "error",
+                "message": _augment_permission_hint(
+                    f"HSTS response ruleset lookup failed: {_errors_to_text(entry_res)}",
+                    "hsts",
+                ),
+            },
+            True,
+        )
+
+    create_res = _cf_request(
+        token,
+        "POST",
+        f"/zones/{zone_id}/rulesets",
+        body={
+            "name": "Zone-level Response Header Transform Rules",
+            "kind": "zone",
+            "phase": "http_response_headers_transform",
+            "rules": [target_rule],
+        },
+    )
+    if not create_res.get("success"):
+        return (
+            {
+                "status": "error",
+                "message": _augment_permission_hint(
+                    f"HSTS response ruleset create failed: {_errors_to_text(create_res)}",
+                    "hsts",
+                ),
+            },
+            True,
+        )
+    result = create_res.get("result") or {}
+    return (
+        {
+            "status": "ok",
+            "action": "created",
+            "ruleset_id": result.get("id"),
+        },
+        False,
+    )
+
+
 def _build_dmarc_content(
     policy: str,
     pct: int,
@@ -204,6 +338,7 @@ def main() -> int:
     enable_pages_www_domain = _bool_env("ENABLE_PAGES_WWW_DOMAIN", default=True)
     pages_project = os.getenv("PAGES_PROJECT", "bluecollar-website").strip()
     hsts_via_pages_headers = _bool_env("HSTS_VIA_PAGES_HEADERS", default=True)
+    enable_hsts_response_rule = _bool_env("ENABLE_HSTS_RESPONSE_RULE", default=True)
     www_cname_target = os.getenv(
         "WWW_CNAME_TARGET", "bluecollar-website.pages.dev"
     ).strip()
@@ -232,6 +367,7 @@ def main() -> int:
         "always_use_https": {"status": "not_run"},
         "www_cname": {"status": "not_run"},
         "pages_www_domain": {"status": "not_run"},
+        "hsts_response_rule": {"status": "not_run"},
     }
     had_errors = False
 
@@ -791,6 +927,19 @@ def main() -> int:
                         ),
                     }
                     had_errors = True
+
+    if not enable_hsts_response_rule:
+        summary["hsts_response_rule"] = {"status": "skipped", "reason": "disabled"}
+    elif not zone_id:
+        summary["hsts_response_rule"] = {
+            "status": "skipped",
+            "reason": "Zone id unavailable",
+        }
+    else:
+        rule_summary, rule_error = _ensure_hsts_response_rule(token, zone_id, domain)
+        summary["hsts_response_rule"] = rule_summary
+        if rule_error:
+            had_errors = True
 
     print(json.dumps(summary, indent=2))
     return 1 if had_errors else 0
