@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-14T16:36:59+00:00",
+  "generated_at": "2026-06-14T16:40:27+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -11,12 +11,6 @@
             "name": "Blender-PDF-Importer_v1.0.18.zip",
             "size": 19374692,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.18/Blender-PDF-Importer_v1.0.18.zip"
-          },
-          {
-            "content_type": "application/zip",
-            "name": "PDF-Importer-Blender_v1.0.18.zip",
-            "size": 19369852,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.18/PDF-Importer-Blender_v1.0.18.zip"
           },
           {
             "content_type": "application/zip",
@@ -52,12 +46,6 @@
           },
           {
             "content_type": "application/zip",
-            "name": "PDF-Importer-FreeCAD_v4.0.21.zip",
-            "size": 186852564,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.21/PDF-Importer-FreeCAD_v4.0.21.zip"
-          },
-          {
-            "content_type": "application/zip",
             "name": "PDFVectorImporter_v4.0.21.zip",
             "size": 186852564,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.21/PDFVectorImporter_v4.0.21.zip"
@@ -81,12 +69,6 @@
             "name": "LibreCAD-PDF-Importer_v1.0.20.zip",
             "size": 103340,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.20/LibreCAD-PDF-Importer_v1.0.20.zip"
-          },
-          {
-            "content_type": "application/zip",
-            "name": "PDF-Importer-LibreCAD_v1.0.20.zip",
-            "size": 102422,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.20/PDF-Importer-LibreCAD_v1.0.20.zip"
           },
           {
             "content_type": "application/zip",
@@ -116,12 +98,6 @@
           },
           {
             "content_type": "application/octet-stream",
-            "name": "PDF-Importer-SketchUp_v3.7.9.rbz",
-            "size": 120066,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.9/PDF-Importer-SketchUp_v3.7.9.rbz"
-          },
-          {
-            "content_type": "application/octet-stream",
             "name": "SketchUp-PDF-Importer_v3.7.9.rbz",
             "size": 120686,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.9/SketchUp-PDF-Importer_v3.7.9.rbz"
@@ -138,7 +114,7 @@
     "BlueCollar-Systems/Steel-Shapes": {
       "default_branch": null,
       "error": "not_found_or_private",
-      "from_previous_snapshot": false,
+      "from_previous_snapshot": true,
       "latest_release": null,
       "pushed_at": null,
       "repo_url": "https://github.com/BlueCollar-Systems/Steel-Shapes"
@@ -184,5 +160,5 @@
       "repo_url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes"
     }
   },
-  "source_event": "local"
+  "source_event": "push"
 }
