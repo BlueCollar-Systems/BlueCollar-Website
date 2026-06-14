@@ -9,6 +9,8 @@ Primary goals:
 1) Ensure Cloudflare-managed security.txt is enabled for the production domain.
 2) Harden DMARC from monitoring-only to a staged policy.
 3) Ensure a Turnstile widget exists for the production domain (best effort).
+4) Enable HSTS, Always Use HTTPS, and minimum TLS 1.2 zone settings.
+5) Ensure www CNAME points at the Pages hostname (proxied).
 """
 
 from __future__ import annotations
@@ -113,7 +115,40 @@ def _augment_permission_hint(message: str, area: str) -> str:
             f"{message}. Likely missing token scope for Security Center settings "
             "(Zone Settings/Security Center edit)."
         )
+    if area in {"hsts", "min_tls", "always_https"}:
+        return (
+            f"{message}. Likely missing token scope for zone SSL/TLS settings "
+            "(Zone Settings:Edit)."
+        )
+    if area == "www_dns":
+        return (
+            f"{message}. Likely missing token scope for DNS write "
+            "(Zone DNS:Edit)."
+        )
     return message
+
+
+
+
+def _patch_zone_setting(
+    token: str, zone_id: str, setting_id: str, value: Any
+) -> dict[str, Any]:
+    return _cf_request(
+        token,
+        "PATCH",
+        f"/zones/{zone_id}/settings/{setting_id}",
+        body={"value": value},
+    )
+
+
+def _get_zone_setting(token: str, zone_id: str, setting_id: str) -> dict[str, Any]:
+    return _cf_request(token, "GET", f"/zones/{zone_id}/settings/{setting_id}")
+
+
+def _setting_value(result: dict[str, Any] | None) -> Any:
+    if not result:
+        return None
+    return result.get("value")
 
 
 def _build_dmarc_content(
@@ -155,6 +190,13 @@ def main() -> int:
     enable_turnstile = _bool_env("ENABLE_TURNSTILE", default=True)
     enable_security_txt = _bool_env("ENABLE_SECURITY_TXT", default=True)
     require_security_txt_update = _bool_env("REQUIRE_SECURITY_TXT_UPDATE", default=False)
+    enable_hsts = _bool_env("ENABLE_HSTS", default=True)
+    enable_min_tls = _bool_env("ENABLE_MIN_TLS", default=True)
+    enable_always_use_https = _bool_env("ENABLE_ALWAYS_USE_HTTPS", default=True)
+    enable_www_cname = _bool_env("ENABLE_WWW_CNAME", default=True)
+    www_cname_target = os.getenv(
+        "WWW_CNAME_TARGET", "bluecollar-website.pages.dev"
+    ).strip()
     fallback_rua = os.getenv(
         "DMARC_RUA",
         "mailto:2fdc58aa85a44ab59fdd0874b1548894@dmarc-reports.cloudflare.net",
@@ -175,6 +217,10 @@ def main() -> int:
         "securitytxt": {"status": "not_run"},
         "dmarc": {"status": "not_run"},
         "turnstile": {"status": "not_run"},
+        "hsts": {"status": "not_run"},
+        "min_tls": {"status": "not_run"},
+        "always_use_https": {"status": "not_run"},
+        "www_cname": {"status": "not_run"},
     }
     had_errors = False
 
@@ -406,6 +452,227 @@ def main() -> int:
                         ),
                     }
                     had_errors = True
+
+
+    # Zone SSL/TLS and HSTS settings
+    hsts_target = {
+        "enabled": True,
+        "max_age": 31536000,
+        "include_subdomains": True,
+        "preload": True,
+        "nosniff": True,
+    }
+
+    if not zone_id:
+        for key in ("hsts", "min_tls", "always_use_https", "www_cname"):
+            summary[key] = {"status": "skipped", "reason": "Zone id unavailable"}
+    else:
+        if not enable_hsts:
+            summary["hsts"] = {"status": "skipped", "reason": "disabled"}
+        else:
+            current = _get_zone_setting(token, zone_id, "security_header")
+            if not current.get("success"):
+                summary["hsts"] = {
+                    "status": "error",
+                    "message": _augment_permission_hint(
+                        f"HSTS read failed: {_errors_to_text(current)}", "hsts"
+                    ),
+                }
+                had_errors = True
+            else:
+                existing_val = _setting_value(current.get("result")) or {}
+                needs_update = not (
+                    existing_val.get("enabled") is True
+                    and existing_val.get("max_age") == 31536000
+                    and existing_val.get("include_subdomains") is True
+                    and existing_val.get("preload") is True
+                    and existing_val.get("nosniff") is True
+                )
+                if not needs_update:
+                    summary["hsts"] = {"status": "ok", "action": "already_set"}
+                else:
+                    patch_res = _patch_zone_setting(
+                        token, zone_id, "security_header", hsts_target
+                    )
+                    if not patch_res.get("success"):
+                        summary["hsts"] = {
+                            "status": "error",
+                            "message": _augment_permission_hint(
+                                f"HSTS update failed: {_errors_to_text(patch_res)}",
+                                "hsts",
+                            ),
+                        }
+                        had_errors = True
+                    else:
+                        summary["hsts"] = {
+                            "status": "ok",
+                            "action": "updated",
+                            "value": hsts_target,
+                        }
+
+        if not enable_min_tls:
+            summary["min_tls"] = {"status": "skipped", "reason": "disabled"}
+        else:
+            current = _get_zone_setting(token, zone_id, "min_tls_version")
+            if not current.get("success"):
+                summary["min_tls"] = {
+                    "status": "error",
+                    "message": _augment_permission_hint(
+                        f"min_tls read failed: {_errors_to_text(current)}", "min_tls"
+                    ),
+                }
+                had_errors = True
+            elif _setting_value(current.get("result")) == "1.2":
+                summary["min_tls"] = {"status": "ok", "action": "already_set"}
+            else:
+                patch_res = _patch_zone_setting(token, zone_id, "min_tls_version", "1.2")
+                if not patch_res.get("success"):
+                    summary["min_tls"] = {
+                        "status": "error",
+                        "message": _augment_permission_hint(
+                            f"min_tls update failed: {_errors_to_text(patch_res)}",
+                            "min_tls",
+                        ),
+                    }
+                    had_errors = True
+                else:
+                    summary["min_tls"] = {
+                        "status": "ok",
+                        "action": "updated",
+                        "value": "1.2",
+                    }
+
+        if not enable_always_use_https:
+            summary["always_use_https"] = {
+                "status": "skipped",
+                "reason": "disabled",
+            }
+        else:
+            current = _get_zone_setting(token, zone_id, "always_use_https")
+            if not current.get("success"):
+                summary["always_use_https"] = {
+                    "status": "error",
+                    "message": _augment_permission_hint(
+                        f"always_use_https read failed: {_errors_to_text(current)}",
+                        "always_https",
+                    ),
+                }
+                had_errors = True
+            elif _setting_value(current.get("result")) == "on":
+                summary["always_use_https"] = {
+                    "status": "ok",
+                    "action": "already_set",
+                }
+            else:
+                patch_res = _patch_zone_setting(
+                    token, zone_id, "always_use_https", "on"
+                )
+                if not patch_res.get("success"):
+                    summary["always_use_https"] = {
+                        "status": "error",
+                        "message": _augment_permission_hint(
+                            f"always_use_https update failed: {_errors_to_text(patch_res)}",
+                            "always_https",
+                        ),
+                    }
+                    had_errors = True
+                else:
+                    summary["always_use_https"] = {
+                        "status": "ok",
+                        "action": "updated",
+                        "value": "on",
+                    }
+
+        if not enable_www_cname:
+            summary["www_cname"] = {"status": "skipped", "reason": "disabled"}
+        else:
+            www_name = f"www.{domain}"
+            rec_res = _cf_request(
+                token,
+                "GET",
+                f"/zones/{zone_id}/dns_records",
+                query={"type": "CNAME", "name": www_name, "per_page": 50},
+            )
+            if not rec_res.get("success"):
+                summary["www_cname"] = {
+                    "status": "error",
+                    "message": _augment_permission_hint(
+                        f"www CNAME lookup failed: {_errors_to_text(rec_res)}",
+                        "www_dns",
+                    ),
+                }
+                had_errors = True
+            else:
+                records = rec_res.get("result") or []
+                existing = records[0] if records else None
+                cname_body = {
+                    "type": "CNAME",
+                    "name": www_name,
+                    "content": www_cname_target,
+                    "proxied": True,
+                    "ttl": 1,
+                }
+                if existing:
+                    same = (
+                        str(existing.get("content", "")).rstrip(".") == www_cname_target.rstrip(".")
+                        and existing.get("proxied") is True
+                    )
+                    if same:
+                        summary["www_cname"] = {
+                            "status": "ok",
+                            "action": "already_set",
+                            "name": www_name,
+                            "content": existing.get("content"),
+                        }
+                    else:
+                        write_res = _cf_request(
+                            token,
+                            "PUT",
+                            f"/zones/{zone_id}/dns_records/{existing['id']}",
+                            body=cname_body,
+                        )
+                        action = "updated"
+                        if not write_res.get("success"):
+                            summary["www_cname"] = {
+                                "status": "error",
+                                "message": _augment_permission_hint(
+                                    f"www CNAME {action} failed: {_errors_to_text(write_res)}",
+                                    "www_dns",
+                                ),
+                            }
+                            had_errors = True
+                        else:
+                            summary["www_cname"] = {
+                                "status": "ok",
+                                "action": action,
+                                "name": www_name,
+                                "content": www_cname_target,
+                            }
+                else:
+                    write_res = _cf_request(
+                        token,
+                        "POST",
+                        f"/zones/{zone_id}/dns_records",
+                        body=cname_body,
+                    )
+                    action = "created"
+                    if not write_res.get("success"):
+                        summary["www_cname"] = {
+                            "status": "error",
+                            "message": _augment_permission_hint(
+                                f"www CNAME {action} failed: {_errors_to_text(write_res)}",
+                                "www_dns",
+                            ),
+                        }
+                        had_errors = True
+                    else:
+                        summary["www_cname"] = {
+                            "status": "ok",
+                            "action": action,
+                            "name": www_name,
+                            "content": www_cname_target,
+                        }
+
 
     print(json.dumps(summary, indent=2))
     return 1 if had_errors else 0

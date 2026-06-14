@@ -27,6 +27,26 @@ on:
         required: true
         default: true
         type: boolean
+      enable_hsts:
+        description: "Enable HSTS (security_header) zone setting"
+        required: true
+        default: true
+        type: boolean
+      enable_min_tls:
+        description: "Set minimum TLS version to 1.2"
+        required: true
+        default: true
+        type: boolean
+      enable_always_use_https:
+        description: "Enable Always Use HTTPS"
+        required: true
+        default: true
+        type: boolean
+      enable_www_cname:
+        description: "Ensure www CNAME to Pages hostname"
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   remediate:
@@ -39,11 +59,17 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_ID: "0878e2d033aacb574465c1c3aa6cfa88"
           TARGET_DOMAIN: bluecollar-systems.com
+          WWW_CNAME_TARGET: bluecollar-website.pages.dev
           DMARC_POLICY: ${{ github.event.inputs.dmarc_policy }}
           DMARC_PCT: ${{ github.event.inputs.dmarc_pct }}
           ENABLE_TURNSTILE: ${{ github.event.inputs.enable_turnstile }}
           ENABLE_SECURITY_TXT: ${{ github.event.inputs.enable_security_txt }}
+          ENABLE_HSTS: ${{ github.event.inputs.enable_hsts }}
+          ENABLE_MIN_TLS: ${{ github.event.inputs.enable_min_tls }}
+          ENABLE_ALWAYS_USE_HTTPS: ${{ github.event.inputs.enable_always_use_https }}
+          ENABLE_WWW_CNAME: ${{ github.event.inputs.enable_www_cname }}
           DMARC_STRICT: "true"
         run: |
           python tools/remediate_cloudflare_security.py
