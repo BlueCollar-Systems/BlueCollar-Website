@@ -11,8 +11,8 @@ Static marketing site for **BlueCollar Systems** — precision software for fabr
 |---------|-------------|------|
 | **Steel Logic** | AISC v16.0 Structural Steel Shapes Reference (mobile app) | Coming soon |
 | **Free Shape Packs** | Public-domain SketchUp + DXF/DWG shape packs | [Shapes Hub](https://bluecollar-systems.com/shapes) |
-| **SketchUp PDF Importer** | Vector-accurate PDF geometry import for SketchUp | [GitHub](https://github.com/BlueCollar-Systems/SU-PDFimporter) |
-| **FreeCAD PDF Importer** | PDF vector import workbench for FreeCAD | [GitHub](https://github.com/BlueCollar-Systems/FC-PDFimporter) |
+| **SketchUp PDF Importer** | Vector-accurate PDF geometry import for SketchUp | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp) |
+| **FreeCAD PDF Importer** | PDF vector import workbench for FreeCAD | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD) |
 
 ## Tech Stack
 
@@ -47,7 +47,7 @@ Product versions and ZIP download URLs are **not** hardcoded in HTML for version
 | [`nav.js`](nav.js) | Client-side enhancement: loads `/repo-metadata.json` (`Cache-Control: no-store`) and updates `data-repo-version`, `data-repo-release-link`, and `data-repo-asset-link` elements. |
 | Static HTML fallbacks | `releases/latest` links and version badges work if JavaScript or metadata fetch fails. |
 
-Tracked repos: `SU-PDFimporter`, `FC-PDFimporter`, `BL-PDFimporter`, `LC-PDFimporter`, `Structural-Steel-SU-Shapes`, `Structural-Steel-DXF-DWG-Shapes`, and `Steel-Shapes` (kept only if the API token can read it).
+Tracked repos: `PDF-Importer-SketchUp`, `PDF-Importer-FreeCAD`, `PDF-Importer-Blender`, `PDF-Importer-LibreCAD`, `Structural-Steel-SU-Shapes`, `Structural-Steel-DXF-DWG-Shapes`, and `Steel-Shapes` (kept only if the API token can read it).
 
 ### End-to-end automation (product release → live site)
 
@@ -69,7 +69,7 @@ Configure under **Settings → Secrets and variables → Actions**:
 
 Do **not** put GitHub or Cloudflare tokens in HTML, `nav.js`, or committed config.
 
-### GitHub Actions secrets (each product repo: SU/FC/BL/LC-PDFimporter, etc.)
+### GitHub Actions secrets (each product repo: PDF-Importer-*, etc.)
 
 | Secret | Required | Purpose |
 |--------|----------|---------|
@@ -81,13 +81,13 @@ If `WEBSITE_DISPATCH_TOKEN` is unset, releases still publish on GitHub but the w
 
 ```json
 {
-  "source_repo": "BlueCollar-Systems/SU-PDFimporter",
+  "source_repo": "BlueCollar-Systems/PDF-Importer-SketchUp",
   "source_event": "auto-release",
   "source_ref": "refs/heads/main",
   "source_sha": "<commit>",
   "release_tag": "v3.7.2",
   "release_name": "v3.7.2",
-  "release_url": "https://github.com/BlueCollar-Systems/SU-PDFimporter/releases/tag/v3.7.2"
+  "release_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.2"
 }
 ```
 

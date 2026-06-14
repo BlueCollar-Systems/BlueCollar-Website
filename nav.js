@@ -36,12 +36,20 @@ document.addEventListener('DOMContentLoaded', function() {
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
+  function isPrimaryPdfImporterAsset(name) {
+    return /^(SketchUp|FreeCAD|LibreCAD|Blender)-PDF-Importer_v\d+\.(rbz|zip)$/i.test(name);
+  }
+
   function findDownloadAsset(assets, preferredName) {
     if (!Array.isArray(assets)) return null;
     if (preferredName) {
       for (var i = 0; i < assets.length; i++) {
         if (assets[i] && assets[i].name === preferredName) return assets[i];
       }
+    }
+    for (var p = 0; p < assets.length; p++) {
+      var primary = assets[p];
+      if (primary && isPrimaryPdfImporterAsset(primary.name)) return primary;
     }
     var extensions = ['.rbz', '.zip', '.aab', '.apk'];
     for (var j = 0; j < assets.length; j++) {

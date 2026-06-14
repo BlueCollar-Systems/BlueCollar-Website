@@ -6,17 +6,35 @@ from __future__ import annotations
 import datetime as dt
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
 
+_PRIMARY_PDF_IMPORTER_ASSET = re.compile(
+    r"^(?:SketchUp|FreeCAD|LibreCAD|Blender)-PDF-Importer_v\d+\.(?:rbz|zip)$"
+    r"|^FreeCAD-PDF-Importer-Setup_v\d+\.exe$"
+)
+
+
+def _prioritize_release_assets(assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    primary: list[dict[str, Any]] = []
+    other: list[dict[str, Any]] = []
+    for asset in assets:
+        name = (asset or {}).get("name") or ""
+        if _PRIMARY_PDF_IMPORTER_ASSET.match(name):
+            primary.append(asset)
+        else:
+            other.append(asset)
+    return primary + other
+
 REPOS: tuple[str, ...] = (
     "BlueCollar-Systems/Steel-Shapes",
-    "BlueCollar-Systems/SU-PDFimporter",
-    "BlueCollar-Systems/FC-PDFimporter",
-    "BlueCollar-Systems/BL-PDFimporter",
-    "BlueCollar-Systems/LC-PDFimporter",
+    "BlueCollar-Systems/PDF-Importer-SketchUp",
+    "BlueCollar-Systems/PDF-Importer-FreeCAD",
+    "BlueCollar-Systems/PDF-Importer-Blender",
+    "BlueCollar-Systems/PDF-Importer-LibreCAD",
     "BlueCollar-Systems/Structural-Steel-SU-Shapes",
     "BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes",
 )
@@ -48,15 +66,17 @@ def _safe_latest_release(repo: str, token: str | None) -> dict[str, Any] | None:
         "name": data.get("name"),
         "url": data.get("html_url"),
         "published_at": data.get("published_at"),
-        "assets": [
-            {
-                "name": asset.get("name"),
-                "url": asset.get("browser_download_url"),
-                "size": asset.get("size"),
-                "content_type": asset.get("content_type"),
-            }
-            for asset in data.get("assets", [])
-        ],
+        "assets": _prioritize_release_assets(
+            [
+                {
+                    "name": asset.get("name"),
+                    "url": asset.get("browser_download_url"),
+                    "size": asset.get("size"),
+                    "content_type": asset.get("content_type"),
+                }
+                for asset in data.get("assets", [])
+            ]
+        ),
     }
 
 
