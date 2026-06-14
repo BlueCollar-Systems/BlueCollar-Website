@@ -47,6 +47,16 @@ on:
         required: true
         default: true
         type: boolean
+      enable_pages_www_domain:
+        description: "Register www as Pages custom domain"
+        required: true
+        default: true
+        type: boolean
+      hsts_via_pages_headers:
+        description: "Disable zone HSTS so Pages _headers applies on custom domains"
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   remediate:
@@ -61,6 +71,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_ZONE_ID: "0878e2d033aacb574465c1c3aa6cfa88"
           TARGET_DOMAIN: bluecollar-systems.com
+          PAGES_PROJECT: bluecollar-website
           WWW_CNAME_TARGET: bluecollar-website.pages.dev
           DMARC_POLICY: ${{ github.event.inputs.dmarc_policy }}
           DMARC_PCT: ${{ github.event.inputs.dmarc_pct }}
@@ -70,6 +81,8 @@ jobs:
           ENABLE_MIN_TLS: ${{ github.event.inputs.enable_min_tls }}
           ENABLE_ALWAYS_USE_HTTPS: ${{ github.event.inputs.enable_always_use_https }}
           ENABLE_WWW_CNAME: ${{ github.event.inputs.enable_www_cname }}
+          ENABLE_PAGES_WWW_DOMAIN: ${{ github.event.inputs.enable_pages_www_domain }}
+          HSTS_VIA_PAGES_HEADERS: ${{ github.event.inputs.hsts_via_pages_headers }}
           DMARC_STRICT: "true"
         run: |
           python tools/remediate_cloudflare_security.py

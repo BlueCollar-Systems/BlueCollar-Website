@@ -11,6 +11,8 @@ Primary goals:
 3) Ensure a Turnstile widget exists for the production domain (best effort).
 4) Enable HSTS, Always Use HTTPS, and minimum TLS 1.2 zone settings.
 5) Ensure www CNAME points at the Pages hostname (proxied).
+6) Register www as a Pages custom domain (fixes 522 when DNS points at Pages).
+7) Optionally disable zone HSTS so Pages _headers HSTS applies on custom domains.
 """
 
 from __future__ import annotations
@@ -125,6 +127,11 @@ def _augment_permission_hint(message: str, area: str) -> str:
             f"{message}. Likely missing token scope for DNS write "
             "(Zone DNS:Edit)."
         )
+    if area == "pages_domain":
+        return (
+            f"{message}. Likely missing token scope for Pages project edit "
+            "(Account Cloudflare Pages:Edit)."
+        )
     return message
 
 
@@ -194,6 +201,9 @@ def main() -> int:
     enable_min_tls = _bool_env("ENABLE_MIN_TLS", default=True)
     enable_always_use_https = _bool_env("ENABLE_ALWAYS_USE_HTTPS", default=True)
     enable_www_cname = _bool_env("ENABLE_WWW_CNAME", default=True)
+    enable_pages_www_domain = _bool_env("ENABLE_PAGES_WWW_DOMAIN", default=True)
+    pages_project = os.getenv("PAGES_PROJECT", "bluecollar-website").strip()
+    hsts_via_pages_headers = _bool_env("HSTS_VIA_PAGES_HEADERS", default=True)
     www_cname_target = os.getenv(
         "WWW_CNAME_TARGET", "bluecollar-website.pages.dev"
     ).strip()
@@ -221,6 +231,7 @@ def main() -> int:
         "min_tls": {"status": "not_run"},
         "always_use_https": {"status": "not_run"},
         "www_cname": {"status": "not_run"},
+        "pages_www_domain": {"status": "not_run"},
     }
     had_errors = False
 
@@ -454,13 +465,23 @@ def main() -> int:
                     had_errors = True
 
 
-    # Zone SSL/TLS and HSTS settings
+    # Zone SSL/TLS and HSTS settings.
+    # Pages _headers already sets HSTS on pages.dev; zone HSTS overrides custom
+    # domains with a shorter default (180d, no preload). Prefer _headers when
+    # HSTS_VIA_PAGES_HEADERS is true by disabling zone HSTS.
     hsts_target = {
         "enabled": True,
         "max_age": 31536000,
         "include_subdomains": True,
         "preload": True,
         "nosniff": True,
+    }
+    hsts_disabled_for_pages = {
+        "enabled": False,
+        "max_age": 0,
+        "include_subdomains": False,
+        "preload": False,
+        "nosniff": False,
     }
 
     if not zone_id:
@@ -469,6 +490,44 @@ def main() -> int:
     else:
         if not enable_hsts:
             summary["hsts"] = {"status": "skipped", "reason": "disabled"}
+        elif hsts_via_pages_headers:
+            current = _get_zone_setting(token, zone_id, "security_header")
+            if not current.get("success"):
+                summary["hsts"] = {
+                    "status": "error",
+                    "message": _augment_permission_hint(
+                        f"HSTS read failed: {_errors_to_text(current)}", "hsts"
+                    ),
+                }
+                had_errors = True
+            else:
+                existing_val = _setting_value(current.get("result")) or {}
+                zone_hsts_on = existing_val.get("enabled") is True
+                if not zone_hsts_on:
+                    summary["hsts"] = {
+                        "status": "ok",
+                        "action": "already_disabled_for_pages_headers",
+                        "note": "Pages _headers supplies HSTS on custom domains",
+                    }
+                else:
+                    patch_res = _patch_zone_setting(
+                        token, zone_id, "security_header", hsts_disabled_for_pages
+                    )
+                    if not patch_res.get("success"):
+                        summary["hsts"] = {
+                            "status": "error",
+                            "message": _augment_permission_hint(
+                                f"Zone HSTS disable failed: {_errors_to_text(patch_res)}",
+                                "hsts",
+                            ),
+                        }
+                        had_errors = True
+                    else:
+                        summary["hsts"] = {
+                            "status": "ok",
+                            "action": "disabled_for_pages_headers",
+                            "note": "Pages _headers supplies HSTS on custom domains",
+                        }
         else:
             current = _get_zone_setting(token, zone_id, "security_header")
             if not current.get("success"):
@@ -673,6 +732,65 @@ def main() -> int:
                             "content": www_cname_target,
                         }
 
+    # Pages custom domain for www (required when www CNAME targets *.pages.dev)
+    if not enable_pages_www_domain:
+        summary["pages_www_domain"] = {"status": "skipped", "reason": "disabled"}
+    elif not account_id:
+        summary["pages_www_domain"] = {
+            "status": "skipped",
+            "reason": "CLOUDFLARE_ACCOUNT_ID not provided",
+        }
+    else:
+        www_host = f"www.{domain}"
+        list_res = _cf_request(
+            token,
+            "GET",
+            f"/accounts/{account_id}/pages/projects/{pages_project}/domains",
+        )
+        if not list_res.get("success"):
+            summary["pages_www_domain"] = {
+                "status": "error",
+                "message": _augment_permission_hint(
+                    f"Pages domain list failed: {_errors_to_text(list_res)}",
+                    "pages_domain",
+                ),
+            }
+            had_errors = True
+        else:
+            domains = list_res.get("result") or []
+            existing_names = {
+                str(d.get("name", "")).lower().rstrip(".") for d in domains
+            }
+            if www_host.lower() in existing_names:
+                summary["pages_www_domain"] = {
+                    "status": "ok",
+                    "action": "already_present",
+                    "name": www_host,
+                }
+            else:
+                create_res = _cf_request(
+                    token,
+                    "POST",
+                    f"/accounts/{account_id}/pages/projects/{pages_project}/domains",
+                    body={"name": www_host},
+                )
+                if create_res.get("success"):
+                    result = create_res.get("result") or {}
+                    summary["pages_www_domain"] = {
+                        "status": "ok",
+                        "action": "created",
+                        "name": result.get("name") or www_host,
+                        "status_detail": result.get("status"),
+                    }
+                else:
+                    summary["pages_www_domain"] = {
+                        "status": "error",
+                        "message": _augment_permission_hint(
+                            f"Pages domain create failed: {_errors_to_text(create_res)}",
+                            "pages_domain",
+                        ),
+                    }
+                    had_errors = True
 
     print(json.dumps(summary, indent=2))
     return 1 if had_errors else 0
