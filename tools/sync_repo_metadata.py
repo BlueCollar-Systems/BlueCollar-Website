@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Any
 
 _PRIMARY_PDF_IMPORTER_ASSET = re.compile(
-    r"^(?:SketchUp|FreeCAD|LibreCAD|Blender)-PDF-Importer_v\d+\.(?:rbz|zip)$"
-    r"|^FreeCAD-PDF-Importer-Setup_v\d+\.exe$"
+    r"^(?:SketchUp|FreeCAD|LibreCAD|Blender)-PDF-Importer_v\d+(?:\.\d+){2}\.(?:rbz|zip)$"
+    r"|^FreeCAD-PDF-Importer-Setup_v\d+(?:\.\d+){2}\.exe$"
 )
 
 
@@ -27,7 +27,7 @@ def _prioritize_release_assets(assets: list[dict[str, Any]]) -> list[dict[str, A
             primary.append(asset)
         else:
             other.append(asset)
-    return primary + other
+    return primary or other
 
 REPOS: tuple[str, ...] = (
     "BlueCollar-Systems/Steel-Shapes",
