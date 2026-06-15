@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-14T22:49:57+00:00",
+  "generated_at": "2026-06-15T05:29:49+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -26,6 +26,12 @@
       "error": null,
       "latest_release": {
         "assets": [
+          {
+            "content_type": "application/x-msdos-program",
+            "name": "FreeCAD-PDF-Importer-Setup_v4.0.22.exe",
+            "size": 189039265,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.22/FreeCAD-PDF-Importer-Setup_v4.0.22.exe"
+          },
           {
             "content_type": "application/zip",
             "name": "FreeCAD-PDF-Importer_v4.0.22.zip",
@@ -148,5 +154,5 @@
       "repo_url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes"
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "schedule"
 }
