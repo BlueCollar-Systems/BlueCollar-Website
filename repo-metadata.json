@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-15T20:35:13+00:00",
+  "generated_at": "2026-06-15T21:25:30+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -154,5 +154,5 @@
       "repo_url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes"
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "schedule"
 }
