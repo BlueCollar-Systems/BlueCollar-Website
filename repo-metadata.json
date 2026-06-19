@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-19T02:06:32+00:00",
+  "generated_at": "2026-06-19T02:08:24+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -142,14 +142,32 @@
       }
     },
     "BlueCollar-Systems/Steel-Shapes": {
-      "default_branch": null,
-      "error": "not_found_or_private",
-      "from_previous_snapshot": false,
-      "latest_release": null,
-      "pushed_at": null,
+      "default_branch": "main",
+      "error": null,
+      "latest_release": {
+        "assets": [
+          {
+            "content_type": "text/plain; charset=utf-8",
+            "name": "SHA256SUMS.txt",
+            "size": 104,
+            "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/download/v1.0.8/SHA256SUMS.txt"
+          },
+          {
+            "content_type": "application/octet-stream",
+            "name": "SteelLogic_v1.0.8_release.aab",
+            "size": 74523120,
+            "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/download/v1.0.8/SteelLogic_v1.0.8_release.aab"
+          }
+        ],
+        "name": "v1.0.8 \u2014 Steel Logic",
+        "published_at": "2026-05-25T18:04:48Z",
+        "tag": "v1.0.8",
+        "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/tag/v1.0.8"
+      },
+      "pushed_at": "2026-06-14T16:46:10Z",
       "repo_url": "https://github.com/BlueCollar-Systems/Steel-Shapes",
       "steel_release": null
     }
   },
-  "source_event": "local"
+  "source_event": "push"
 }
