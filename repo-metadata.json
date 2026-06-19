@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-19T00:45:39+00:00",
+  "generated_at": "2026-06-19T00:46:29+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -27,24 +27,18 @@
       "latest_release": {
         "assets": [
           {
-            "content_type": "application/x-msdos-program",
-            "name": "FreeCAD-PDF-Importer-Setup_v4.0.22.exe",
-            "size": 189039265,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.22/FreeCAD-PDF-Importer-Setup_v4.0.22.exe"
-          },
-          {
             "content_type": "application/zip",
-            "name": "FreeCAD-PDF-Importer_v4.0.22.zip",
-            "size": 186852572,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.22/FreeCAD-PDF-Importer_v4.0.22.zip"
+            "name": "FreeCAD-PDF-Importer_v4.0.23.zip",
+            "size": 186852703,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.23/FreeCAD-PDF-Importer_v4.0.23.zip"
           }
         ],
-        "name": "v4.0.22 \u2014 PDF Vector Importer for FreeCAD",
-        "published_at": "2026-06-14T22:49:26Z",
-        "tag": "v4.0.22",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.22"
+        "name": "v4.0.23 \u2014 PDF Vector Importer for FreeCAD",
+        "published_at": "2026-06-19T00:45:54Z",
+        "tag": "v4.0.23",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.23"
       },
-      "pushed_at": "2026-06-19T00:45:13Z",
+      "pushed_at": "2026-06-19T00:45:46Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD"
     },
     "BlueCollar-Systems/PDF-Importer-LibreCAD": {
@@ -89,8 +83,7 @@
     },
     "BlueCollar-Systems/Steel-Shapes": {
       "default_branch": "main",
-      "error": "not_found_or_private",
-      "from_previous_snapshot": true,
+      "error": null,
       "latest_release": {
         "assets": [
           {
@@ -155,5 +148,5 @@
       "repo_url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes"
     }
   },
-  "source_event": "push"
+  "source_event": "repository_dispatch"
 }
