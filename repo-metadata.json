@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-19T02:03:06+00:00",
+  "generated_at": "2026-06-19T02:06:32+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -19,13 +19,20 @@
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.24"
       },
       "pushed_at": "2026-06-19T02:01:42Z",
-      "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender"
+      "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender",
+      "steel_release": null
     },
     "BlueCollar-Systems/PDF-Importer-FreeCAD": {
       "default_branch": "main",
       "error": null,
       "latest_release": {
         "assets": [
+          {
+            "content_type": "application/x-msdos-program",
+            "name": "FreeCAD-PDF-Importer-Setup_v4.0.26.exe",
+            "size": 189041544,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.26/FreeCAD-PDF-Importer-Setup_v4.0.26.exe"
+          },
           {
             "content_type": "application/zip",
             "name": "FreeCAD-PDF-Importer_v4.0.26.zip",
@@ -38,8 +45,34 @@
         "tag": "v4.0.26",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.26"
       },
-      "pushed_at": "2026-06-19T02:02:22Z",
-      "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD"
+      "pushed_at": "2026-06-19T02:03:52Z",
+      "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
+      "steel_release": {
+        "assets": [
+          {
+            "content_type": "text/plain",
+            "name": "SHA256SUMS.txt",
+            "size": 218,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/steel-v1.0.0/SHA256SUMS.txt"
+          },
+          {
+            "content_type": "application/zip",
+            "name": "Structural-Steel-DXF-DWG-Shapes-latest.zip",
+            "size": 9130688,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/steel-v1.0.0/Structural-Steel-DXF-DWG-Shapes-latest.zip"
+          },
+          {
+            "content_type": "application/zip",
+            "name": "Structural-Steel-DXF-DWG-Shapes-v1.0.0.zip",
+            "size": 9130688,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/steel-v1.0.0/Structural-Steel-DXF-DWG-Shapes-v1.0.0.zip"
+          }
+        ],
+        "name": "Steel Shapes steel-v1.0.0",
+        "published_at": "2026-06-19T02:04:12Z",
+        "tag": "steel-v1.0.0",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/steel-v1.0.0"
+      }
     },
     "BlueCollar-Systems/PDF-Importer-LibreCAD": {
       "default_branch": "main",
@@ -59,7 +92,8 @@
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.25"
       },
       "pushed_at": "2026-06-19T02:01:43Z",
-      "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD"
+      "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD",
+      "steel_release": null
     },
     "BlueCollar-Systems/PDF-Importer-SketchUp": {
       "default_branch": "main",
@@ -78,75 +112,44 @@
         "tag": "v3.7.30",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.30"
       },
-      "pushed_at": "2026-06-19T02:01:51Z",
-      "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp"
-    },
-    "BlueCollar-Systems/Steel-Shapes": {
-      "default_branch": "main",
-      "error": null,
-      "latest_release": {
+      "pushed_at": "2026-06-19T02:03:40Z",
+      "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp",
+      "steel_release": {
         "assets": [
           {
-            "content_type": "text/plain; charset=utf-8",
+            "content_type": "text/plain",
             "name": "SHA256SUMS.txt",
-            "size": 104,
-            "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/download/v1.0.8/SHA256SUMS.txt"
+            "size": 208,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/steel-v1.0.0/SHA256SUMS.txt"
           },
           {
-            "content_type": "application/octet-stream",
-            "name": "SteelLogic_v1.0.8_release.aab",
-            "size": 74523120,
-            "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/download/v1.0.8/SteelLogic_v1.0.8_release.aab"
-          }
-        ],
-        "name": "v1.0.8 \u2014 Steel Logic",
-        "published_at": "2026-05-25T18:04:48Z",
-        "tag": "v1.0.8",
-        "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/tag/v1.0.8"
-      },
-      "pushed_at": "2026-06-14T16:46:10Z",
-      "repo_url": "https://github.com/BlueCollar-Systems/Steel-Shapes"
-    },
-    "BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes": {
-      "default_branch": "main",
-      "error": null,
-      "latest_release": {
-        "assets": [
-          {
             "content_type": "application/zip",
-            "name": "Structural-Steel-DXF-DWG-Shapes-v1.0.0.zip",
-            "size": 9111669,
-            "url": "https://github.com/BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes/releases/download/v1.0.0/Structural-Steel-DXF-DWG-Shapes-v1.0.0.zip"
-          }
-        ],
-        "name": "v1.0.0 - Initial Public DXF/DWG Pack",
-        "published_at": "2026-04-05T22:28:02Z",
-        "tag": "v1.0.0",
-        "url": "https://github.com/BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes/releases/tag/v1.0.0"
-      },
-      "pushed_at": "2026-04-07T23:05:09Z",
-      "repo_url": "https://github.com/BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes"
-    },
-    "BlueCollar-Systems/Structural-Steel-SU-Shapes": {
-      "default_branch": "main",
-      "error": null,
-      "latest_release": {
-        "assets": [
+            "name": "Structural-Steel-SU-Shapes-latest.zip",
+            "size": 6285441,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/steel-v1.0.0/Structural-Steel-SU-Shapes-latest.zip"
+          },
           {
             "content_type": "application/zip",
             "name": "Structural-Steel-SU-Shapes-v1.0.0.zip",
-            "size": 6344612,
-            "url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes/releases/download/v1.0.0/Structural-Steel-SU-Shapes-v1.0.0.zip"
+            "size": 6285441,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/steel-v1.0.0/Structural-Steel-SU-Shapes-v1.0.0.zip"
           }
         ],
-        "name": "v1.0.0 - Initial Public Shape Pack",
-        "published_at": "2026-04-05T22:27:45Z",
-        "tag": "v1.0.0",
-        "url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes/releases/tag/v1.0.0"
-      },
-      "pushed_at": "2026-04-07T23:05:03Z",
-      "repo_url": "https://github.com/BlueCollar-Systems/Structural-Steel-SU-Shapes"
+        "name": "Steel Shapes steel-v1.0.0",
+        "published_at": "2026-06-19T02:03:56Z",
+        "tag": "steel-v1.0.0",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/steel-v1.0.0"
+      }
+    },
+    "BlueCollar-Systems/Steel-Shapes": {
+      "default_branch": null,
+      "error": "not_found_or_private",
+      "from_previous_snapshot": false,
+      "latest_release": null,
+      "pushed_at": null,
+      "repo_url": "https://github.com/BlueCollar-Systems/Steel-Shapes",
+      "steel_release": null
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "local"
 }

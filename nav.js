@@ -37,7 +37,14 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function isPrimaryPdfImporterAsset(name) {
-    return /^(SketchUp|FreeCAD|LibreCAD|Blender)-PDF-Importer_v\d+\.(rbz|zip)$/i.test(name);
+    return /^(SketchUp|FreeCAD|LibreCAD|Blender)-PDF-Importer_v\d+(?:\.\d+){2}\.(rbz|zip)$/i.test(name) ||
+      /^FreeCAD-PDF-Importer-Setup_v\d+(?:\.\d+){2}\.exe$/i.test(name);
+  }
+
+  function releaseFor(repo, channel) {
+    if (!repo) return null;
+    if (channel === 'steel') return repo.steel_release || null;
+    return repo.latest_release || null;
   }
 
   function findDownloadAsset(assets, preferredName) {
@@ -46,6 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
       for (var i = 0; i < assets.length; i++) {
         if (assets[i] && assets[i].name === preferredName) return assets[i];
       }
+      return null;
     }
     for (var p = 0; p < assets.length; p++) {
       var primary = assets[p];
@@ -76,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var repo = repos[repoKey];
         if (!repo) return;
 
-        var release = repo.latest_release;
+        var release = releaseFor(repo, el.getAttribute('data-release-channel'));
         var isInlineBadge = el.tagName === 'SPAN';
         if (release && release.tag) {
           el.textContent = isInlineBadge ? release.tag : ('Latest: ' + release.tag);
@@ -94,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var repoKey = el.getAttribute('data-repo-release-link');
         var repo = repos[repoKey];
         if (!repo) return;
-        var release = repo.latest_release;
+        var release = releaseFor(repo, el.getAttribute('data-release-channel'));
         if (release && release.url) {
           el.href = release.url;
         } else if (repo.repo_url) {
@@ -106,12 +114,13 @@ document.addEventListener('DOMContentLoaded', function() {
         var repoKey = el.getAttribute('data-repo-asset-link');
         var preferredName = el.getAttribute('data-asset-name');
         var repo = repos[repoKey];
-        if (!repo || !repo.latest_release) return;
-        var asset = findDownloadAsset(repo.latest_release.assets, preferredName);
+        var release = releaseFor(repo, el.getAttribute('data-release-channel'));
+        if (!repo || !release) return;
+        var asset = findDownloadAsset(release.assets, preferredName);
         if (asset && asset.url) {
           el.href = asset.url;
-        } else if (repo.latest_release.url) {
-          el.href = repo.latest_release.url;
+        } else if (!preferredName && release.url) {
+          el.href = release.url;
         }
       });
     })

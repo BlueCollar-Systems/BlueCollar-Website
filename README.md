@@ -42,12 +42,12 @@ Product versions and ZIP download URLs are **not** hardcoded in HTML for version
 
 | Layer | Role |
 |-------|------|
-| [`repo-metadata.json`](repo-metadata.json) | Build-time snapshot of each GitHub repo’s `releases/latest` (generated in CI). |
+| [`repo-metadata.json`](repo-metadata.json) | Build-time snapshot of each GitHub repo's importer release plus any `steel-v*` release channel (generated in CI). |
 | [`tools/sync_repo_metadata.py`](tools/sync_repo_metadata.py) | Fetches GitHub API data and optionally stamps `data-repo-version` fallbacks in `*.html`. |
-| [`nav.js`](nav.js) | Client-side enhancement: loads `/repo-metadata.json` (`Cache-Control: no-store`) and updates `data-repo-version`, `data-repo-release-link`, and `data-repo-asset-link` elements. |
+| [`nav.js`](nav.js) | Client-side enhancement: loads `/repo-metadata.json` (`Cache-Control: no-store`) and updates `data-repo-version`, `data-repo-release-link`, and `data-repo-asset-link` elements. Supports `data-release-channel="steel"` for shape-pack downloads hosted by importer repos. |
 | Static HTML fallbacks | `releases/latest` links and version badges work if JavaScript or metadata fetch fails. |
 
-Tracked repos: `PDF-Importer-SketchUp`, `PDF-Importer-FreeCAD`, `PDF-Importer-Blender`, `PDF-Importer-LibreCAD`, `Structural-Steel-SU-Shapes`, `Structural-Steel-DXF-DWG-Shapes`, and `Steel-Shapes` (kept only if the API token can read it).
+Tracked repos: `PDF-Importer-SketchUp`, `PDF-Importer-FreeCAD`, `PDF-Importer-Blender`, `PDF-Importer-LibreCAD`, and `Steel-Shapes` (kept only if the API token can read it). The former standalone SketchUp and DXF/DWG shape repos are now represented by `steel-v*` releases in the SketchUp and FreeCAD importer repos.
 
 ### End-to-end automation (product release → live site)
 

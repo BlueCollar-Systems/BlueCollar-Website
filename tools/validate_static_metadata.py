@@ -7,9 +7,10 @@ import json
 import re
 from pathlib import Path
 
-VERSION_PATTERN = re.compile(
-    r'data-repo-version="([^"]+)"[^>]*>([^<]*)</[A-Za-z0-9]+>'
+VERSION_ELEMENT_PATTERN = re.compile(
+    r"<[A-Za-z0-9]+(?P<attrs>[^>]*)>(?P<label>[^<]*)</[A-Za-z0-9]+>"
 )
+ATTR_PATTERN = re.compile(r'([A-Za-z0-9_-]+)="([^"]*)"')
 _TAG_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 
 
@@ -45,9 +46,19 @@ def main() -> int:
     failures: list[str] = []
     for page in sorted(Path(".").glob("*.html")):
         text = page.read_text(encoding="utf-8")
-        for repo_key, label in VERSION_PATTERN.findall(text):
+        for match in VERSION_ELEMENT_PATTERN.finditer(text):
+            attrs = dict(ATTR_PATTERN.findall(match.group("attrs")))
+            repo_key = attrs.get("data-repo-version")
+            if not repo_key:
+                continue
+            label = match.group("label")
             repo = repos.get(repo_key)
-            release = (repo or {}).get("latest_release") if isinstance(repo, dict) else None
+            release_key = (
+                "steel_release"
+                if attrs.get("data-release-channel") == "steel"
+                else "latest_release"
+            )
+            release = (repo or {}).get(release_key) if isinstance(repo, dict) else None
             tag = release.get("tag") if isinstance(release, dict) else None
             if not tag:
                 continue

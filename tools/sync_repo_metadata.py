@@ -35,8 +35,22 @@ REPOS: tuple[str, ...] = (
     "BlueCollar-Systems/PDF-Importer-FreeCAD",
     "BlueCollar-Systems/PDF-Importer-Blender",
     "BlueCollar-Systems/PDF-Importer-LibreCAD",
-    "BlueCollar-Systems/Structural-Steel-SU-Shapes",
-    "BlueCollar-Systems/Structural-Steel-DXF-DWG-Shapes",
+)
+
+PDF_IMPORTER_RELEASE_REPOS: frozenset[str] = frozenset(
+    {
+        "BlueCollar-Systems/PDF-Importer-SketchUp",
+        "BlueCollar-Systems/PDF-Importer-FreeCAD",
+        "BlueCollar-Systems/PDF-Importer-Blender",
+        "BlueCollar-Systems/PDF-Importer-LibreCAD",
+    }
+)
+
+STEEL_RELEASE_REPOS: frozenset[str] = frozenset(
+    {
+        "BlueCollar-Systems/PDF-Importer-SketchUp",
+        "BlueCollar-Systems/PDF-Importer-FreeCAD",
+    }
 )
 
 
@@ -52,15 +66,7 @@ def _json_get(url: str, token: str | None = None) -> Any:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def _safe_latest_release(repo: str, token: str | None) -> dict[str, Any] | None:
-    url = f"https://api.github.com/repos/{repo}/releases/latest"
-    try:
-        data = _json_get(url, token)
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return None
-        raise
-
+def _release_summary(data: dict[str, Any]) -> dict[str, Any]:
     return {
         "tag": data.get("tag_name"),
         "name": data.get("name"),
@@ -78,6 +84,39 @@ def _safe_latest_release(repo: str, token: str | None) -> dict[str, Any] | None:
             ]
         ),
     }
+
+
+def _safe_latest_release(repo: str, token: str | None) -> dict[str, Any] | None:
+    url = f"https://api.github.com/repos/{repo}/releases/latest"
+    try:
+        data = _json_get(url, token)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+
+    return _release_summary(data)
+
+
+def _safe_latest_tagged_release(
+    repo: str, token: str | None, tag_prefix: str
+) -> dict[str, Any] | None:
+    url = f"https://api.github.com/repos/{repo}/releases?per_page=100"
+    try:
+        releases = _json_get(url, token)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+
+    if not isinstance(releases, list):
+        return None
+
+    for release in releases:
+        tag = (release or {}).get("tag_name") or ""
+        if tag.startswith(tag_prefix):
+            return _release_summary(release)
+    return None
 
 
 def _load_previous_repos(path: Path) -> dict[str, Any]:
@@ -108,6 +147,7 @@ def build_metadata(token: str | None, previous_repos: dict[str, Any] | None = No
                     "pushed_at": previous.get("pushed_at"),
                     "repo_url": previous.get("repo_url", f"https://github.com/{repo}"),
                     "latest_release": previous.get("latest_release"),
+                    "steel_release": previous.get("steel_release"),
                     "from_previous_snapshot": bool(previous),
                 }
                 if previous.get("latest_release"):
@@ -115,16 +155,28 @@ def build_metadata(token: str | None, previous_repos: dict[str, Any] | None = No
                 continue
             raise
 
-        latest_release = _safe_latest_release(repo, token)
+        if repo in PDF_IMPORTER_RELEASE_REPOS:
+            latest_release = _safe_latest_tagged_release(repo, token, "v")
+        else:
+            latest_release = _safe_latest_release(repo, token)
         if latest_release is None and previous.get("latest_release"):
             latest_release = previous["latest_release"]
             print(f"  using previous release snapshot for {repo} (no latest release via API)")
+
+        steel_release = None
+        if repo in STEEL_RELEASE_REPOS:
+            steel_release = _safe_latest_tagged_release(repo, token, "steel-v")
+            if steel_release is None and previous.get("steel_release"):
+                steel_release = previous["steel_release"]
+                print(f"  using previous steel release snapshot for {repo}")
+
         repos[repo] = {
             "error": repo_error,
             "default_branch": repo_data.get("default_branch"),
             "pushed_at": repo_data.get("pushed_at"),
             "repo_url": repo_data.get("html_url"),
             "latest_release": latest_release,
+            "steel_release": steel_release,
         }
 
     return {
@@ -143,13 +195,36 @@ def stamp_html_versions(payload: dict[str, Any]) -> None:
         html = page.read_text(encoding="utf-8")
         changed = False
         for repo_key, repo_data in repos.items():
+            release_attr = (
+                r'(?:data-release-channel="steel"[^>]*data-repo-version="'
+                + re.escape(repo_key)
+                + r'"|data-repo-version="'
+                + re.escape(repo_key)
+                + r'"[^>]*data-release-channel="steel")'
+            )
+            steel_pattern = re.compile(r"(<[^>]*" + release_attr + r"[^>]*>)([^<]*)(</[A-Za-z0-9]+>)")
+
+            release = (repo_data or {}).get("steel_release")
+            if release and release.get("tag"):
+                tag = release["tag"]
+
+                def steel_repl(match: re.Match[str]) -> str:
+                    current = match.group(2).strip().lower()
+                    value = f"Latest: {tag}" if current.startswith("latest:") else tag
+                    return f"{match.group(1)}{value}{match.group(3)}"
+
+                html, n = steel_pattern.subn(steel_repl, html)
+                if n > 0:
+                    changed = True
+                    print(f"  stamped {page.name}: {repo_key} steel -> {tag}")
+
             release = (repo_data or {}).get("latest_release")
             if not release or not release.get("tag"):
                 continue
             tag = release["tag"]
             # Match: data-repo-version="<repo_key>">anything</span|p|...>
             pattern = re.compile(
-                r'(data-repo-version="'
+                r'(<(?![^>]*data-release-channel="steel")[^>]*data-repo-version="'
                 + re.escape(repo_key)
                 + r'"[^>]*>)([^<]*)(</[A-Za-z0-9]+>)'
             )
