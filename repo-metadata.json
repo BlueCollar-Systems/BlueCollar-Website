@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-19T02:08:24+00:00",
+  "generated_at": "2026-06-19T03:03:34+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -28,24 +28,18 @@
       "latest_release": {
         "assets": [
           {
-            "content_type": "application/x-msdos-program",
-            "name": "FreeCAD-PDF-Importer-Setup_v4.0.26.exe",
-            "size": 189041544,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.26/FreeCAD-PDF-Importer-Setup_v4.0.26.exe"
-          },
-          {
             "content_type": "application/zip",
-            "name": "FreeCAD-PDF-Importer_v4.0.26.zip",
+            "name": "FreeCAD-PDF-Importer_v4.0.27.zip",
             "size": 186856762,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.26/FreeCAD-PDF-Importer_v4.0.26.zip"
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.27/FreeCAD-PDF-Importer_v4.0.27.zip"
           }
         ],
-        "name": "v4.0.26 \u2014 PDF Vector Importer for FreeCAD",
-        "published_at": "2026-06-19T02:02:31Z",
-        "tag": "v4.0.26",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.26"
+        "name": "v4.0.27 \u2014 PDF Vector Importer for FreeCAD",
+        "published_at": "2026-06-19T03:03:07Z",
+        "tag": "v4.0.27",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.27"
       },
-      "pushed_at": "2026-06-19T02:03:52Z",
+      "pushed_at": "2026-06-19T03:03:02Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
@@ -169,5 +163,5 @@
       "steel_release": null
     }
   },
-  "source_event": "push"
+  "source_event": "repository_dispatch"
 }
