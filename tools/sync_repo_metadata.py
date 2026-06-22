@@ -15,6 +15,8 @@ from typing import Any
 _PRIMARY_PDF_IMPORTER_ASSET = re.compile(
     r"^(?:SketchUp|FreeCAD|LibreCAD|Blender)-PDF-Importer_v\d+(?:\.\d+){2}\.(?:rbz|zip)$"
     r"|^FreeCAD-PDF-Importer-Setup_v\d+(?:\.\d+){2}\.exe$"
+    r"|^LibreCAD-PDF-Importer-Setup_v\d+(?:\.\d+){2}\.exe$"
+    r"|^LibreCAD-PDF-Importer-Windows-Portable_v\d+(?:\.\d+){2}\.zip$"
 )
 
 

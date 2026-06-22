@@ -38,7 +38,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function isPrimaryPdfImporterAsset(name) {
     return /^(SketchUp|FreeCAD|LibreCAD|Blender)-PDF-Importer_v\d+(?:\.\d+){2}\.(rbz|zip)$/i.test(name) ||
-      /^FreeCAD-PDF-Importer-Setup_v\d+(?:\.\d+){2}\.exe$/i.test(name);
+      /^FreeCAD-PDF-Importer-Setup_v\d+(?:\.\d+){2}\.exe$/i.test(name) ||
+      /^LibreCAD-PDF-Importer-Setup_v\d+(?:\.\d+){2}\.exe$/i.test(name) ||
+      /^LibreCAD-PDF-Importer-Windows-Portable_v\d+(?:\.\d+){2}\.zip$/i.test(name);
   }
 
   function releaseFor(repo, channel) {

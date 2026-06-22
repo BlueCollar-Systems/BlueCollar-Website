@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22T01:38:36+00:00",
+  "generated_at": "2026-06-22T01:40:24+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -79,6 +79,18 @@
       "error": null,
       "latest_release": {
         "assets": [
+          {
+            "content_type": "application/x-msdownload",
+            "name": "LibreCAD-PDF-Importer-Setup_v1.0.27.exe",
+            "size": 37816179,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.27/LibreCAD-PDF-Importer-Setup_v1.0.27.exe"
+          },
+          {
+            "content_type": "application/zip",
+            "name": "LibreCAD-PDF-Importer-Windows-Portable_v1.0.27.zip",
+            "size": 185581738,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.27/LibreCAD-PDF-Importer-Windows-Portable_v1.0.27.zip"
+          },
           {
             "content_type": "application/zip",
             "name": "LibreCAD-PDF-Importer_v1.0.27.zip",
