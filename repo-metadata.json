@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22T21:38:52+00:00",
+  "generated_at": "2026-06-22T21:42:18+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -144,12 +144,12 @@
     "BlueCollar-Systems/Steel-Shapes": {
       "default_branch": null,
       "error": "not_found_or_private",
-      "from_previous_snapshot": false,
+      "from_previous_snapshot": true,
       "latest_release": null,
       "pushed_at": null,
       "repo_url": "https://github.com/BlueCollar-Systems/Steel-Shapes",
       "steel_release": null
     }
   },
-  "source_event": "local"
+  "source_event": "push"
 }
