@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22T21:00:06+00:00",
+  "generated_at": "2026-06-22T21:03:36+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -18,7 +18,7 @@
         "tag": "v1.0.27",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.27"
       },
-      "pushed_at": "2026-06-22T20:59:31Z",
+      "pushed_at": "2026-06-22T21:03:24Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender",
       "steel_release": null
     },
@@ -28,24 +28,18 @@
       "latest_release": {
         "assets": [
           {
-            "content_type": "application/x-msdos-program",
-            "name": "FreeCAD-PDF-Importer-Setup_v4.0.31.exe",
-            "size": 15353863,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.31/FreeCAD-PDF-Importer-Setup_v4.0.31.exe"
-          },
-          {
             "content_type": "application/zip",
-            "name": "FreeCAD-PDF-Importer_v4.0.31.zip",
-            "size": 18316258,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.31/FreeCAD-PDF-Importer_v4.0.31.zip"
+            "name": "FreeCAD-PDF-Importer_v4.0.32.zip",
+            "size": 24542460,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.32/FreeCAD-PDF-Importer_v4.0.32.zip"
           }
         ],
-        "name": "v4.0.31 \u2014 PDF Vector Importer for FreeCAD",
-        "published_at": "2026-06-22T20:56:42Z",
-        "tag": "v4.0.31",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.31"
+        "name": "v4.0.32 \u2014 PDF Vector Importer for FreeCAD",
+        "published_at": "2026-06-22T21:03:06Z",
+        "tag": "v4.0.32",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.32"
       },
-      "pushed_at": "2026-06-22T20:56:39Z",
+      "pushed_at": "2026-06-22T21:03:01Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
@@ -80,30 +74,18 @@
       "latest_release": {
         "assets": [
           {
-            "content_type": "application/x-msdownload",
-            "name": "LibreCAD-PDF-Importer-Setup_v1.0.27.exe",
-            "size": 37816179,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.27/LibreCAD-PDF-Importer-Setup_v1.0.27.exe"
-          },
-          {
             "content_type": "application/zip",
-            "name": "LibreCAD-PDF-Importer-Windows-Portable_v1.0.27.zip",
-            "size": 185581738,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.27/LibreCAD-PDF-Importer-Windows-Portable_v1.0.27.zip"
-          },
-          {
-            "content_type": "application/zip",
-            "name": "LibreCAD-PDF-Importer_v1.0.27.zip",
-            "size": 115640,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.27/LibreCAD-PDF-Importer_v1.0.27.zip"
+            "name": "LibreCAD-PDF-Importer_v1.0.28.zip",
+            "size": 116267,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.28/LibreCAD-PDF-Importer_v1.0.28.zip"
           }
         ],
-        "name": "v1.0.27 \u2014 PDF to DXF Converter for LibreCAD",
-        "published_at": "2026-06-22T01:18:13Z",
-        "tag": "v1.0.27",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.27"
+        "name": "v1.0.28 \u2014 PDF to DXF Converter for LibreCAD",
+        "published_at": "2026-06-22T21:02:43Z",
+        "tag": "v1.0.28",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.28"
       },
-      "pushed_at": "2026-06-22T01:18:11Z",
+      "pushed_at": "2026-06-22T21:02:40Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD",
       "steel_release": null
     },
@@ -114,17 +96,17 @@
         "assets": [
           {
             "content_type": "application/octet-stream",
-            "name": "SketchUp-PDF-Importer_v3.7.42.rbz",
-            "size": 9216262,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.42/SketchUp-PDF-Importer_v3.7.42.rbz"
+            "name": "SketchUp-PDF-Importer_v3.7.43.rbz",
+            "size": 9216263,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.43/SketchUp-PDF-Importer_v3.7.43.rbz"
           }
         ],
-        "name": "v3.7.42 \u2014 PDF Vector Importer for SketchUp",
-        "published_at": "2026-06-22T20:44:34Z",
-        "tag": "v3.7.42",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.42"
+        "name": "v3.7.43 \u2014 PDF Vector Importer for SketchUp",
+        "published_at": "2026-06-22T21:02:45Z",
+        "tag": "v3.7.43",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.43"
       },
-      "pushed_at": "2026-06-22T20:44:30Z",
+      "pushed_at": "2026-06-22T21:02:42Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp",
       "steel_release": {
         "assets": [
