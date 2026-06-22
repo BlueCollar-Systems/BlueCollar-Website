@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22T00:52:23+00:00",
+  "generated_at": "2026-06-22T00:52:45+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -28,24 +28,18 @@
       "latest_release": {
         "assets": [
           {
-            "content_type": "application/x-msdos-program",
-            "name": "FreeCAD-PDF-Importer-Setup_v4.0.28.exe",
-            "size": 189042818,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.28/FreeCAD-PDF-Importer-Setup_v4.0.28.exe"
-          },
-          {
             "content_type": "application/zip",
-            "name": "FreeCAD-PDF-Importer_v4.0.28.zip",
-            "size": 186856761,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.28/FreeCAD-PDF-Importer_v4.0.28.zip"
+            "name": "FreeCAD-PDF-Importer_v4.0.29.zip",
+            "size": 24541645,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.29/FreeCAD-PDF-Importer_v4.0.29.zip"
           }
         ],
-        "name": "v4.0.28 \u2014 PDF Vector Importer for FreeCAD",
-        "published_at": "2026-06-21T19:15:41Z",
-        "tag": "v4.0.28",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.28"
+        "name": "v4.0.29 \u2014 PDF Vector Importer for FreeCAD",
+        "published_at": "2026-06-22T00:52:32Z",
+        "tag": "v4.0.29",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.29"
       },
-      "pushed_at": "2026-06-22T00:52:08Z",
+      "pushed_at": "2026-06-22T00:52:29Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
@@ -143,7 +137,8 @@
     },
     "BlueCollar-Systems/Steel-Shapes": {
       "default_branch": "main",
-      "error": null,
+      "error": "not_found_or_private",
+      "from_previous_snapshot": true,
       "latest_release": {
         "assets": [
           {
@@ -169,5 +164,5 @@
       "steel_release": null
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "push"
 }
