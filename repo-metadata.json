@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22T22:41:10+00:00",
+  "generated_at": "2026-06-22T22:42:22+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -149,7 +149,8 @@
     },
     "BlueCollar-Systems/Steel-Shapes": {
       "default_branch": "main",
-      "error": null,
+      "error": "not_found_or_private",
+      "from_previous_snapshot": true,
       "latest_release": {
         "assets": [
           {
@@ -175,5 +176,5 @@
       "steel_release": null
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "push"
 }
