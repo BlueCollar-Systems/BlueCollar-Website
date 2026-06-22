@@ -43,6 +43,14 @@ document.addEventListener('DOMContentLoaded', function() {
       /^LibreCAD-PDF-Importer-Windows-Portable_v\d+(?:\.\d+){2}\.zip$/i.test(name);
   }
 
+  function primaryAssetRank(name) {
+    if (!name || !isPrimaryPdfImporterAsset(name)) return 999;
+    if (/-(Setup)_v\d+(?:\.\d+){2}\.exe$/i.test(name)) return 0;
+    if (/^LibreCAD-PDF-Importer-Windows-Portable_v\d+(?:\.\d+){2}\.zip$/i.test(name)) return 1;
+    if (/^LibreCAD-PDF-Importer_v\d+(?:\.\d+){2}\.zip$/i.test(name)) return 20;
+    return 5;
+  }
+
   function releaseFor(repo, channel) {
     if (!repo) return null;
     if (channel === 'steel') return repo.steel_release || null;
@@ -57,10 +65,18 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       return null;
     }
+    var bestPrimary = null;
+    var bestRank = 999;
     for (var p = 0; p < assets.length; p++) {
       var primary = assets[p];
-      if (primary && isPrimaryPdfImporterAsset(primary.name)) return primary;
+      if (!primary || !isPrimaryPdfImporterAsset(primary.name)) continue;
+      var rank = primaryAssetRank(primary.name);
+      if (rank < bestRank) {
+        bestPrimary = primary;
+        bestRank = rank;
+      }
     }
+    if (bestPrimary) return bestPrimary;
     var extensions = ['.rbz', '.zip', '.aab', '.apk'];
     for (var j = 0; j < assets.length; j++) {
       var a = assets[j];

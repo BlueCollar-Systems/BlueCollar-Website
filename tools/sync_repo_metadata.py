@@ -20,6 +20,19 @@ _PRIMARY_PDF_IMPORTER_ASSET = re.compile(
 )
 
 
+def _asset_priority(asset: dict[str, Any]) -> tuple[int, str]:
+    name = (asset or {}).get("name") or ""
+    if not _PRIMARY_PDF_IMPORTER_ASSET.match(name):
+        return (999, name)
+    if re.search(r"-Setup_v\d+(?:\.\d+){2}\.exe$", name):
+        return (0, name)
+    if re.match(r"^LibreCAD-PDF-Importer-Windows-Portable_v\d+(?:\.\d+){2}\.zip$", name):
+        return (1, name)
+    if re.match(r"^LibreCAD-PDF-Importer_v\d+(?:\.\d+){2}\.zip$", name):
+        return (20, name)
+    return (5, name)
+
+
 def _prioritize_release_assets(assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
     primary: list[dict[str, Any]] = []
     other: list[dict[str, Any]] = []
@@ -29,7 +42,7 @@ def _prioritize_release_assets(assets: list[dict[str, Any]]) -> list[dict[str, A
             primary.append(asset)
         else:
             other.append(asset)
-    return primary or other
+    return sorted(primary, key=_asset_priority) or other
 
 REPOS: tuple[str, ...] = (
     "BlueCollar-Systems/Steel-Shapes",
