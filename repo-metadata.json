@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-23T21:49:14+00:00",
+  "generated_at": "2026-06-23T23:37:22+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -108,17 +108,17 @@
         "assets": [
           {
             "content_type": "application/octet-stream",
-            "name": "SketchUp-PDF-Importer_v3.7.56.rbz",
-            "size": 9223081,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.56/SketchUp-PDF-Importer_v3.7.56.rbz"
+            "name": "SketchUp-PDF-Importer_v3.7.58.rbz",
+            "size": 9223183,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.58/SketchUp-PDF-Importer_v3.7.58.rbz"
           }
         ],
-        "name": "v3.7.56 \u2014 PDF Vector Importer for SketchUp",
-        "published_at": "2026-06-23T21:19:38Z",
-        "tag": "v3.7.56",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.56"
+        "name": "v3.7.58 \u2014 PDF Vector Importer for SketchUp",
+        "published_at": "2026-06-23T23:36:57Z",
+        "tag": "v3.7.58",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.58"
       },
-      "pushed_at": "2026-06-23T21:48:21Z",
+      "pushed_at": "2026-06-23T23:36:54Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp",
       "steel_release": {
         "assets": [
@@ -156,21 +156,21 @@
             "content_type": "text/plain; charset=utf-8",
             "name": "SHA256SUMS.txt",
             "size": 104,
-            "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/download/v1.0.8/SHA256SUMS.txt"
+            "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/download/v1.0.9/SHA256SUMS.txt"
           },
           {
             "content_type": "application/octet-stream",
-            "name": "SteelLogic_v1.0.8_release.aab",
-            "size": 74528655,
-            "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/download/v1.0.8/SteelLogic_v1.0.8_release.aab"
+            "name": "SteelLogic_v1.0.9_release.aab",
+            "size": 74528650,
+            "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/download/v1.0.9/SteelLogic_v1.0.9_release.aab"
           }
         ],
-        "name": "v1.0.8 \u2014 Steel Logic",
-        "published_at": "2026-05-25T18:04:48Z",
-        "tag": "v1.0.8",
-        "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/tag/v1.0.8"
+        "name": "v1.0.9 \u2014 Steel Logic",
+        "published_at": "2026-06-23T21:59:18Z",
+        "tag": "v1.0.9",
+        "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/tag/v1.0.9"
       },
-      "pushed_at": "2026-06-23T21:48:34Z",
+      "pushed_at": "2026-06-23T22:13:08Z",
       "repo_url": "https://github.com/BlueCollar-Systems/Steel-Shapes",
       "steel_release": null
     }
