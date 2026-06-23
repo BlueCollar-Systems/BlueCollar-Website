@@ -9,10 +9,12 @@ Static marketing site for **BlueCollar Systems** — precision software for fabr
 
 | Product | Description | Link |
 |---------|-------------|------|
-| **Steel Logic** | AISC v16.0 Structural Steel Shapes Reference (mobile app) | Coming soon |
+| **Steel Logic** | AISC v16.0 Structural Steel Shapes Reference (mobile app) | [Google Play beta](https://play.google.com/store/apps/details?id=com.bluecollarsystems.steellogic) |
 | **Free Shape Packs** | Public-domain SketchUp + DXF/DWG shape packs | [Shapes Hub](https://bluecollar-systems.com/shapes) |
 | **SketchUp PDF Importer** | Vector-accurate PDF geometry import for SketchUp | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp) |
 | **FreeCAD PDF Importer** | PDF vector import workbench for FreeCAD | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD) |
+| **Blender PDF Importer** | PDF vector import add-on for Blender | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-Blender) |
+| **LibreCAD PDF Converter** | PDF-to-DXF converter for LibreCAD workflows | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD) |
 
 ## Tech Stack
 
