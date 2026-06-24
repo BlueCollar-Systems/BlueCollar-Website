@@ -266,9 +266,17 @@
                 <p class="mt-2 text-gray-400">The portable ZIP bundles Python, PyMuPDF, ezdxf, pdfcadcore, and the GUI — no separate install required. <strong>2D limits:</strong> use <em>Labels</em> or <em>Outlines</em> text modes only; LibreCAD has no true 3D text — do not expect FreeCAD/SketchUp glyph or 3D-text parity.</p>
             </div>
         </div>
-    </section>
 
-    <!-- REPORT DOCTOR -->
+        <div class="bg-gray-800/50 p-6 rounded-xl border border-blue-500/30 mt-10 text-left">
+            <h3 class="text-lg font-bold text-blue-300 mb-2">Human confirmation prep</h3>
+            <p class="text-gray-400 text-sm mb-4">Before a shop-floor sign-off, run the Tier-1 PDF matrix across your host with Labels and Outlines/Glyphs. The canonical test corpus lives in the public manifest (redistributable web PDFs + local shop mirrors — never commit client PDFs to git).</p>
+            <div class="flex flex-wrap gap-3">
+                <a href="https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/blob/main/HUMAN_CONFIRMATION.md" target="_blank" rel="noopener" class="inline-block bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold transition text-sm">HUMAN_CONFIRMATION.md (SketchUp)</a>
+                <a href="https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/blob/main/test/fixtures/golden_oracles.json" target="_blank" rel="noopener" class="inline-block bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold transition text-sm">Golden oracles JSON</a>
+            </div>
+            <p class="text-xs text-gray-500 mt-3">List Tier-1 tests locally: <code>python C:\1pdf-test-corpus\tools\list_tier1.py --host SU --resolved</code></p>
+        </div>
+    </section>
     <section id="report-doctor" class="max-w-4xl mx-auto px-6 py-20 border-t border-gray-800">
         <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700 text-center">
             <h2 class="text-3xl font-bold mb-4">Import Report Doctor</h2>
