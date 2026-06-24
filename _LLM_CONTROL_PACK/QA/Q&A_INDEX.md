@@ -1,6 +1,6 @@
 # Q&A Index
 
-Updated: 2026-06-24 (Round 4 creative QA + website support extension — **ACTIVE**)
+Updated: 2026-06-24 (Round 4 Phase 1 complete · Phase 2 open · Round 5 P0 started)
 
 ## Source Instructions
 
@@ -8,11 +8,17 @@ Updated: 2026-06-24 (Round 4 creative QA + website support extension — **ACTIV
 
 ---
 
-## Outside-Box Website/App Extension (2026-06-24) — **ACTIVE / LATEST PASS IMPLEMENTED**
+## Outside-Box Extension (2026-06-24) — **ACTIVE / LATEST PASS IMPLEMENTED**
+
+Follow-up reviewer pass after Round 4 asked whether we had pushed far enough on accuracy, power, install trust, and user support.
 
 | File | Role |
 |------|------|
-| `QA-2026-06-24_round4-report-doctor-implementation.md` | Website support-tool implementation, metadata/privacy fixes, validation evidence |
+| `QA-2026-06-24_outside-box-reviewer-A-sketchup.md` | SketchUp/product-engineering review |
+| `QA-2026-06-24_outside-box-reviewer-B-fc-lc-core.md` | FreeCAD/LibreCAD/pdfcadcore review |
+| `QA-2026-06-24_outside-box-reviewer-C-blender.md` | Blender review and Blender 5.1.2 smoke evidence |
+| `QA-2026-06-24_outside-box-reviewer-D-website-app.md` | Website/app/download/install UX review |
+| `QA-2026-06-24_outside-box-resolution-and-actions.md` | Implemented actions, deferred work, validation, commit scope |
 
 **Latest implemented pass:** website Report Doctor for local `import_report.json` analysis; public metadata no longer includes private Steel-Shapes release assets; metadata validation now guards that rule; Steel Logic privacy policy now reflects inventory/job-clock/export/support/sync behavior.
 
@@ -20,7 +26,21 @@ Updated: 2026-06-24 (Round 4 creative QA + website support extension — **ACTIV
 
 ---
 
-## Round 4 — Creative QA (2026-06-24) — **INITIAL BUILD SLATE SHIPPED / QA STILL ACTIVE**
+## Round 5 — P0 backlog (2026-06-24) — **IN PROGRESS / PARTIAL SHIP**
+
+First P0 slice from Round 4 backlog: scale cross-check, golden oracles, preflight copy.
+
+| File | Role |
+|------|------|
+| `QA-2026-06-24_round5-kickoff.md` | Scope, P0 targets, success criteria |
+| `QA-2026-06-24_round5-reviewer-synthesis.md` | Anonymous reviewer kickoff synthesis |
+| `QA-2026-06-24_round5-resolution.md` | Shipped vs deferred, versions, tests |
+
+**Round-5 headline:** `extra.scale_crosscheck` in import_report (pdfcadcore + SU); golden oracles JSON; preflight copy in INSTALL + website + SU messagebox; SU v3.7.62; website v1.0.59.
+
+---
+
+## Round 4 — Creative QA (2026-06-24) — **PHASE 1 COMPLETE · PHASE 2 OPEN**
 
 Anonymous reviewers asked: *Have we gone outside the box?* Debated, ranked, and shipped the first low-risk build slate. The wider outside-box QA session remains active until all reviewers are finished, disagreements are resolved, implementation is complete, validation is green, and commits/pushes are confirmed.
 
@@ -32,7 +52,9 @@ Anonymous reviewers asked: *Have we gone outside the box?* Debated, ranked, and 
 | `QA-2026-06-24_round4-reviewer-D-vision.md` | Steel Logic ecosystem — PDF→steel workflow |
 | `QA-2026-06-24_round4-debate.md` | Cross-review debate + impact/effort ranking |
 | `QA-2026-06-24_round4-innovation-backlog.md` | P0 / P1 / moonshot backlog |
-| `QA-2026-06-24_round4-resolution.md` | **Build now vs defer — GO** |
+| `QA-2026-06-24_round4-resolution.md` | **Phase 1 shipped · Phase 2 open** |
+| `QA-2026-06-24_round4-status-reopen.md` | Honest team status note (reopen) |
+| `QA-2026-06-24_round4-blue-sky-ideation.md` | Post-resolution addendum — net-new ideas R4-27…R4-33 (WASM core, web tool, multi-renderer, NL import, part-mark graph, self-learning) |
 | `QA-2026-06-24_round4-report-doctor-implementation.md` | Round 4 extension — website Import Report Doctor implementation and safety decisions |
 | `QA-2026-06-24_round4-status-correction.md` | Corrects premature "closed" wording; Round 4 remains active |
 
