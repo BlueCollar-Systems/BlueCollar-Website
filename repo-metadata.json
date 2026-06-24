@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-24T23:07:00+00:00",
+  "generated_at": "2026-06-24T23:22:09+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -8,17 +8,17 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "name": "Blender-PDF-Importer_v1.0.40.zip",
-            "size": 18277781,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.40/Blender-PDF-Importer_v1.0.40.zip"
+            "name": "Blender-PDF-Importer_v1.0.42.zip",
+            "size": 18280254,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.42/Blender-PDF-Importer_v1.0.42.zip"
           }
         ],
-        "name": "v1.0.40 \u2014 PDF Vector Importer for Blender",
-        "published_at": "2026-06-24T22:46:37Z",
-        "tag": "v1.0.40",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.40"
+        "name": "v1.0.42 \u2014 PDF Vector Importer for Blender",
+        "published_at": "2026-06-24T23:21:40Z",
+        "tag": "v1.0.42",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.42"
       },
-      "pushed_at": "2026-06-24T23:06:21Z",
+      "pushed_at": "2026-06-24T23:21:37Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender",
       "steel_release": null
     },
@@ -28,24 +28,18 @@
       "latest_release": {
         "assets": [
           {
-            "content_type": "application/x-msdos-program",
-            "name": "FreeCAD-PDF-Importer-Setup_v4.0.43.exe",
-            "size": 15360189,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.43/FreeCAD-PDF-Importer-Setup_v4.0.43.exe"
-          },
-          {
             "content_type": "application/zip",
-            "name": "FreeCAD-PDF-Importer_v4.0.43.zip",
-            "size": 18324090,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.43/FreeCAD-PDF-Importer_v4.0.43.zip"
+            "name": "FreeCAD-PDF-Importer_v4.0.45.zip",
+            "size": 24551714,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.45/FreeCAD-PDF-Importer_v4.0.45.zip"
           }
         ],
-        "name": "v4.0.43 \u2014 PDF Vector Importer for FreeCAD",
-        "published_at": "2026-06-24T22:47:07Z",
-        "tag": "v4.0.43",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.43"
+        "name": "v4.0.45 \u2014 PDF Vector Importer for FreeCAD",
+        "published_at": "2026-06-24T23:21:43Z",
+        "tag": "v4.0.45",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.45"
       },
-      "pushed_at": "2026-06-24T23:06:15Z",
+      "pushed_at": "2026-06-24T23:21:41Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
@@ -81,23 +75,17 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "name": "LibreCAD-PDF-Importer-Windows-Portable_v1.0.37.zip",
-            "size": 186350093,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.37/LibreCAD-PDF-Importer-Windows-Portable_v1.0.37.zip"
-          },
-          {
-            "content_type": "application/zip",
-            "name": "LibreCAD-PDF-Importer_v1.0.37.zip",
-            "size": 123653,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.37/LibreCAD-PDF-Importer_v1.0.37.zip"
+            "name": "LibreCAD-PDF-Importer_v1.0.38.zip",
+            "size": 125930,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.38/LibreCAD-PDF-Importer_v1.0.38.zip"
           }
         ],
-        "name": "v1.0.37 \u2014 PDF to DXF Converter for LibreCAD",
-        "published_at": "2026-06-24T22:46:35Z",
-        "tag": "v1.0.37",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.37"
+        "name": "v1.0.38 \u2014 PDF to DXF Converter for LibreCAD",
+        "published_at": "2026-06-24T23:21:37Z",
+        "tag": "v1.0.38",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.38"
       },
-      "pushed_at": "2026-06-24T23:06:18Z",
+      "pushed_at": "2026-06-24T23:21:34Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD",
       "steel_release": null
     },
@@ -108,17 +96,17 @@
         "assets": [
           {
             "content_type": "application/octet-stream",
-            "name": "SketchUp-PDF-Importer_v3.7.61.rbz",
-            "size": 9226773,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.61/SketchUp-PDF-Importer_v3.7.61.rbz"
+            "name": "SketchUp-PDF-Importer_v3.7.63.rbz",
+            "size": 9228020,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.63/SketchUp-PDF-Importer_v3.7.63.rbz"
           }
         ],
-        "name": "v3.7.61 \u2014 PDF Vector Importer for SketchUp",
-        "published_at": "2026-06-24T22:46:27Z",
-        "tag": "v3.7.61",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.61"
+        "name": "v3.7.63 \u2014 PDF Vector Importer for SketchUp",
+        "published_at": "2026-06-24T23:21:36Z",
+        "tag": "v3.7.63",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.63"
       },
-      "pushed_at": "2026-06-24T23:06:12Z",
+      "pushed_at": "2026-06-24T23:21:33Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp",
       "steel_release": {
         "assets": [
@@ -148,5 +136,5 @@
       }
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "push"
 }
