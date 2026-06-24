@@ -1,10 +1,20 @@
 # Q&A Index
 
-Updated: 2026-06-24 (Round 4 creative QA — **GO**, three wins shipped)
+Updated: 2026-06-24 (Round 4 creative QA + website support extension — **GO**)
 
 ## Source Instructions
 
 - `Instructions 0607202613216.txt`
+
+---
+
+## Outside-Box Website/App Extension (2026-06-24) — **IMPLEMENTED / VALIDATED**
+
+| File | Role |
+|------|------|
+| `QA-2026-06-24_round4-report-doctor-implementation.md` | Website support-tool implementation, metadata/privacy fixes, validation evidence |
+
+**Implemented extension:** website Report Doctor for local `import_report.json` analysis; public metadata no longer includes private Steel-Shapes release assets; metadata validation now guards that rule; Steel Logic privacy policy now reflects inventory/job-clock/export/support/sync behavior.
 
 ---
 
@@ -21,8 +31,9 @@ Anonymous reviewers asked: *Have we gone outside the box?* Debated, ranked, ship
 | `QA-2026-06-24_round4-debate.md` | Cross-review debate + impact/effort ranking |
 | `QA-2026-06-24_round4-innovation-backlog.md` | P0 / P1 / moonshot backlog |
 | `QA-2026-06-24_round4-resolution.md` | **Build now vs defer — GO** |
+| `QA-2026-06-24_round4-report-doctor-implementation.md` | Round 4 extension — website Import Report Doctor implementation and safety decisions |
 
-**Round-4 headline:** `extra.human_summary` in import_report (all Python hosts + SketchUp); **Import Health…** menu (SU v3.7.61); website install-help capability matrix (v1.0.56).
+**Round-4 headline:** `extra.human_summary` in import_report (all Python hosts + SketchUp); **Import Health…** menu (SU v3.7.61); website install-help capability matrix (v1.0.56); website Import Report Doctor for local report diagnosis (v1.0.57).
 
 ---
 

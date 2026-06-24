@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Import Report Doctor | BlueCollar Systems</title>
+    <meta name="description" content="Analyze BlueCollar PDF importer report files locally in your browser. Understand fallback modes, text behavior, performance, and next troubleshooting steps without uploading your PDF.">
+    <meta name="theme-color" content="#1a202c">
+    <link rel="canonical" href="https://bluecollar-systems.com/report-doctor">
+
+    <meta property="og:title" content="Import Report Doctor | BlueCollar Systems">
+    <meta property="og:description" content="Read BlueCollar PDF importer reports locally and get plain-language troubleshooting guidance.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://bluecollar-systems.com/report-doctor">
+    <meta property="og:image" content="https://bluecollar-systems.com/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Import Report Doctor | BlueCollar Systems">
+    <meta name="twitter:description" content="Analyze PDF importer reports locally in your browser.">
+    <meta name="twitter:image" content="https://bluecollar-systems.com/og-image.png">
+
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="bg-industrial text-gray-100">
+
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded focus:z-50">Skip to content</a>
+
+    <nav class="sticky top-0 bg-gray-900/90 backdrop-blur-md border-b border-gray-800 z-50" aria-label="Main navigation">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="/" class="font-bold text-xl tracking-tighter uppercase">BLUECOLLAR <span class="accent-steel">SYSTEMS</span></a>
+            <button id="nav-toggle" class="md:hidden text-gray-300 hover:text-white focus:outline-none" aria-label="Toggle menu" aria-expanded="false" aria-controls="nav-menu">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div id="nav-menu" class="hidden md:flex gap-8 text-sm font-medium text-gray-400 max-md:absolute max-md:top-full max-md:left-0 max-md:right-0 max-md:bg-gray-900 max-md:border-b max-md:border-gray-800 max-md:flex-col max-md:px-6 max-md:py-4 max-md:gap-4">
+                <a href="/" class="hover:text-white transition">Home</a>
+                <a href="/#toolkit" class="hover:text-white transition">Toolkit</a>
+                <a href="/#steel-logic" class="hover:text-white transition">Steel Logic</a>
+                <a href="/shapes" class="hover:text-white transition">Free Shapes</a>
+                <a href="/report-doctor" class="hover:text-white transition text-white" aria-current="page">Report Doctor</a>
+                <a href="/feedback" class="hover:text-white transition">Feedback</a>
+            </div>
+        </div>
+    </nav>
+
+    <main id="main-content">
+
+    <header class="max-w-4xl mx-auto px-6 py-16 text-center">
+        <h1 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight uppercase">Import Report Doctor</h1>
+        <p class="text-lg text-gray-400 max-w-3xl mx-auto leading-relaxed">
+            Drop in a BlueCollar <code>import_report.json</code> file and get a plain-language readout of what the importer did, where fidelity may have degraded, and what to try next.
+        </p>
+        <p class="text-sm text-gray-400 mt-6">Everything runs locally in your browser. The report and PDF are not uploaded.</p>
+    </header>
+
+    <section class="max-w-6xl mx-auto px-6 pb-20">
+        <div class="grid md:grid-cols-2 gap-8">
+            <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700">
+                <h2 class="text-xl font-bold mb-3">Load A Report</h2>
+                <p class="text-gray-400 mb-6">Use the report path shown after import, or open the newest <code>import_report.json</code> / <code>last_import.log</code> companion folder from the importer.</p>
+
+                <label for="report-file" class="text-sm font-semibold text-gray-300">Choose JSON file</label>
+                <input id="report-file" class="doctor-file mt-2 mb-6" type="file" accept=".json,application/json">
+
+                <label for="report-json" class="text-sm font-semibold text-gray-300">Or paste report JSON</label>
+                <textarea id="report-json" class="doctor-textarea mt-2" rows="16" spellcheck="false" placeholder='{"schema":"bcs.import_report/1.1","result":{"pages":1},"extra":{"text_mode":"labels"}}'></textarea>
+
+                <div class="flex flex-wrap gap-3 mt-6">
+                    <button id="analyze-report" class="inline-block bg-blue-700 hover:bg-blue-600 px-5 py-3 rounded font-semibold transition text-sm" type="button">Analyze Report</button>
+                    <button id="load-sample-report" class="inline-block bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded font-semibold transition text-sm" type="button">Load Sample</button>
+                    <button id="clear-report" class="inline-block bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded font-semibold transition text-sm" type="button">Clear</button>
+                </div>
+                <p id="doctor-error" class="doctor-error mt-6" role="alert"></p>
+            </div>
+
+            <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700">
+                <h2 class="text-xl font-bold mb-3">What It Checks</h2>
+                <ul role="list" class="text-gray-400 space-y-2 list-disc list-inside">
+                    <li>Host/importer identity and version clues</li>
+                    <li>Auto, Vector, Raster, or Hybrid strategy evidence</li>
+                    <li>Fallbacks and rasterized pages</li>
+                    <li>Requested text mode and actual text-output clues</li>
+                    <li>Geometry, image, page, and layer counts</li>
+                    <li>Performance timing and helper/renderer details</li>
+                    <li>Support-ready summary text</li>
+                </ul>
+                <div class="doctor-note mt-6">
+                    <p class="font-semibold text-gray-100 mb-2">No magic claims</p>
+                    <p class="text-sm text-gray-400">This page explains importer telemetry. It does not certify engineering correctness, replace manual review, or inspect the original PDF.</p>
+                </div>
+            </div>
+        </div>
+
+        <section id="doctor-output" class="doctor-output mt-6 hidden" aria-live="polite">
+            <div class="doctor-summary bg-gray-800/50 p-8 rounded-xl border border-gray-700">
+                <div class="flex flex-wrap justify-between gap-4 mb-6">
+                    <div>
+                        <p class="text-sm text-gray-400 uppercase tracking-widest">Diagnosis</p>
+                        <h2 id="doctor-title" class="text-2xl font-bold">Ready</h2>
+                    </div>
+                    <span id="doctor-status" class="doctor-pill">Waiting</span>
+                </div>
+
+                <div id="doctor-metrics" class="doctor-metrics"></div>
+
+                <div class="grid md:grid-cols-2 gap-8 mt-6">
+                    <div>
+                        <h3 class="text-xl font-bold mb-3">Findings</h3>
+                        <ul id="doctor-findings" role="list" class="text-gray-400 space-y-2 list-disc list-inside"></ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-3">Next Actions</h3>
+                        <ul id="doctor-actions" role="list" class="text-gray-400 space-y-2 list-disc list-inside"></ul>
+                    </div>
+                </div>
+
+                <div class="doctor-note mt-6">
+                    <h3 class="text-xl font-bold mb-3">Support Summary</h3>
+                    <pre id="doctor-support" class="doctor-pre"></pre>
+                    <div class="flex flex-wrap gap-3 mt-6">
+                        <button id="copy-support" class="inline-block bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded font-semibold transition text-sm" type="button">Copy Summary</button>
+                        <a id="email-support" href="mailto:support@bluecollar-systems.com" class="inline-block bg-blue-700 hover:bg-blue-600 px-5 py-3 rounded font-semibold transition text-sm">Email Support</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </section>
+
+    </main>
+
+    <footer class="text-center py-12 border-t border-gray-800 text-gray-400 text-sm px-6">
+        <p class="mb-4">&copy; <span id="copyright-year"></span> BlueCollar Systems. Built for the shop floor.</p>
+        <p class="max-w-2xl mx-auto text-xs uppercase tracking-tighter text-gray-400">
+            Disclaimer: All structural data provided by BlueCollar Systems tools is for reference only.
+            All output should be verified by a licensed professional engineer before fabrication or construction.
+        </p>
+    </footer>
+
+<script src="/nav.js"></script>
+<script src="/report-doctor.js"></script>
+</body>
+</html>

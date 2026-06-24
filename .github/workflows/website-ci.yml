@@ -45,6 +45,14 @@ jobs:
                   'meta name="description"',
                   "support@bluecollar-systems.com",
               ],
+              "report-doctor.html": [
+                  "<!DOCTYPE html>",
+                  "<title>",
+                  'meta name="description"',
+                  "Import Report Doctor",
+                  "report-doctor.js",
+                  "support@bluecollar-systems.com",
+              ],
           }
 
           for page, tokens in pages.items():

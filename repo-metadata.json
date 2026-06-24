@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-24T22:47:51+00:00",
+  "generated_at": "2026-06-24T22:57:50+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -28,9 +28,15 @@
       "latest_release": {
         "assets": [
           {
+            "content_type": "application/x-msdos-program",
+            "name": "FreeCAD-PDF-Importer-Setup_v4.0.43.exe",
+            "size": 15360189,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.43/FreeCAD-PDF-Importer-Setup_v4.0.43.exe"
+          },
+          {
             "content_type": "application/zip",
             "name": "FreeCAD-PDF-Importer_v4.0.43.zip",
-            "size": 24549590,
+            "size": 18324090,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.43/FreeCAD-PDF-Importer_v4.0.43.zip"
           }
         ],
@@ -73,6 +79,12 @@
       "error": null,
       "latest_release": {
         "assets": [
+          {
+            "content_type": "application/zip",
+            "name": "LibreCAD-PDF-Importer-Windows-Portable_v1.0.37.zip",
+            "size": 186350093,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.37/LibreCAD-PDF-Importer-Windows-Portable_v1.0.37.zip"
+          },
           {
             "content_type": "application/zip",
             "name": "LibreCAD-PDF-Importer_v1.0.37.zip",
@@ -134,34 +146,7 @@
         "tag": "steel-v1.0.0",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/steel-v1.0.0"
       }
-    },
-    "BlueCollar-Systems/Steel-Shapes": {
-      "default_branch": "main",
-      "error": null,
-      "latest_release": {
-        "assets": [
-          {
-            "content_type": "text/plain; charset=utf-8",
-            "name": "SHA256SUMS.txt",
-            "size": 104,
-            "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/download/v1.0.9/SHA256SUMS.txt"
-          },
-          {
-            "content_type": "application/octet-stream",
-            "name": "SteelLogic_v1.0.9_release.aab",
-            "size": 74528650,
-            "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/download/v1.0.9/SteelLogic_v1.0.9_release.aab"
-          }
-        ],
-        "name": "v1.0.9 \u2014 Steel Logic",
-        "published_at": "2026-06-23T21:59:18Z",
-        "tag": "v1.0.9",
-        "url": "https://github.com/BlueCollar-Systems/Steel-Shapes/releases/tag/v1.0.9"
-      },
-      "pushed_at": "2026-06-24T22:46:24Z",
-      "repo_url": "https://github.com/BlueCollar-Systems/Steel-Shapes",
-      "steel_release": null
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "push"
 }

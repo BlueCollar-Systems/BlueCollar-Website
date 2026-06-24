@@ -45,7 +45,6 @@ def _prioritize_release_assets(assets: list[dict[str, Any]]) -> list[dict[str, A
     return sorted(primary, key=_asset_priority) or other
 
 REPOS: tuple[str, ...] = (
-    "BlueCollar-Systems/Steel-Shapes",
     "BlueCollar-Systems/PDF-Importer-SketchUp",
     "BlueCollar-Systems/PDF-Importer-FreeCAD",
     "BlueCollar-Systems/PDF-Importer-Blender",

@@ -41,6 +41,11 @@ def main() -> int:
     repos = payload.get("repos")
     if not isinstance(repos, dict):
         raise SystemExit("repo-metadata.json is missing a repos object")
+    if "BlueCollar-Systems/Steel-Shapes" in repos:
+        raise SystemExit(
+            "repo-metadata.json must not publish private Steel-Shapes release assets; "
+            "use public importer-hosted steel-v release assets instead"
+        )
 
     checked = 0
     failures: list[str] = []
