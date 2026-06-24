@@ -182,6 +182,63 @@
     <section id="install-help" class="max-w-4xl mx-auto px-6 py-20 border-t border-gray-800">
         <h2 class="text-3xl font-bold mb-4 text-center uppercase tracking-widest text-gray-400">Easy Install (No Terminal Required)</h2>
         <p class="text-center text-gray-400 mb-10 max-w-2xl mx-auto">Each importer is designed for shop-floor PCs. Download the release, install once, and use the built-in checks if anything is missing.</p>
+
+        <div class="overflow-x-auto mb-10">
+            <h3 class="text-lg font-bold text-blue-300 mb-3 text-center">What you'll get — by host</h3>
+            <p class="text-center text-gray-400 mb-4 text-xs max-w-2xl mx-auto">Honest capability matrix. Every host shares pdfcadcore extraction; host limits still apply.</p>
+            <table class="w-full text-left text-xs border border-gray-700 rounded-xl overflow-hidden">
+                <thead class="bg-gray-800 text-gray-300 uppercase tracking-wide">
+                    <tr>
+                        <th class="p-3 border-b border-gray-700">Host</th>
+                        <th class="p-3 border-b border-gray-700">Vector geometry</th>
+                        <th class="p-3 border-b border-gray-700">PDF layers</th>
+                        <th class="p-3 border-b border-gray-700">Labels text</th>
+                        <th class="p-3 border-b border-gray-700">Glyph / geometry text</th>
+                        <th class="p-3 border-b border-gray-700">3D text</th>
+                        <th class="p-3 border-b border-gray-700">import_report.json</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-300 divide-y divide-gray-700">
+                    <tr class="bg-gray-800/30">
+                        <td class="p-3 font-semibold text-blue-200">SketchUp</td>
+                        <td class="p-3">Edges, faces, arcs, components</td>
+                        <td class="p-3">Tags from PDF layers</td>
+                        <td class="p-3">Yes (Labels mode)</td>
+                        <td class="p-3">Yes (Geometry / Glyphs)</td>
+                        <td class="p-3">Yes (3D Text mode)</td>
+                        <td class="p-3">Yes + <em>Import Health</em> menu</td>
+                    </tr>
+                    <tr>
+                        <td class="p-3 font-semibold text-blue-200">FreeCAD</td>
+                        <td class="p-3">Sketcher / Part geometry</td>
+                        <td class="p-3">Groups / layers</td>
+                        <td class="p-3">Via ShapeString paths</td>
+                        <td class="p-3">Yes</td>
+                        <td class="p-3">Yes (ShapeString 3D)</td>
+                        <td class="p-3">Yes (<code>extra.human_summary</code>)</td>
+                    </tr>
+                    <tr class="bg-gray-800/30">
+                        <td class="p-3 font-semibold text-blue-200">Blender</td>
+                        <td class="p-3">Curves, meshes, collections</td>
+                        <td class="p-3">Collections / materials</td>
+                        <td class="p-3">Text objects</td>
+                        <td class="p-3">Yes (mesh outlines)</td>
+                        <td class="p-3">Limited (2D text objects)</td>
+                        <td class="p-3">Yes on CLI / headless runs</td>
+                    </tr>
+                    <tr>
+                        <td class="p-3 font-semibold text-blue-200">LibreCAD</td>
+                        <td class="p-3">DXF lines, arcs, polylines</td>
+                        <td class="p-3">DXF layers</td>
+                        <td class="p-3">Yes (Labels / Outlines)</td>
+                        <td class="p-3">Outlines only (2D)</td>
+                        <td class="p-3">No — 2D host</td>
+                        <td class="p-3">Yes (<code>pdf2dxf</code> / GUI)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
         <div class="space-y-6 text-sm text-gray-300">
             <div class="bg-gray-800/50 p-6 rounded-xl border border-gray-700">
                 <h3 class="text-lg font-bold text-blue-300 mb-2">SketchUp — 2 clicks</h3>
@@ -236,7 +293,7 @@
 
     <footer class="text-center py-12 border-t border-gray-800 text-gray-400 text-sm px-6">
         <p class="mb-4">&copy; <span id="copyright-year"></span> BlueCollar Systems. Built for the shop floor.</p>
-        <p class="text-xs text-gray-400 mt-2 footer-version">v1.0.55 <span class="text-gray-400">&middot; Updated June 2026</span></p>
+        <p class="text-xs text-gray-400 mt-2 footer-version">v1.0.56 <span class="text-gray-400">&middot; Updated June 2026</span></p>
         <p class="max-w-2xl mx-auto text-xs uppercase tracking-tighter text-gray-400">
             Disclaimer: All structural data provided by BlueCollar Systems tools is for reference only.
             All output should be verified by a licensed professional engineer before fabrication or construction.
