@@ -2,7 +2,7 @@
 
 **Session:** 2026-06-24
 
-**Status:** IMPLEMENTED in `C:\1BlueCollar-Website` as website v1.0.57
+**Status:** IMPLEMENTED in `C:\1BlueCollar-Website` as website v1.0.57. This closes only the website support-tool pass, not the overall outside-box QA session.
 
 **Theme:** Turn importer telemetry into a shop-floor troubleshooting loop.
 

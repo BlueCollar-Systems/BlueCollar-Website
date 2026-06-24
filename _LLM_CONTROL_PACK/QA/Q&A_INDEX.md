@@ -1,6 +1,6 @@
 # Q&A Index
 
-Updated: 2026-06-24 (Round 4 creative QA + website support extension — **GO**)
+Updated: 2026-06-24 (Round 4 creative QA + website support extension — **ACTIVE**)
 
 ## Source Instructions
 
@@ -8,19 +8,21 @@ Updated: 2026-06-24 (Round 4 creative QA + website support extension — **GO**)
 
 ---
 
-## Outside-Box Website/App Extension (2026-06-24) — **IMPLEMENTED / VALIDATED**
+## Outside-Box Website/App Extension (2026-06-24) — **ACTIVE / LATEST PASS IMPLEMENTED**
 
 | File | Role |
 |------|------|
 | `QA-2026-06-24_round4-report-doctor-implementation.md` | Website support-tool implementation, metadata/privacy fixes, validation evidence |
 
-**Implemented extension:** website Report Doctor for local `import_report.json` analysis; public metadata no longer includes private Steel-Shapes release assets; metadata validation now guards that rule; Steel Logic privacy policy now reflects inventory/job-clock/export/support/sync behavior.
+**Latest implemented pass:** website Report Doctor for local `import_report.json` analysis; public metadata no longer includes private Steel-Shapes release assets; metadata validation now guards that rule; Steel Logic privacy policy now reflects inventory/job-clock/export/support/sync behavior.
+
+**Important status correction:** this does **not** close the overall QA session. It only records the latest implemented/validated pass while reviewers and follow-up work remain active.
 
 ---
 
-## Round 4 — Creative QA (2026-06-24) — **CLOSED / SHIPPED**
+## Round 4 — Creative QA (2026-06-24) — **INITIAL BUILD SLATE SHIPPED / QA STILL ACTIVE**
 
-Anonymous reviewers asked: *Have we gone outside the box?* Debated, ranked, shipped top 3 low-risk wins.
+Anonymous reviewers asked: *Have we gone outside the box?* Debated, ranked, and shipped the first low-risk build slate. The wider outside-box QA session remains active until all reviewers are finished, disagreements are resolved, implementation is complete, validation is green, and commits/pushes are confirmed.
 
 | File | Role |
 |------|------|
@@ -32,6 +34,7 @@ Anonymous reviewers asked: *Have we gone outside the box?* Debated, ranked, ship
 | `QA-2026-06-24_round4-innovation-backlog.md` | P0 / P1 / moonshot backlog |
 | `QA-2026-06-24_round4-resolution.md` | **Build now vs defer — GO** |
 | `QA-2026-06-24_round4-report-doctor-implementation.md` | Round 4 extension — website Import Report Doctor implementation and safety decisions |
+| `QA-2026-06-24_round4-status-correction.md` | Corrects premature "closed" wording; Round 4 remains active |
 
 **Round-4 headline:** `extra.human_summary` in import_report (all Python hosts + SketchUp); **Import Health…** menu (SU v3.7.61); website install-help capability matrix (v1.0.56); website Import Report Doctor for local report diagnosis (v1.0.57).
 
@@ -107,7 +110,7 @@ See `_LLM_CONTROL_PACK/QA/` in repos for:
 
 ## Mirror note
 
-Desktop folder (`PDFTest Files\Q&A`) is the **anonymous reviewer drop zone**. In-repo copies live under `_LLM_CONTROL_PACK/QA/` — synced after Round 4 closure (2026-06-24).
+Desktop folder (`PDFTest Files\Q&A`) is the **anonymous reviewer drop zone**. In-repo copies live under `_LLM_CONTROL_PACK/QA/` and are synced as implementation passes finish.
 
 ---
 
