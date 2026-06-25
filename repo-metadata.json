@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-25T20:51:37+00:00",
+  "generated_at": "2026-06-25T20:58:05+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -8,17 +8,17 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "name": "Blender-PDF-Importer_v1.0.45.zip",
-            "size": 18280633,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.45/Blender-PDF-Importer_v1.0.45.zip"
+            "name": "Blender-PDF-Importer_v1.0.46.zip",
+            "size": 18280627,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.46/Blender-PDF-Importer_v1.0.46.zip"
           }
         ],
-        "name": "v1.0.45 \u2014 PDF Vector Importer for Blender",
-        "published_at": "2026-06-25T20:51:27Z",
-        "tag": "v1.0.45",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.45"
+        "name": "v1.0.46 \u2014 PDF Vector Importer for Blender",
+        "published_at": "2026-06-25T20:57:24Z",
+        "tag": "v1.0.46",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.46"
       },
-      "pushed_at": "2026-06-25T20:51:23Z",
+      "pushed_at": "2026-06-25T20:57:20Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender",
       "steel_release": null
     },
@@ -29,17 +29,17 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "name": "FreeCAD-PDF-Importer_v4.0.49.zip",
-            "size": 24553840,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.49/FreeCAD-PDF-Importer_v4.0.49.zip"
+            "name": "FreeCAD-PDF-Importer_v4.0.50.zip",
+            "size": 24553834,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.50/FreeCAD-PDF-Importer_v4.0.50.zip"
           }
         ],
-        "name": "v4.0.49 \u2014 PDF Vector Importer for FreeCAD",
-        "published_at": "2026-06-25T20:51:17Z",
-        "tag": "v4.0.49",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.49"
+        "name": "v4.0.50 \u2014 PDF Vector Importer for FreeCAD",
+        "published_at": "2026-06-25T20:57:29Z",
+        "tag": "v4.0.50",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.50"
       },
-      "pushed_at": "2026-06-25T20:51:15Z",
+      "pushed_at": "2026-06-25T20:57:25Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
@@ -75,17 +75,17 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "name": "LibreCAD-PDF-Importer_v1.0.42.zip",
-            "size": 127759,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.42/LibreCAD-PDF-Importer_v1.0.42.zip"
+            "name": "LibreCAD-PDF-Importer_v1.0.43.zip",
+            "size": 127753,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.43/LibreCAD-PDF-Importer_v1.0.43.zip"
           }
         ],
-        "name": "v1.0.42 \u2014 PDF to DXF Converter for LibreCAD",
-        "published_at": "2026-06-25T20:51:12Z",
-        "tag": "v1.0.42",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.42"
+        "name": "v1.0.43 \u2014 PDF to DXF Converter for LibreCAD",
+        "published_at": "2026-06-25T20:57:20Z",
+        "tag": "v1.0.43",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.43"
       },
-      "pushed_at": "2026-06-25T20:51:09Z",
+      "pushed_at": "2026-06-25T20:57:17Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD",
       "steel_release": null
     },
@@ -136,5 +136,5 @@
       }
     }
   },
-  "source_event": "push"
+  "source_event": "repository_dispatch"
 }
