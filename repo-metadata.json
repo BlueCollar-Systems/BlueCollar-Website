@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-25T23:20:04+00:00",
+  "generated_at": "2026-06-25T23:20:37+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -148,5 +148,5 @@
       }
     }
   },
-  "source_event": "push"
+  "source_event": "repository_dispatch"
 }
