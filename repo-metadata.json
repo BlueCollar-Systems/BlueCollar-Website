@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-25T01:19:21+00:00",
+  "generated_at": "2026-06-25T01:20:04+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -45,7 +45,7 @@
         "tag": "v4.0.48",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.48"
       },
-      "pushed_at": "2026-06-25T01:18:31Z",
+      "pushed_at": "2026-06-25T01:19:21Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
@@ -118,7 +118,7 @@
         "tag": "v3.7.65",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.65"
       },
-      "pushed_at": "2026-06-25T01:18:26Z",
+      "pushed_at": "2026-06-25T01:19:19Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp",
       "steel_release": {
         "assets": [
