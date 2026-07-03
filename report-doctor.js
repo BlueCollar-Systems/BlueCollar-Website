@@ -30,7 +30,7 @@
       import_text: true,
       text_mode: 'labels',
       actual_text_breakdown: { labels: 328, text3d: 0, outlines: 14 },
-      actual_text_entity_types: { entity_type: 'label', count: 328, font_rendered: true, examples: ['W12X26', '1/4', 'BILL OF MATERIAL'] },
+      actual_text_entity_types: { entity_type: 'labels', count: 328, font_rendered: true, native_label: 328, examples: ['W12X26', '1/4', 'BILL OF MATERIAL'] },
       text_renderers: [{ page: 1, renderer: 'Poppler SVG', mode: 'labels' }],
       import_quality: 'High'
     }
@@ -279,10 +279,17 @@
       requested = raw.requested || null;
     }
     if (observed.entity_type !== undefined) {
-      // FreeCAD TextEntityVerification dataclass shape:
-      // { entity_type, count, font_rendered, examples }
+      // Backward-compatible TextEntityVerification shape:
+      // { entity_type, count, font_rendered, examples, native_label?, ... }
       var single = {};
       single[normalizeModeName(observed.entity_type)] = toNumber(observed.count) || 0;
+      var observedKeys = Object.keys(observed);
+      for (var oi = 0; oi < observedKeys.length; oi++) {
+        var key = observedKeys[oi];
+        if (key === 'count' || key === 'font_rendered' || key === 'examples' || key === 'entity_type') continue;
+        var observedCount = toNumber(observed[key]);
+        if (observedCount !== null) single[key] = observedCount;
+      }
       return {
         requested: requested,
         counts: single,
