@@ -30,6 +30,7 @@
       import_text: true,
       text_mode: 'labels',
       actual_text_breakdown: { labels: 328, text3d: 0, outlines: 14 },
+      actual_text_entity_types: { entity_type: 'label', count: 328, font_rendered: true, examples: ['W12X26', '1/4', 'BILL OF MATERIAL'] },
       text_renderers: [{ page: 1, renderer: 'Poppler SVG', mode: 'labels' }],
       import_quality: 'High'
     }
@@ -264,12 +265,123 @@
     return mode;
   }
 
+  function collectEntityVerification(report) {
+    var raw = firstValue(report, [
+      ['extra', 'actual_text_entity_types'],
+      ['extra', 'text_entity_verification'],
+      ['actual_text_entity_types']
+    ]);
+    if (!raw || typeof raw !== 'object') return null;
+    var requested = null;
+    var observed = raw;
+    if (raw.observed && typeof raw.observed === 'object') {
+      observed = raw.observed;
+      requested = raw.requested || null;
+    }
+    if (observed.entity_type !== undefined) {
+      // FreeCAD TextEntityVerification dataclass shape:
+      // { entity_type, count, font_rendered, examples }
+      var single = {};
+      single[normalizeModeName(observed.entity_type)] = toNumber(observed.count) || 0;
+      return {
+        requested: requested,
+        counts: single,
+        fontRendered: observed.font_rendered === true,
+        examples: Array.isArray(observed.examples) ? observed.examples : []
+      };
+    }
+    // Schema map shape: { native_label: n, outline_curve_or_mesh: n, ... }
+    var counts = {};
+    var keys = Object.keys(observed);
+    for (var i = 0; i < keys.length; i++) {
+      var n = toNumber(observed[keys[i]]);
+      if (n !== null) counts[keys[i]] = n;
+    }
+    if (!Object.keys(counts).length) return null;
+    return { requested: requested, counts: counts, fontRendered: null, examples: [] };
+  }
+
+  var MODE_ENTITY_KEYS = {
+    labels: ['label', 'labels', 'native_label', 'dxf_text'],
+    '3d_text': ['3d_text', 'native_3d_text'],
+    glyphs: ['glyphs', 'outline_curve_or_mesh', 'outlines'],
+    geometry: ['geometry', 'raw_geometry_edges', 'fallback_geometry']
+  };
+
+  function verificationMatchesMode(verification, mode) {
+    var wanted = MODE_ENTITY_KEYS[mode];
+    if (!wanted) return null;
+    var matched = 0;
+    var total = 0;
+    var keys = Object.keys(verification.counts);
+    for (var i = 0; i < keys.length; i++) {
+      var count = verification.counts[keys[i]];
+      total += count;
+      if (wanted.indexOf(keys[i]) >= 0) matched += count;
+    }
+    if (total === 0) return null;
+    return { matched: matched, total: total, clean: matched === total };
+  }
+
+  function isReadyCheck(report) {
+    return String((report && report.schema) || '').indexOf('bcs.ready_check/') === 0;
+  }
+
+  function analyzeReadyCheck(report) {
+    clearNode(metrics);
+    clearNode(findings);
+    clearNode(actions);
+    var checks = Array.isArray(report.checks) ? report.checks : [];
+    var counts = { pass: 0, warn: 0, fail: 0, skip: 0 };
+    checks.forEach(function(check) {
+      var state = String((check && check.status) || '').toLowerCase();
+      if (counts[state] !== undefined) counts[state]++;
+    });
+    metric('Product', report.product);
+    metric('Version', report.version);
+    metric('Host', getPath(report, ['host', 'name']));
+    metric('Status', report.status);
+    metric('Checks passed', counts.pass + '/' + checks.length);
+    if (counts.warn) metric('Warnings', counts.warn);
+    if (counts.fail) metric('Failures', counts.fail);
+    checks.forEach(function(check) {
+      if (!check || check.status === 'pass') return;
+      addListItem(findings, '[' + String(check.status).toUpperCase() + '] ' + safeText(check.id) + ': ' + safeText(check.message));
+    });
+    if (!findings.childNodes.length) addListItem(findings, 'All ready checks passed.');
+    var hints = Array.isArray(report.repair_hints) ? report.repair_hints : [];
+    hints.forEach(function(hint) {
+      if (hint) addListItem(actions, safeText(hint.summary) + ' — ' + safeText(hint.action));
+    });
+    if (!actions.childNodes.length) addListItem(actions, 'No repair actions needed. Attach this Ready Check to human confirmation test runs.');
+    var level = report.status === 'pass' ? 'ok' : (report.status === 'warn' ? 'warn' : 'risk');
+    setStatus(level, report.status === 'pass' ? 'Ready' : (report.status === 'warn' ? 'Review' : 'Not Ready'));
+    title.textContent = 'Ready Check — ' + safeText(report.product);
+    var lines = [
+      'BlueCollar Ready Check Summary',
+      'Product: ' + safeText(report.product),
+      'Version: ' + safeText(report.version),
+      'Host: ' + safeText(getPath(report, ['host', 'name'])),
+      'Status: ' + safeText(report.status),
+      'Checks: ' + counts.pass + ' pass / ' + counts.warn + ' warn / ' + counts.fail + ' fail / ' + counts.skip + ' skip'
+    ];
+    support.textContent = lines.join('\n');
+    emailLink.href = 'mailto:support@bluecollar-systems.com?subject=' +
+      encodeURIComponent('Ready Check review') +
+      '&body=' + encodeURIComponent(support.textContent);
+    output.classList.remove('hidden');
+  }
+
   function setStatus(level, label) {
     status.className = 'doctor-pill doctor-pill-' + level;
     status.textContent = label;
   }
 
   function analyze(report) {
+    if (isReadyCheck(report)) {
+      analyzeReadyCheck(report);
+      return;
+    }
     var host = detectHost(report);
     var version = detectVersion(report);
     var requestedMode = detectRequestedMode(report);
@@ -366,6 +478,34 @@
       addListItem(findings, 'Text renderer evidence: ' + renderer + '.');
     }
 
+    var verification = collectEntityVerification(report);
+    var verificationParts = [];
+    if (verification) {
+      var typeKeys = Object.keys(verification.counts);
+      for (var vi = 0; vi < typeKeys.length; vi++) {
+        verificationParts.push(typeKeys[vi] + ': ' + verification.counts[typeKeys[vi]]);
+      }
+      metric('Verified text entities', verificationParts.join(', '));
+      var match = verificationMatchesMode(verification, normalizeModeName(verification.requested || textMode));
+      if (match === null) {
+        addListItem(findings, 'Host reported actual text entity types: ' + verificationParts.join(', ') + '.');
+      } else if (match.clean) {
+        addListItem(findings, 'Verified: actual text entities match the requested ' + safeText(verification.requested || textMode) + ' mode (' + verificationParts.join(', ') + ').');
+      } else {
+        severity = severity === 'ok' ? 'warn' : severity;
+        addListItem(findings, 'Text entity mismatch: requested ' + safeText(verification.requested || textMode) + ' but the host reports ' + verificationParts.join(', ') + '.');
+        addListItem(actions, 'Compare the mismatched text against the PDF, and attach this report to any support request so the mismatch is machine-readable.');
+      }
+      if (verification.examples.length) {
+        addListItem(findings, 'Verified entity examples: ' + verification.examples.slice(0, 3).join(' | '));
+      }
+    }
+
+    var perfHint = firstValue(report, [['extra', 'performance_hint']]);
+    if (perfHint) {
+      addListItem(findings, 'Importer performance hint: ' + safeText(perfHint));
+    }
+
     if (String(host).toLowerCase().indexOf('librecad') >= 0 && normalizedTextMode === '3d_text') {
       addListItem(findings, 'LibreCAD is 2D-only; 3D Text maps to editable DXF TEXT rather than true 3D geometry.');
       addListItem(actions, 'Use Labels for editable DXF text or Outlines/Geometry for visual linework.');
@@ -398,6 +538,8 @@
       'Layers: ' + safeText(layers),
       'Fallback: ' + (usedFallback ? 'Yes - ' + safeText(reason) : 'No'),
       'Text renderer: ' + renderer,
+      'Verified text entities: ' + (verificationParts.length ? verificationParts.join(', ') : 'Not reported'),
+      'Performance hint: ' + safeText(perfHint),
       'Total time: ' + formatMs(totalMs),
       '',
       'Notes:',
