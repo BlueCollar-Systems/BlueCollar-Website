@@ -114,6 +114,14 @@
     list.appendChild(li);
   }
 
+  function detectBuildStamp(report) {
+    return firstValue(report, [
+      ['report_meta', 'build_stamp'],
+      ['extra', 'report_meta', 'build_stamp'],
+      ['metadata', 'build_stamp']
+    ]);
+  }
+
   function detectHost(report) {
     var raw = firstValue(report, [
       ['app', 'name'],
@@ -391,6 +399,7 @@
     }
     var host = detectHost(report);
     var version = detectVersion(report);
+    var buildStamp = detectBuildStamp(report);
     var requestedMode = detectRequestedMode(report);
     var resolvedMode = detectResolvedMode(report);
     var textMode = detectTextMode(report);
@@ -411,6 +420,7 @@
 
     metric('Host', host);
     metric('Version', version);
+    if (buildStamp) metric('Build stamp', buildStamp);
     metric('Requested mode', requestedMode);
     metric('Resolved mode', resolvedMode || requestedMode);
     metric('Text mode', textMode);
@@ -523,15 +533,20 @@
       addListItem(actions, 'If the visual result is wrong, retry the same page with a different text mode and include this report with screenshots.');
     }
 
+    if (buildStamp) {
+      addListItem(findings, 'Import build stamp: ' + safeText(buildStamp) + '.');
+    }
+
     if (severity === 'ok') setStatus('ok', 'Healthy');
     if (severity === 'warn') setStatus('warn', 'Review');
     if (severity === 'risk') setStatus('risk', 'High Review');
-    title.textContent = heading;
+    title.textContent = buildStamp ? (heading + ' — ' + buildStamp) : heading;
 
     var supportLines = [
       'BlueCollar Import Report Summary',
       'Host: ' + safeText(host),
       'Version: ' + safeText(version),
+      'Build stamp: ' + safeText(buildStamp),
       'Requested mode: ' + safeText(requestedMode),
       'Resolved mode: ' + safeText(resolvedMode || requestedMode),
       'Text mode: ' + safeText(textMode),
