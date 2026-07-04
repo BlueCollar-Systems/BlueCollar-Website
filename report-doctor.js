@@ -32,7 +32,13 @@
       actual_text_breakdown: { labels: 328, text3d: 0, outlines: 14 },
       actual_text_entity_types: { entity_type: 'labels', count: 328, font_rendered: true, native_label: 328, examples: ['W12X26', '1/4', 'BILL OF MATERIAL'] },
       text_renderers: [{ page: 1, renderer: 'Poppler SVG', mode: 'labels' }],
-      import_quality: 'High'
+      import_quality: 'High',
+      model_3d: {
+        supported: true,
+        enabled: true,
+        depth_mm: 3.175,
+        faces_extruded: 4
+      }
     }
   };
 
@@ -250,6 +256,27 @@
     ]);
   }
 
+
+  function collectModel3d(report) {
+    var block = firstValue(report, [
+      ['extra', 'model_3d'],
+      ['model_3d']
+    ]);
+    if (!block || typeof block !== 'object') return null;
+    return block;
+  }
+
+  function model3dTriState(value) {
+    if (value === true || value === 'true' || value === 1 || value === '1') return true;
+    if (value === false || value === 'false' || value === 0 || value === '0') return false;
+    return null;
+  }
+
+  function model3dReason(block) {
+    if (!block || typeof block !== 'object') return undefined;
+    return objectValue(block, ['reason', 'skipped_reason']);
+  }
+
   function rendererSummary(report) {
     var renderers = firstValue(report, [
       ['extra', 'text_renderers'],
@@ -441,6 +468,41 @@
     metric('Images', images);
     metric('Layers', layers);
     metric('Time', formatMs(totalMs));
+    var model3d = collectModel3d(report);
+    if (model3d) {
+      var m3dSupported = model3dTriState(model3d.supported);
+      var m3dEnabled = model3dTriState(model3d.enabled);
+      var m3dReason = model3dReason(model3d);
+      var depthMm = toNumber(model3d.depth_mm);
+      var facesExtruded = toNumber(model3d.faces_extruded);
+
+      metric('3D model supported', m3dSupported === null ? 'Unknown' : (m3dSupported ? 'Yes' : 'No'));
+      metric('3D model enabled', m3dEnabled === null ? 'Unknown' : (m3dEnabled ? 'Yes' : 'No'));
+      if (depthMm !== null) metric('Extrude depth (mm)', depthMm);
+      if (facesExtruded !== null) metric('Faces extruded', facesExtruded);
+
+      if (m3dSupported === false) {
+        addListItem(findings, '3D model generation is not supported on this host' + (m3dReason ? ': ' + safeText(m3dReason) + '.' : '.'));
+      } else if (m3dSupported === true) {
+        if (m3dEnabled === true) {
+          if (facesExtruded !== null && facesExtruded > 0) {
+            addListItem(findings, 'Optional PDF-to-3D extrusion ran and extruded ' + facesExtruded + ' closed face(s)' + (depthMm !== null ? ' at ' + depthMm + ' mm depth' : '') + '.');
+          } else if (m3dReason) {
+            severity = severity === 'ok' ? 'warn' : severity;
+            addListItem(findings, '3D extrusion was enabled but produced no solids: ' + safeText(m3dReason) + '.');
+            addListItem(actions, 'Check that the PDF has closed fill regions suitable for push/pull extrusion.');
+          } else {
+            addListItem(findings, '3D model extrusion was enabled for this import.');
+          }
+        } else if (m3dEnabled === false) {
+          var offReason = m3dReason ? (' (' + safeText(m3dReason) + ')') : '';
+          addListItem(findings, '3D model extrusion was available but not enabled' + offReason + '.');
+          addListItem(actions, 'Enable extrude-to-3D in import options if you want closed PDF fills turned into solids.');
+        }
+      }
+    }
+
+
 
     var severity = 'ok';
     var heading = 'Import Looks Healthy';
@@ -569,6 +631,11 @@
       'Fallback: ' + (usedFallback ? 'Yes - ' + safeText(reason) : 'No'),
       'Text renderer: ' + renderer,
       'Verified text entities: ' + (verificationParts.length ? verificationParts.join(', ') : 'Not reported'),
+      '3D model supported: ' + (model3d ? safeText(model3dTriState(model3d.supported) === null ? 'Unknown' : (model3dTriState(model3d.supported) ? 'Yes' : 'No')) : 'Not reported'),
+      '3D model enabled: ' + (model3d ? safeText(model3dTriState(model3d.enabled) === null ? 'Unknown' : (model3dTriState(model3d.enabled) ? 'Yes' : 'No')) : 'Not reported'),
+      'Extrude depth (mm): ' + (model3d && toNumber(model3d.depth_mm) !== null ? safeText(toNumber(model3d.depth_mm)) : 'Not reported'),
+      'Faces extruded: ' + (model3d && toNumber(model3d.faces_extruded) !== null ? safeText(toNumber(model3d.faces_extruded)) : 'Not reported'),
+      '3D model note: ' + (model3d ? safeText(model3dReason(model3d)) : 'Not reported'),
       'Performance hint: ' + safeText(perfHint),
       'Total time: ' + formatMs(totalMs),
       '',
