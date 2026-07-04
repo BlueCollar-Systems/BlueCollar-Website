@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-04T17:47:56+00:00",
+  "generated_at": "2026-07-04T17:49:17+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -75,23 +75,23 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "name": "LibreCAD-PDF-Importer-Windows-Portable_v1.0.53.zip",
-            "size": 188329545,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.53/LibreCAD-PDF-Importer-Windows-Portable_v1.0.53.zip"
+            "name": "LibreCAD-PDF-Importer-Windows-Portable_v1.0.54.zip",
+            "size": 188325529,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.54/LibreCAD-PDF-Importer-Windows-Portable_v1.0.54.zip"
           },
           {
             "content_type": "application/zip",
-            "name": "LibreCAD-PDF-Importer_v1.0.53.zip",
+            "name": "LibreCAD-PDF-Importer_v1.0.54.zip",
             "size": 150098,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.53/LibreCAD-PDF-Importer_v1.0.53.zip"
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.54/LibreCAD-PDF-Importer_v1.0.54.zip"
           }
         ],
-        "name": "v1.0.53 \u2014 PDF to DXF Converter for LibreCAD",
-        "published_at": "2026-07-04T16:39:54Z",
-        "tag": "v1.0.53",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.53"
+        "name": "v1.0.54 \u2014 PDF to DXF Converter for LibreCAD",
+        "published_at": "2026-07-04T17:48:52Z",
+        "tag": "v1.0.54",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.54"
       },
-      "pushed_at": "2026-07-04T17:46:53Z",
+      "pushed_at": "2026-07-04T17:48:52Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD",
       "steel_release": null
     },
@@ -142,5 +142,5 @@
       }
     }
   },
-  "source_event": "push"
+  "source_event": "repository_dispatch"
 }
