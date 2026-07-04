@@ -68,8 +68,15 @@
                 <label for="report-file" class="text-sm font-semibold text-gray-300">Choose JSON file</label>
                 <input id="report-file" class="doctor-file mt-2 mb-6" type="file" accept=".json,application/json">
 
+                <label for="bootstrap-file" class="text-sm font-semibold text-gray-300">Optional: parts_bootstrap.json (Tags tab)</label>
+                <input id="bootstrap-file" class="doctor-file mt-2 mb-6" type="file" accept=".json,application/json">
+
                 <label for="report-json" class="text-sm font-semibold text-gray-300">Or paste report JSON</label>
                 <textarea id="report-json" class="doctor-textarea mt-2" rows="16" spellcheck="false" placeholder='{"schema":"bcs.import_report/1.1","result":{"pages":1},"extra":{"text_mode":"labels"}}'></textarea>
+
+                <label for="bootstrap-file" class="text-sm font-semibold text-gray-300 mt-6 block">Optional: parts_bootstrap.json (Tags tab)</label>
+                <input id="bootstrap-file" class="doctor-file mt-2 mb-2" type="file" accept=".json,application/json">
+                <textarea id="bootstrap-json" class="doctor-textarea mt-2" rows="6" spellcheck="false" placeholder='{"schema":"bcs.parts_bootstrap/1.0","rows":[{"piece_mark":"w1025","profile_hint":"W12X30"}]}'></textarea>
 
                 <div class="flex flex-wrap gap-3 mt-6">
                     <button id="analyze-report" class="inline-block bg-blue-700 hover:bg-blue-600 px-5 py-3 rounded font-semibold transition text-sm" type="button">Analyze Report</button>
@@ -129,6 +136,12 @@
                         <button id="copy-support" class="inline-block bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded font-semibold transition text-sm" type="button">Copy Summary</button>
                         <a id="email-support" href="mailto:support@bluecollar-systems.com" class="inline-block bg-blue-700 hover:bg-blue-600 px-5 py-3 rounded font-semibold transition text-sm">Email Support</a>
                     </div>
+                </div>
+
+                <div id="doctor-tags-section" class="doctor-note mt-6 hidden">
+                    <h3 class="text-xl font-bold mb-3">Tags / Parts Bootstrap</h3>
+                    <p class="text-sm text-gray-400 mb-4">Piece marks from <code>parts_bootstrap.json</code> with client-side tag URLs for Steel Logic digital thread.</p>
+                    <div id="doctor-tags-table" class="overflow-x-auto"></div>
                 </div>
             </div>
         </section>

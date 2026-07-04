@@ -14,8 +14,81 @@
   var support = document.getElementById('doctor-support');
   var copyButton = document.getElementById('copy-support');
   var emailLink = document.getElementById('email-support');
+  var bootstrapFileInput = document.getElementById('bootstrap-file');
+  var bootstrapJsonInput = document.getElementById('bootstrap-json');
+  var tagsSection = document.getElementById('doctor-tags-section');
+  var tagsTable = document.getElementById('doctor-tags-table');
 
   if (!jsonInput || !analyzeButton) return;
+
+  function uuidV4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0;
+      var v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  function bootstrapRows(data) {
+    if (!data || typeof data !== 'object') return [];
+    if (Array.isArray(data.rows)) return data.rows;
+    if (Array.isArray(data.parts)) return data.parts;
+    if (Array.isArray(data.candidates)) return data.candidates;
+    return [];
+  }
+
+  function renderTagsTable(rows) {
+    if (!tagsSection || !tagsTable) return;
+    clearNode(tagsTable);
+    if (!rows.length) {
+      tagsSection.classList.add('hidden');
+      return;
+    }
+    tagsSection.classList.remove('hidden');
+    var table = document.createElement('table');
+    table.className = 'w-full text-sm text-left text-gray-300 border border-gray-700';
+    var thead = document.createElement('thead');
+    thead.innerHTML = '<tr class="bg-gray-900/60"><th class="p-3">Piece mark</th><th class="p-3">Profile</th><th class="p-3">Qty</th><th class="p-3">Tag URL</th><th class="p-3"></th></tr>';
+    table.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i] || {};
+      var partId = row.part_id || uuidV4();
+      var mark = safeText(row.piece_mark || row.mark || '—');
+      var profile = safeText(row.profile_hint || row.designation || '—');
+      var qty = safeText(row.quantity || 1);
+      var tagUrl = 'https://bluecollar-systems.com/p/' + partId;
+      var tr = document.createElement('tr');
+      tr.className = 'border-t border-gray-700';
+      tr.innerHTML = '<td class="p-3 font-mono">' + mark + '</td>' +
+        '<td class="p-3">' + profile + '</td>' +
+        '<td class="p-3">' + qty + '</td>' +
+        '<td class="p-3 font-mono text-xs">' + tagUrl + '</td>' +
+        '<td class="p-3"><button type="button" class="copy-tag bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs" data-url="' + tagUrl + '">Copy</button></td>';
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    tagsTable.appendChild(table);
+    var copyButtons = tagsTable.querySelectorAll('.copy-tag');
+    for (var j = 0; j < copyButtons.length; j++) {
+      copyButtons[j].addEventListener('click', function() {
+        var url = this.getAttribute('data-url');
+        if (navigator.clipboard && url) navigator.clipboard.writeText(url);
+      });
+    }
+  }
+
+  function parseBootstrapInput() {
+    var text = bootstrapJsonInput ? bootstrapJsonInput.value.trim() : '';
+    if (!text) return [];
+    try {
+      var data = JSON.parse(text);
+      if (data.schema && data.schema !== 'bcs.parts_bootstrap/1.0') return [];
+      return bootstrapRows(data);
+    } catch (err) {
+      return [];
+    }
+  }
 
   var SAMPLE_REPORT = {
     schema: 'bcs.import_report/1.1',
@@ -38,6 +111,11 @@
         enabled: true,
         depth_mm: 3.175,
         faces_extruded: 4
+      },
+      model_3d_intent: {
+        feasible: true,
+        plates: [{ mark: 'p1019' }, { mark: 'p1052' }],
+        members: [{ designation: 'W12X30' }]
       }
     }
   };
@@ -266,6 +344,15 @@
     return block;
   }
 
+  function collectModel3dIntent(report) {
+    var block = firstValue(report, [
+      ['extra', 'model_3d_intent'],
+      ['model_3d_intent']
+    ]);
+    if (!block || typeof block !== 'object') return null;
+    return block;
+  }
+
   function model3dTriState(value) {
     if (value === true || value === 'true' || value === 1 || value === '1') return true;
     if (value === false || value === 'false' || value === 0 || value === '0') return false;
@@ -275,6 +362,13 @@
   function model3dReason(block) {
     if (!block || typeof block !== 'object') return undefined;
     return objectValue(block, ['reason', 'skipped_reason']);
+  }
+
+  function candidateCount(value) {
+    if (Array.isArray(value)) return value.length;
+    if (value && typeof value === 'object') return Object.keys(value).length;
+    var n = toNumber(value);
+    return n === null ? 0 : n;
   }
 
   function rendererSummary(report) {
@@ -468,25 +562,35 @@
     metric('Images', images);
     metric('Layers', layers);
     metric('Time', formatMs(totalMs));
+    var severity = 'ok';
+    var heading = 'Import Looks Healthy';
     var model3d = collectModel3d(report);
+    var model3dIntent = collectModel3dIntent(report);
+    var model3dIntentFeasible = model3dIntent ? model3dTriState(model3dIntent.feasible) : null;
+    var model3dPlateCount = model3dIntent ? candidateCount(model3dIntent.plates || model3dIntent.plate_candidates || model3dIntent.plate_count) : 0;
+    var model3dMemberCount = model3dIntent ? candidateCount(model3dIntent.members || model3dIntent.member_candidates || model3dIntent.member_count) : 0;
+    var model3dIntentNote = model3dIntent ? model3dReason(model3dIntent) : undefined;
     if (model3d) {
       var m3dSupported = model3dTriState(model3d.supported);
       var m3dEnabled = model3dTriState(model3d.enabled);
       var m3dReason = model3dReason(model3d);
       var depthMm = toNumber(model3d.depth_mm);
       var facesExtruded = toNumber(model3d.faces_extruded);
+      var solidsCreated = toNumber(model3d.solids_created);
+      var solidCount = facesExtruded !== null ? facesExtruded : solidsCreated;
 
       metric('3D model supported', m3dSupported === null ? 'Unknown' : (m3dSupported ? 'Yes' : 'No'));
       metric('3D model enabled', m3dEnabled === null ? 'Unknown' : (m3dEnabled ? 'Yes' : 'No'));
       if (depthMm !== null) metric('Extrude depth (mm)', depthMm);
       if (facesExtruded !== null) metric('Faces extruded', facesExtruded);
+      if (facesExtruded === null && solidsCreated !== null) metric('3D solids', solidsCreated);
 
       if (m3dSupported === false) {
         addListItem(findings, '3D model generation is not supported on this host' + (m3dReason ? ': ' + safeText(m3dReason) + '.' : '.'));
       } else if (m3dSupported === true) {
         if (m3dEnabled === true) {
-          if (facesExtruded !== null && facesExtruded > 0) {
-            addListItem(findings, 'Optional PDF-to-3D extrusion ran and extruded ' + facesExtruded + ' closed face(s)' + (depthMm !== null ? ' at ' + depthMm + ' mm depth' : '') + '.');
+          if (solidCount !== null && solidCount > 0) {
+            addListItem(findings, 'Optional PDF-to-3D extrusion ran and created ' + solidCount + ' solid(s)' + (depthMm !== null ? ' at ' + depthMm + ' mm depth' : '') + '.');
           } else if (m3dReason) {
             severity = severity === 'ok' ? 'warn' : severity;
             addListItem(findings, '3D extrusion was enabled but produced no solids: ' + safeText(m3dReason) + '.');
@@ -502,10 +606,16 @@
       }
     }
 
-
-
-    var severity = 'ok';
-    var heading = 'Import Looks Healthy';
+    if (model3dIntent) {
+      metric('3D intent evidence', model3dIntentFeasible === null ? 'Unknown' : (model3dIntentFeasible ? 'Yes' : 'No'));
+      metric('Plate candidates', model3dPlateCount);
+      metric('Member candidates', model3dMemberCount);
+      if (model3dIntentFeasible === true) {
+        addListItem(findings, '3D intent scan found plate/member evidence in the drawing text.');
+      } else if (model3dIntentNote) {
+        addListItem(findings, '3D intent scan did not find enough evidence: ' + safeText(model3dIntentNote) + '.');
+      }
+    }
 
     if (usedFallback) {
       severity = 'warn';
@@ -634,8 +744,12 @@
       '3D model supported: ' + (model3d ? safeText(model3dTriState(model3d.supported) === null ? 'Unknown' : (model3dTriState(model3d.supported) ? 'Yes' : 'No')) : 'Not reported'),
       '3D model enabled: ' + (model3d ? safeText(model3dTriState(model3d.enabled) === null ? 'Unknown' : (model3dTriState(model3d.enabled) ? 'Yes' : 'No')) : 'Not reported'),
       'Extrude depth (mm): ' + (model3d && toNumber(model3d.depth_mm) !== null ? safeText(toNumber(model3d.depth_mm)) : 'Not reported'),
-      'Faces extruded: ' + (model3d && toNumber(model3d.faces_extruded) !== null ? safeText(toNumber(model3d.faces_extruded)) : 'Not reported'),
+      'Solids/faces created: ' + (model3d && (toNumber(model3d.solids_created) !== null || toNumber(model3d.faces_extruded) !== null) ? safeText(toNumber(model3d.solids_created) !== null ? toNumber(model3d.solids_created) : toNumber(model3d.faces_extruded)) : 'Not reported'),
       '3D model note: ' + (model3d ? safeText(model3dReason(model3d)) : 'Not reported'),
+      '3D intent evidence: ' + (model3dIntent ? safeText(model3dIntentFeasible === null ? 'Unknown' : (model3dIntentFeasible ? 'Yes' : 'No')) : 'Not reported'),
+      '3D plate candidates: ' + (model3dIntent ? safeText(model3dPlateCount) : 'Not reported'),
+      '3D member candidates: ' + (model3dIntent ? safeText(model3dMemberCount) : 'Not reported'),
+      '3D intent note: ' + (model3dIntent ? safeText(model3dIntentNote) : 'Not reported'),
       'Performance hint: ' + safeText(perfHint),
       'Total time: ' + formatMs(totalMs),
       '',
@@ -648,6 +762,7 @@
       encodeURIComponent('PDF importer report review') +
       '&body=' + encodeURIComponent(support.textContent);
     output.classList.remove('hidden');
+    renderTagsTable(parseBootstrapInput());
   }
 
   function parseAndAnalyze() {
@@ -693,8 +808,31 @@
     clearButton.addEventListener('click', function() {
       jsonInput.value = '';
       if (fileInput) fileInput.value = '';
+      if (bootstrapJsonInput) bootstrapJsonInput.value = '';
+      if (bootstrapFileInput) bootstrapFileInput.value = '';
       setError('');
       if (output) output.classList.add('hidden');
+      if (tagsSection) tagsSection.classList.add('hidden');
+    });
+  }
+
+  if (bootstrapFileInput) {
+    bootstrapFileInput.addEventListener('change', function() {
+      var file = bootstrapFileInput.files && bootstrapFileInput.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function() {
+        if (bootstrapJsonInput) bootstrapJsonInput.value = String(reader.result || '');
+        if (jsonInput.value.trim()) parseAndAnalyze();
+        else renderTagsTable(parseBootstrapInput());
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  if (bootstrapJsonInput) {
+    bootstrapJsonInput.addEventListener('blur', function() {
+      renderTagsTable(parseBootstrapInput());
     });
   }
 
