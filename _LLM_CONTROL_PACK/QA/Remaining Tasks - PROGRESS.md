@@ -36,7 +36,7 @@ Append-only progress against `Remaining Tasks.txt`. Original file preserved.
 
 - [x] **Website Report Doctor bootstrap support** — fixed duplicate `bootstrap-file` id; Report Doctor reads inline `extra.parts_bootstrap` or uploaded sidecar and includes row/sidecar evidence in support summaries.
 
-- [x] **Steel Logic part tag bootstrap loop** — `part tag now loads `bcs.parts_bootstrap/1.0`, resolves piece marks and `/p/<part_id>` URLs, generates tag URLs, and still prefers source-provenance bbox hits.
+- [x] **Steel Logic Part Tracking bootstrap loop** — `Part Tracking now loads `bcs.parts_bootstrap/1.0`, resolves piece marks and `/p/<part_id>` URLs, generates tag URLs, and still prefers source-provenance bbox hits.
 
 - [x] **Corpus baselines generated** — `tools/generate_corpus_baselines.rb --update` wrote current baselines; one known heavy PDF stayed warn-only after the 300s guard.
 
@@ -60,7 +60,7 @@ Remaining non-human backlog after this pass: semantic steel solids v2/cross-host
 
 - [x] **Report Doctor Tags tab (R5-7)** — `report-doctor.html/js`: bootstrap upload/paste, piece-mark table, copy tag URL (`/p/<uuid>`)
 
-- [x] **App parts_bootstrap rows ingestion (R5-2)** — `import_report_ingestion.dart` accepts `rows[]` + `source_pdf`; part tag + Report Doctor screen shipped
+- [x] **App parts_bootstrap rows ingestion (R5-2)** — `import_report_ingestion.dart` accepts `rows[]` + `source_pdf`; Part Tracking + Report Doctor screen shipped
 
 - [x] **pdfcadcore sync** — manifest regenerated; FC→LC/BL sync ALL IN SYNC; **LC v1.0.54**, **BL v1.0.59**
 
@@ -88,7 +88,7 @@ Remaining non-human backlog after this pass: semantic steel solids v2/cross-host
 
 - [x] **parts_bootstrap on SU/LC/BL import pipelines** — closed in completion pass; all host report writers now emit sidecar + report summary
 
-- [x] **part tag sidecar/tag lookup loop (R5-1/R5-3 app slice)** — bootstrap sidecar + `/p/<part_id>` lookup closed; camera UI and reverse-highlight remain advanced UI work
+- [x] **Part Tracking sidecar/tag lookup loop (R5-1/R5-3 app slice)** — bootstrap sidecar + `/p/<part_id>` lookup closed; camera UI and reverse-highlight remain advanced UI work
 
 - [x] **R7-9 SU CLI merge** — compatibility wrapper over unified extension CLI; focused gates pass
 
@@ -152,7 +152,7 @@ Remaining non-human backlog after this pass: semantic steel solids v2/cross-host
 
 | Website | `852b72c` QA mirror (`e268ec3` Tags tab) | pushed | up to date |
 
-| App | `d53edf3` (+ `17008ba` part tag | pushed | flutter analyze clean; 21 targeted tests pass |
+| App | `d53edf3` (+ `17008ba` Part Tracking | pushed | flutter analyze clean; 21 targeted tests pass |
 
 
 
