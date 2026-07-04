@@ -1,10 +1,65 @@
 # Q&A Index
 
-Updated: 2026-07-04 (Round 6 — importer contract gate; Reviewer S + T)
+Updated: 2026-07-04 (Round 11 trademark rename formalized)
 
 ---
 
-## Active session — Round 6 (2026-07-04)
+## Active session - Round 11 naming cleanup (2026-07-04)
+
+| File | Role |
+|------|------|
+| **QA-2026-07-04_round11-trademark-rename.md** | Round 11 - QA agreement and repo-wide scrub: neutral PartTag / part_tag identifiers, user-facing "part tag" wording, and zero current-file hits for the retired vendor-brand term |
+
+> **Round 11 status:** current code, UI copy, QA mirrors, desktop Q&A, and corpus docs are scrubbed; use brand-neutral part tag wording going forward.
+
+---
+
+## Active session — Round 9 PDF-to-3D closure (2026-07-04)
+
+| File | Role |
+|------|------|
+| **`QA-2026-07-04_final-verification-sweep.md`** | Final verification sweep: import_contract_ready gap closure, final test counts, current-vs-historical OPEN status |
+| **`QA-2026-07-04_round8-closure-addendum.md`** | Audit verification — gate table, BL WIP fix, Round 5 restore, STILL OPEN ranked list |
+| **`QA-2026-07-04_round9-pdf-3d-implementation-closure.md`** | Round 9 — implementation closure: SU/FC/BL v1 3D generation, LC honest 2D, app + Report Doctor consumption, verification |
+| **`QA-2026-07-04_round8-pdf-to-3d-questions.md`** | Round 8 — Reviewer W: host scope, 3D semantics, eligibility, UI, report contract, Z-order research |
+| **`QA-2026-07-04_round8-pdf-to-3d-answers.md`** | Round 8 — Reviewer X answers W1–W7 + prior OPEN cross-answers |
+| **`QA-2026-07-04_round8-resolution.md`** | Round 8 — Agreements R8-1…R8-9 + phased implementation plan |
+| **`QA-2026-07-04_round8-sketchup-cli-images-app-pass/QA-2026-07-04_round8-sketchup-cli-images-app-pass.md`** | Round 8 earlier pass — CLI/images/app QA closure |
+| **`QA-2026-07-04_remaining-tasks-completion-pass.md`** | Remaining tasks completion pass — SU CLI merge, all-host parts_bootstrap emitters, Report Doctor, part tag corpus/baseline verification |
+| **`QA-2026-07-04_feature-parity-matrix.md`** | Updated parity audit incl. `model_3d`, all-host `parts_bootstrap` |
+
+> **Completion-pass status:** SU/FC/LC/BL emit `extra.parts_bootstrap`; Report Doctor and Steel Logic consume the sidecar path/rows; part tag resolves piece marks and `/p/<part_id>` URLs. Remaining gates: T-01 visual signoff, semantic AISC/member modeling v2, scale-reference parity, and visual-regression automation.
+
+---
+
+## Active session — Round 8 CLI/App pass (2026-07-04)
+
+| File | Role |
+|------|------|
+| **QA-2026-07-04_round8-sketchup-cli-images-app-pass/QA-2026-07-04_round8-sketchup-cli-images-app-pass.md** | Round 8 - implementation/QA closure: SketchUp direct CLI launch fix, embedded-image extraction verification, app import-report ingestion bridge, localization audit cleanup, website/corpus smoke QA |
+| **QA-2026-07-04_round8-sketchup-cli-images-app-pass/feature_matrix.md** | Cross-repo feature matrix regenerated after SketchUp CLI detection fix |
+| **QA-2026-07-04_round8-sketchup-cli-images-app-pass/feature_matrix.json** | Machine-readable feature matrix |
+
+> **Round 8/9 status:** tracked importer/app matrix coverage is 100%; automated tests are green. Remaining gates are host-app visual signoff and large-PDF performance tuning.
+
+---
+
+## Active session - Round 7 (2026-07-04)
+
+| File | Role |
+|------|------|
+| **QA-2026-07-04_round7-reviewer-o-questions.md** | Round 7 - Reviewer O: SU CLI merge, embedded images, provenance sidecar, import_contract_ready, importer closure, app scope, cross-product CI |
+| **QA-2026-07-04_round7-reviewer-p-answers.md** | Round 7 - Reviewer P answers to O-1..O-7 + prior OPEN cross-table |
+| **QA-2026-07-04_round7-reviewer-q-answers.md** | Round 7 - Reviewer Q cross-answers to O-1..O-7 (corpus T1-12, field test, Report Doctor) |
+| **QA-2026-07-04_round7-reviewer-n-questions.md** | Round 7 - Reviewer N questions (parallel lane) |
+| **QA-2026-07-04_round7-reviewer-r-answers.md** | Round 7 - Reviewer R cross-answers to N16-N19 + prior OPEN |
+| **QA-2026-07-04_round7-resolution.md** | Round 7 - Agreements R7-1..R7-11 + cross-answer matrix |
+
+> **Round 7 cross-answer matrix complete (O questions; P + Q + R answers).** R7-10 embedded-image corpus anchor **T1-12 SHIPPED**.
+
+---
+
+## Prior session — Round 6 (2026-07-04)
 
 | File | Role |
 |------|------|
@@ -31,11 +86,11 @@ Read the contributor handoff first. Follow linked paths into repo mirrors only w
 
 | File | Role |
 |------|------|
-| **`QA-2026-07-03_round5-reviewer-n-questions.md`** | Round 5 — Reviewer N: KettleTag/barcode lifecycle, `bcs.part/1.0` digital thread, gloves-on capture channels, omni calculator domain packs, **outside-the-box** URL-encoded QR tags (Q-N10), opt-in import telemetry |
-| **`QA-2026-07-03_round5-reviewer-p-questions.md`** | Round 5 — Reviewer P: KettleTag symbology floor, importer `parts_bootstrap` automation, omni-box shop-floor gaps, **outside-the-box** reverse scan → PDF callout (Q-P4), import build stamp on part records |
+| **`QA-2026-07-03_round5-reviewer-n-questions.md`** | Round 5 — Reviewer N: part-tag/barcode lifecycle, `bcs.part/1.0` digital thread, gloves-on capture channels, omni calculator domain packs, **outside-the-box** URL-encoded QR tags (Q-N10), opt-in import telemetry |
+| **`QA-2026-07-03_round5-reviewer-p-questions.md`** | Round 5 — Reviewer P: part tag symbology floor, importer `parts_bootstrap` automation, omni-box shop-floor gaps, **outside-the-box** reverse scan → PDF callout (Q-P4), import build stamp on part records |
 | **`QA-2026-07-03_round5-reviewer-p-answers.md`** | Round 5 — Reviewer P cross-answers to Q-N6, Q-N7, Q-N8, Q-J7, Reviewer L non-PDF gate, semantic text verification |
 | **`QA-2026-07-03_round5-reviewer-q-questions.md`** | Round 5 — Reviewer Q: `mobile_scanner`/ML Kit contract, `steellogic://` deep link matrix, corpus part-id fixtures, Report Doctor tag lookup, **outside-the-box** importer tag-sheet PDF (Q-Q5) |
-| **`QA-2026-07-03_round5-reviewer-q-answers.md`** | Round 5 — Reviewer Q cross-answers to Q-P1…Q-P5 (KettleTag dual-mode, parts_bootstrap sidecar, omni backlog, reverse-tag pipeline, import build stamp) |
+| **`QA-2026-07-03_round5-reviewer-q-answers.md`** | Round 5 — Reviewer Q cross-answers to Q-P1…Q-P5 (part tag dual-mode, parts_bootstrap sidecar, omni backlog, reverse-tag pipeline, import build stamp) |
 | **`QA-2026-07-03_round5-reviewer-r-answers.md`** | Round 5 — Reviewer R cross-answers to Q-N9…Q-N11 (omni domain packs, public URL tags, import telemetry) and Q-Q1…Q-Q5 (mobile_scanner contract, deep links, corpus fixtures, Report Doctor tags, tag-sheet PDF) |
 | **`QA-2026-07-03_round5-resolution.md`** | Round 5 — Agreements R5-1…R5-7 + compliance checklist |
 | **`QA-2026-07-03_app-omni-coordination.md`** | App omni precision contract — Rational-storage P0s resolved 2026-07-03; remaining context for Round 5 app questions |
