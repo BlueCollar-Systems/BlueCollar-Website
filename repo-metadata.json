@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-04T15:28:59+00:00",
+  "generated_at": "2026-07-04T15:30:41+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -39,7 +39,7 @@
         "tag": "v4.0.57",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.57"
       },
-      "pushed_at": "2026-07-04T15:13:00Z",
+      "pushed_at": "2026-07-04T15:30:34Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
@@ -75,23 +75,23 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "name": "LibreCAD-PDF-Importer-Windows-Portable_v1.0.50.zip",
-            "size": 188235620,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.50/LibreCAD-PDF-Importer-Windows-Portable_v1.0.50.zip"
+            "name": "LibreCAD-PDF-Importer-Windows-Portable_v1.0.52.zip",
+            "size": 188283055,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.52/LibreCAD-PDF-Importer-Windows-Portable_v1.0.52.zip"
           },
           {
             "content_type": "application/zip",
-            "name": "LibreCAD-PDF-Importer_v1.0.50.zip",
-            "size": 133643,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.50/LibreCAD-PDF-Importer_v1.0.50.zip"
+            "name": "LibreCAD-PDF-Importer_v1.0.52.zip",
+            "size": 137957,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.52/LibreCAD-PDF-Importer_v1.0.52.zip"
           }
         ],
-        "name": "v1.0.50 \u2014 PDF to DXF Converter for LibreCAD",
-        "published_at": "2026-07-04T15:09:34Z",
-        "tag": "v1.0.50",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.50"
+        "name": "v1.0.52 \u2014 PDF to DXF Converter for LibreCAD",
+        "published_at": "2026-07-04T15:30:17Z",
+        "tag": "v1.0.52",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.52"
       },
-      "pushed_at": "2026-07-04T15:26:14Z",
+      "pushed_at": "2026-07-04T15:30:16Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD",
       "steel_release": null
     },
