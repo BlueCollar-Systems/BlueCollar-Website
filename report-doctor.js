@@ -406,6 +406,14 @@
     var pages = resultNumber(report, ['pages', 'page_count']);
     var geometry = resultNumber(report, ['geometry', 'entities', 'primitives', 'edges']);
     var images = resultNumber(report, ['images', 'image_count']);
+    if (images === null && report.extra && report.extra.embedded_images !== undefined && report.extra.embedded_images !== null) {
+      var embedded = report.extra.embedded_images;
+      if (typeof embedded === 'number') {
+        images = embedded;
+      } else if (Array.isArray(embedded)) {
+        images = embedded.length;
+      }
+    }
     var layers = resultNumber(report, ['layers', 'layer_count']);
     var totalMs = detectTotalMs(report);
     var text = collectTextBreakdown(report);
