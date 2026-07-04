@@ -18,7 +18,7 @@
 | **R6-7** | Text-merge conformance vectors (R4-1) | P1 — not blocking Round 6. Corpus vectors + SU test next slice. | **OPEN** | corpus, SU |
 | **R6-8** | `source_provenance` emitter | Required for reverse-tag bbox highlight (R5-3); no host emits yet. | **OPEN** | FC first |
 | **R6-9** | T-01 human visual sign-off | Screenshots + FC/LC/BL field defects (FC-2 fill, BL-1 lineweight) still need in-host verification. | **OPEN** | human |
-| **R6-10** | App advanced features (part tag bootstrap, `/p/`) | R5-1…R5-7 remain **app/website** backlog; importers not blocking on barcode. | **DEFERRED** | Steel Logic, website |
+| **R6-10** | App advanced features (Part Tracking bootstrap, `/p/`) | R5-1…R5-7 remain **app/website** backlog; importers not blocking on barcode. | **DEFERRED** | Steel Logic, website |
 
 ---
 
@@ -44,7 +44,7 @@
 1. `import_contract_ready` aggregate (Report Doctor client-side first)
 2. `source_provenance` sidecar
 3. `parts_bootstrap` sidecar (R5-2)
-4. part tag / barcode (R5-1) — **app only**
+4. Part Tracking / barcode (R5-1) — **app only**
 
 ---
 
@@ -75,7 +75,7 @@ See `QA-2026-07-04_feature-parity-matrix.md`.
 | Text-merge vectors R4-1 | **OPEN** |
 | T-01 visual defects FC-2, BL-1, BL-2, FC-1 | **OPEN** |
 | LibreCAD 3D text | **N/A** (2D host by design) |
-| part tag / barcode | **DEFERRED** (app) |
+| Part Tracking / barcode | **DEFERRED** (app) |
 
 ---
 

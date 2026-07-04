@@ -19,7 +19,7 @@
 | 4 | R7-9 SU CLI merge: one contract over `su_pdf_cli.rb` / `su_batch_cli.rb` / `cli.rb`; contract test = bar | SU | |
 | 5 | SU `extrude_depth` dialog HTML field + JS callback (wired everywhere else) | SU | |
 | 6 | App **Report Doctor screen**: render already-parsed `model_3d` / intent / provenance / contract-ready | app | data is in memory today |
-| 7 | part tag loop: sidecar lookup + reverse-highlight (scan+deep links shipped) | app | offline scan queue too |
+| 7 | Part Tracking loop: sidecar lookup + reverse-highlight (scan+deep links shipped) | app | offline scan queue too |
 | 8 | parts_bootstrap real BOM row extraction (`tables[]` → marks/qty/profile/length) all hosts | core | slice landed; finish rows |
 | 9 | Scale-by-Reference parity SU/LC/BL (FC has it) | 3 hosts | |
 | 10 | Import Health parity FC/LC/BL (SU has it) | 3 hosts | |

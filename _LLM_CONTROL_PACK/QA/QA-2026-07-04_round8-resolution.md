@@ -62,7 +62,7 @@
 | Semantic AISC profile/member modeling | **OPEN advanced feature** |
 | T-01 visual | **OPEN** |
 | CLI merge R7-9 | **OPEN** |
-| part tag highlight loop | **DEFERRED** |
+| Part Tracking highlight loop | **DEFERRED** |
 
 ---
 

@@ -6,13 +6,13 @@
 
 ---
 
-## A-Q→P1 — galvanizing-rated part tags and shop tag symbology: what must v1 actually read?
+## A-Q→P1 — galvanizing-rated physical tags and shop tag symbology: what must v1 actually read?
 
 **Re:** Q-P1 — *symbology floor, tag payload standard, sub-questions on contrast, manual fallback, entry points*
 
-**Answer: Ship option (c) dual-mode assign — read Code 128 + QR in v1; legacy part tag laser-etch stays first-class without forcing re-print.**
+**Answer: Ship option (c) dual-mode assign — read Code 128 + QR in v1; legacy Part Tracking laser-etch stays first-class without forcing re-print.**
 
-Verified on disk: `lib/core/omni/omni_intent.dart` classifies calculator, inventory, shape search, and time intents — **no `scan` or `tag` intent yet** (grep 2026-07-03). `pubspec.yaml` has no camera dependency. galvanizing-rated part tags and similar galvanizing-survivable tags typically ship **Code 128** (piece mark + job); shops that adopt BCS printable sheets get **QR** encoding `https://bluecollar-systems.com/p/<opaque-id>` per Q-N10. v1 must **read both** without requiring shops to abandon existing metal inventory.
+Verified on disk: `lib/core/omni/omni_intent.dart` classifies calculator, inventory, shape search, and time intents — **no `scan` or `tag` intent yet** (grep 2026-07-03). `pubspec.yaml` has no camera dependency. galvanizing-rated physical tags and similar galvanizing-survivable tags typically ship **Code 128** (piece mark + job); shops that adopt BCS printable sheets get **QR** encoding `https://bluecollar-systems.com/p/<opaque-id>` per Q-N10. v1 must **read both** without requiring shops to abandon existing metal inventory.
 
 | Sub-question | Decision |
 |--------------|----------|

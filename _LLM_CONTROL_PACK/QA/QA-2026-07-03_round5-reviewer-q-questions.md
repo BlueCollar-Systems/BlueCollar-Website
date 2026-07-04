@@ -30,7 +30,7 @@
 
 **Reviewer:** Q (app ↔ website URL contract)  
 **Host scope:** Steel Logic (`shape_lookup_intent.dart`, Android/iOS intent filters), website `/p/<id>` page (Q-N10), importers (optional QR export)  
-**Why it matters:** T-15 deferred `steellogic://shape/W12X26` only. Round 5 adds part/tag identity — same URL scheme must not collide with shape deep links or public HTTPS tags.
+**Why it matters:** T-15 deferred `steellogic://shape/W12X26` only. Round 5 adds part tracking identity — same URL scheme must not collide with shape deep links or public HTTPS tags.
 
 **Question:** Should v1 register these **app deep link patterns** alongside public HTTPS QR?
 
@@ -61,7 +61,7 @@ Sub-questions:
 | Fixture | Purpose |
 |---------|---------|
 | `sample_parts_bootstrap.json` | Valid `bcs.parts_bootstrap/1.0` with 3 piece marks from `stacked_fraction_spacing.pdf` BOM |
-| `code128_part tag | Expected decode string (not image — CI cannot scan metal) |
+| `code128_Part Tracking | Expected decode string (not image — CI cannot scan metal) |
 | `qr_bcs_part_url.txt` | `https://bluecollar-systems.com/p/00000000-0000-4000-8000-000000000001` |
 | `part_record_golden.json` | Full `bcs.part/1.0` with tag assigned + `import_build_stamp` |
 

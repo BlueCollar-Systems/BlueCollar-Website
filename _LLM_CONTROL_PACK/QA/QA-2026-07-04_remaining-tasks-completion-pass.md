@@ -1,6 +1,6 @@
 # QA 2026-07-04 — Remaining Tasks Completion Pass
 
-Scope: `Remaining Tasks.txt` plus the follow-on app/Report Doctor/part tag checks requested in this thread.
+Scope: `Remaining Tasks.txt` plus the follow-on app/Report Doctor/Part Tracking checks requested in this thread.
 
 ## Closed in this pass
 
@@ -11,7 +11,7 @@ Scope: `Remaining Tasks.txt` plus the follow-on app/Report Doctor/part tag check
 - **LibreCAD / Blender `parts_bootstrap`:** host report writers now emit `parts_bootstrap.json`, record `extra.parts_bootstrap`, and stamp the sidecar with `report_sha256`.
 - **Website Report Doctor:** fixed duplicate `bootstrap-file` id, detects `extra.parts_bootstrap` directly from import reports, renders tag rows from inline or uploaded sidecar data, and includes sidecar details in support summaries.
 - **Steel Logic Report Doctor:** app UI surfaces import trust, 3D intent/model fields, and parts-bootstrap sidecar details.
-- **part tag bridge:** service now loads `bcs.parts_bootstrap/1.0`, resolves piece marks and `/p/<part_id>` URLs, generates tag URLs, and still prioritizes source-provenance bbox hits when available.
+- **Part Tracking bridge:** service now loads `bcs.parts_bootstrap/1.0`, resolves piece marks and `/p/<part_id>` URLs, generates tag URLs, and still prioritizes source-provenance bbox hits when available.
 - **Corpus / CI:** LC and BL workflows now run corpus schema + conformance checks; SketchUp baselines regenerated for the current corpus set.
 
 ## Verification
