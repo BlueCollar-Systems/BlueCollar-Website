@@ -24,3 +24,5 @@ __pycache__/
 
 # Dev artifacts
 dev_logs/
+
+_LLM_CONTROL_PACK/
