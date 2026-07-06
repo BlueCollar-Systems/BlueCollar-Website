@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-06T20:21:24+00:00",
+  "generated_at": "2026-07-06T20:32:29+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -18,7 +18,7 @@
         "tag": "v1.0.59",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.59"
       },
-      "pushed_at": "2026-07-04T18:22:18Z",
+      "pushed_at": "2026-07-06T20:32:02Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender",
       "steel_release": null
     },
@@ -39,7 +39,7 @@
         "tag": "v4.0.60",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.60"
       },
-      "pushed_at": "2026-07-04T18:22:24Z",
+      "pushed_at": "2026-07-06T20:32:01Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
@@ -91,7 +91,7 @@
         "tag": "v1.0.54",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.54"
       },
-      "pushed_at": "2026-07-04T18:22:21Z",
+      "pushed_at": "2026-07-06T20:32:01Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD",
       "steel_release": null
     },
@@ -103,7 +103,7 @@
           {
             "content_type": "application/octet-stream",
             "name": "SketchUp-PDF-Importer_v3.7.80.rbz",
-            "size": 9258547,
+            "size": 9262374,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.80/SketchUp-PDF-Importer_v3.7.80.rbz"
           }
         ],
@@ -112,7 +112,7 @@
         "tag": "v3.7.80",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.80"
       },
-      "pushed_at": "2026-07-04T18:22:20Z",
+      "pushed_at": "2026-07-06T20:32:00Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp",
       "steel_release": {
         "assets": [
