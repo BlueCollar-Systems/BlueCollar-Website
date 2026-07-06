@@ -184,7 +184,7 @@
         <h2 class="text-3xl font-bold mb-4 text-center uppercase tracking-widest text-gray-400">Easy Install (No Terminal Required)</h2>
         <p class="text-center text-gray-400 mb-10 max-w-2xl mx-auto">Each importer is designed for shop-floor PCs. Download the release, install once, and use the built-in checks if anything is missing.</p>
         <p class="text-center text-gray-300 mb-10 max-w-3xl mx-auto text-sm leading-relaxed"><strong>Works on any PC that runs the host application</strong> — SketchUp, FreeCAD, LibreCAD, or Blender. Release packages bundle their own dependencies (Poppler, PyMuPDF, Python runtime where needed); you do not need system Python, Ruby gems, or OS developer tools. <strong>No internet required after download</strong> — use the release RBZ, installer EXE, portable ZIP, or Blender add-on ZIP from GitHub Releases (source dev installs may vendor wheels once with <code>preflight_check.py --install</code>). <strong>SketchUp Make 2017</strong> is supported with importer <strong>v3.7.67 or newer</strong>; we do not redistribute SketchUp — obtain it from Trimble or use an installer you already own.</p>
-        <p class="text-center text-gray-300 mb-10 max-w-3xl mx-auto text-sm leading-relaxed"><strong>Before you import:</strong> Labels = editable text; Outlines / Glyphs / Geometry = exact vector fidelity (not editable). LibreCAD is 2D only — Labels or Outlines, no 3D text. Every host writes <code>import_report.json</code> with a plain-English <code>human_summary</code>; check <code>extra.scale_crosscheck</code> if scale looks wrong.</p>
+        <p class="text-center text-gray-300 mb-10 max-w-3xl mx-auto text-sm leading-relaxed"><strong>Before you import:</strong> Labels = editable text; Outlines / Glyphs / Geometry = exact vector fidelity (not editable). 3D Text is experimental and can scale differently from the PDF, so use Labels or Outlines/Glyphs for scale-sensitive review. Shape extrusion is currently shelved. Every host writes <code>import_report.json</code> with a plain-English <code>human_summary</code>; check <code>extra.scale_crosscheck</code> if scale looks wrong.</p>
 
         <div class="overflow-x-auto mb-10">
             <h3 class="text-lg font-bold text-blue-300 mb-3 text-center">What you'll get — by host</h3>
@@ -197,7 +197,7 @@
                         <th class="p-3 border-b border-gray-700">PDF layers</th>
                         <th class="p-3 border-b border-gray-700">Labels text</th>
                         <th class="p-3 border-b border-gray-700">Glyph / geometry text</th>
-                        <th class="p-3 border-b border-gray-700">3D text</th>
+                        <th class="p-3 border-b border-gray-700">3D text status</th>
                         <th class="p-3 border-b border-gray-700">import_report.json</th>
                     </tr>
                 </thead>
@@ -208,7 +208,7 @@
                         <td class="p-3">Tags from PDF layers</td>
                         <td class="p-3">Yes (Labels mode)</td>
                         <td class="p-3">Yes (Geometry / Glyphs)</td>
-                        <td class="p-3">Yes (3D Text mode)</td>
+                        <td class="p-3">Experimental; opt-in only</td>
                         <td class="p-3">Yes + <em>Import Health</em> menu</td>
                     </tr>
                     <tr>
@@ -217,7 +217,7 @@
                         <td class="p-3">Groups / layers</td>
                         <td class="p-3">Via ShapeString paths</td>
                         <td class="p-3">Yes</td>
-                        <td class="p-3">Yes (ShapeString 3D)</td>
+                        <td class="p-3">Experimental; verify scale</td>
                         <td class="p-3">Yes (<code>extra.human_summary</code>)</td>
                     </tr>
                     <tr class="bg-gray-800/30">
@@ -226,7 +226,7 @@
                         <td class="p-3">Collections / materials</td>
                         <td class="p-3">Text objects</td>
                         <td class="p-3">Yes (mesh outlines)</td>
-                        <td class="p-3">Limited (2D text objects)</td>
+                        <td class="p-3">Limited; verify scale</td>
                         <td class="p-3">Yes on CLI / headless runs</td>
                     </tr>
                     <tr>
@@ -268,7 +268,15 @@
             </div>
         </div>
 
-        <!-- Human confirmation prep section removed — internal test files are not public. -->
+        <div class="bg-gray-800/50 p-6 rounded-xl border border-blue-500/30 mt-10 text-left">
+            <h3 class="text-lg font-bold text-blue-300 mb-2">Human verification</h3>
+            <p class="text-gray-400 text-sm mb-4">Use your own shop PDFs with <strong>Labels</strong> and <strong>Outlines/Glyphs</strong> enabled. Save <code>import_report.json</code> from the import folder and send feedback or screenshots if something looks wrong.</p>
+            <div class="flex flex-wrap gap-3">
+                <a href="/report-doctor" class="inline-block bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold transition text-sm">Report Doctor</a>
+                <a href="/feedback" class="inline-block bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold transition text-sm">Send Feedback</a>
+            </div>
+            <p class="text-xs text-gray-500 mt-3">Troubleshooting: paste or upload your <code>import_report.json</code> in Report Doctor, or attach it with Send Feedback. We do not publish internal test drawings — please use your own files.</p>
+        </div>
     </section>
     <section id="report-doctor" class="max-w-4xl mx-auto px-6 py-20 border-t border-gray-800">
         <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700 text-center">

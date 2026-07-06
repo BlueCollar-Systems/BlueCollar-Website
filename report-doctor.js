@@ -2,7 +2,6 @@
   var fileInput = document.getElementById('report-file');
   var jsonInput = document.getElementById('report-json');
   var analyzeButton = document.getElementById('analyze-report');
-  var sampleButton = document.getElementById('load-sample-report');
   var clearButton = document.getElementById('clear-report');
   var errorBox = document.getElementById('doctor-error');
   var output = document.getElementById('doctor-output');
@@ -89,36 +88,6 @@
       return [];
     }
   }
-
-  var SAMPLE_REPORT = {
-    schema: 'bcs.import_report/1.1',
-    app: { name: 'SketchUp PDF Importer', version: '3.7.60' },
-    source: { file: 'sample-shop-drawing.pdf', pages: '1' },
-    result: { pages: 1, geometry: 12544, text: 342, images: 0, layers: 4 },
-    fallback: { used: false, reason: null },
-    performance: { total_ms: 12800, phases: { open_pdf_ms: 120, pages_import_ms: 12400 } },
-    extra: {
-      mode: 'auto',
-      resolved_mode: 'vector',
-      import_text: true,
-      text_mode: 'labels',
-      actual_text_breakdown: { labels: 328, text3d: 0, outlines: 14 },
-      actual_text_entity_types: { entity_type: 'labels', count: 328, font_rendered: true, native_label: 328, examples: ['W12X26', '1/4', 'BILL OF MATERIAL'] },
-      text_renderers: [{ page: 1, renderer: 'Poppler SVG', mode: 'labels' }],
-      import_quality: 'High',
-      model_3d: {
-        supported: true,
-        enabled: true,
-        depth_mm: 3.175,
-        faces_extruded: 4
-      },
-      model_3d_intent: {
-        feasible: true,
-        plates: [{ mark: 'p1019' }, { mark: 'p1052' }],
-        members: [{ designation: 'W12X30' }]
-      }
-    }
-  };
 
   function clearNode(node) {
     while (node.firstChild) node.removeChild(node.firstChild);

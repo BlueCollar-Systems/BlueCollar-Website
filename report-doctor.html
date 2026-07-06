@@ -63,7 +63,7 @@
         <div class="grid md:grid-cols-2 gap-8">
             <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700">
                 <h2 class="text-xl font-bold mb-3">Load A Report</h2>
-                <p class="text-gray-400 mb-6">Use the report path shown after import, or open the newest <code>import_report.json</code> / <code>last_import.log</code> companion folder from the importer.</p>
+                <p class="text-gray-400 mb-6">Use the report path shown after import, or open the newest <code>import_report.json</code> / <code>last_import.log</code> companion folder from the importer. Test with your own PDFs and share screenshots or reports when you want support to reproduce an issue.</p>
 
                 <label for="report-file" class="text-sm font-semibold text-gray-300">Choose JSON file</label>
                 <input id="report-file" class="doctor-file mt-2 mb-6" type="file" accept=".json,application/json">
@@ -80,7 +80,6 @@
 
                 <div class="flex flex-wrap gap-3 mt-6">
                     <button id="analyze-report" class="inline-block bg-blue-700 hover:bg-blue-600 px-5 py-3 rounded font-semibold transition text-sm" type="button">Analyze Report</button>
-                    <button id="load-sample-report" class="inline-block bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded font-semibold transition text-sm" type="button">Load Sample</button>
                     <button id="clear-report" class="inline-block bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded font-semibold transition text-sm" type="button">Clear</button>
                 </div>
                 <p id="doctor-error" class="doctor-error mt-6" role="alert"></p>
