@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-07T23:24:20+00:00",
+  "generated_at": "2026-07-07T23:25:40+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -103,7 +103,7 @@
           {
             "content_type": "application/octet-stream",
             "name": "SketchUp-PDF-Importer_v3.7.82.rbz",
-            "size": 9264153,
+            "size": 9266720,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.82/SketchUp-PDF-Importer_v3.7.82.rbz"
           }
         ],
@@ -112,7 +112,7 @@
         "tag": "v3.7.82",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.82"
       },
-      "pushed_at": "2026-07-07T23:23:52Z",
+      "pushed_at": "2026-07-07T23:24:31Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp",
       "steel_release": {
         "assets": [
