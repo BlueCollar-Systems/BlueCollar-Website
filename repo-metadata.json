@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-10T22:44:49+00:00",
+  "generated_at": "2026-07-10T22:46:02+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -112,7 +112,7 @@
         "tag": "v3.7.88",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.88"
       },
-      "pushed_at": "2026-07-10T22:43:47Z",
+      "pushed_at": "2026-07-10T22:45:48Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp",
       "steel_release": {
         "assets": [
