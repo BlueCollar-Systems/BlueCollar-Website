@@ -184,7 +184,7 @@
         <h2 class="text-3xl font-bold mb-4 text-center uppercase tracking-widest text-gray-400">Easy Install (No Terminal Required)</h2>
         <p class="text-center text-gray-400 mb-10 max-w-2xl mx-auto">Each importer is designed for shop-floor PCs. Download the release, install once, and use the built-in checks if anything is missing.</p>
         <p class="text-center text-gray-300 mb-10 max-w-3xl mx-auto text-sm leading-relaxed"><strong>Works on any PC that runs the host application</strong> — SketchUp, FreeCAD, LibreCAD, or Blender. Release packages bundle their own dependencies (Poppler, PyMuPDF, Python runtime where needed); you do not need system Python, Ruby gems, or OS developer tools. <strong>No internet required after download</strong> — use the release RBZ, installer EXE, portable ZIP, or Blender add-on ZIP from GitHub Releases (source dev installs may vendor wheels once with <code>preflight_check.py --install</code>). <strong>SketchUp Make 2017</strong> is supported with importer <strong>v3.7.67 or newer</strong>; we do not redistribute SketchUp — obtain it from Trimble or use an installer you already own.</p>
-        <p class="text-center text-gray-300 mb-10 max-w-3xl mx-auto text-sm leading-relaxed"><strong>Before you import:</strong> Labels = editable text; Outlines / Glyphs / Geometry = exact vector fidelity (not editable). 3D Text is experimental and can scale differently from the PDF, so use Labels or Outlines/Glyphs for scale-sensitive review. Shape extrusion is currently shelved. Every host writes <code>import_report.json</code> with a plain-English <code>human_summary</code>; check <code>extra.scale_crosscheck</code> if scale looks wrong.</p>
+        <p class="text-center text-gray-300 mb-10 max-w-3xl mx-auto text-sm leading-relaxed"><strong>Before you import:</strong> Labels = editable text; Outlines / Glyphs / Geometry = exact vector fidelity (not editable). 3D Text, Glyphs, and Geometry reproduce the PDF's text size and rotation exactly at equal zoom. Labels are editable but follow each host's native label behavior (in SketchUp, label size is screen-based and rotation is horizontal — use 3D Text when the import must look like the PDF). Shape extrusion is currently shelved. Every host writes <code>import_report.json</code> with a plain-English <code>human_summary</code>; check <code>extra.scale_crosscheck</code> if scale looks wrong.</p>
 
         <div class="overflow-x-auto mb-10">
             <h3 class="text-lg font-bold text-blue-300 mb-3 text-center">What you'll get — by host</h3>
@@ -208,7 +208,7 @@
                         <td class="p-3">Tags from PDF layers</td>
                         <td class="p-3">Yes (Labels mode)</td>
                         <td class="p-3">Yes (Geometry / Glyphs)</td>
-                        <td class="p-3">Experimental; opt-in only</td>
+                        <td class="p-3">Faithful size &amp; rotation (v3.7.86+)</td>
                         <td class="p-3">Yes + <em>Import Health</em> menu</td>
                     </tr>
                     <tr>
@@ -217,7 +217,7 @@
                         <td class="p-3">Groups / layers</td>
                         <td class="p-3">Via ShapeString paths</td>
                         <td class="p-3">Yes</td>
-                        <td class="p-3">Experimental; verify scale</td>
+                        <td class="p-3">Faithful size &amp; rotation (v4.0.64+)</td>
                         <td class="p-3">Yes (<code>extra.human_summary</code>)</td>
                     </tr>
                     <tr class="bg-gray-800/30">
@@ -226,7 +226,7 @@
                         <td class="p-3">Collections / materials</td>
                         <td class="p-3">Text objects</td>
                         <td class="p-3">Yes (mesh outlines)</td>
-                        <td class="p-3">Limited; verify scale</td>
+                        <td class="p-3">Faithful size &amp; rotation (v1.0.63+)</td>
                         <td class="p-3">Yes on CLI / headless runs</td>
                     </tr>
                     <tr>
