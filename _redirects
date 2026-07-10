@@ -1,2 +1,2 @@
-# Intentionally left blank.
-# Cloudflare Pages clean URLs handle *.html -> /path routing automatically.
+# Part Tracking tag URLs: serve the resolver page for every /p/<part_id>.
+/p/* /p/index.html 200
