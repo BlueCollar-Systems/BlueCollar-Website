@@ -682,6 +682,21 @@
       addListItem(actions, 'If the visual result is wrong, retry the same page with a different text mode and include this report with screenshots.');
     }
 
+    var humanSummary = firstValue(report, [['extra', 'human_summary'], ['human_summary']]);
+    if (humanSummary && typeof humanSummary === 'string' && humanSummary.trim()) {
+      var summaryItem = document.createElement('li');
+      summaryItem.className = 'font-semibold text-blue-200';
+      summaryItem.textContent = 'Importer summary: ' + humanSummary.trim();
+      findings.insertBefore(summaryItem, findings.firstChild);
+    }
+
+    var interactiveFlags = firstValue(report, [['extra', 'pdf_interactive_flags'], ['pdf_interactive_flags']]);
+    if (Array.isArray(interactiveFlags) && interactiveFlags.length) {
+      addListItem(findings, 'Source PDF declares document scripting/actions (' +
+        interactiveFlags.map(safeText).join(', ') +
+        '). Importers never execute these; flagged for awareness.');
+    }
+
     if (buildStamp) {
       addListItem(findings, 'Import build stamp: ' + safeText(buildStamp) + '.');
     }
@@ -693,6 +708,7 @@
 
     var supportLines = [
       'BlueCollar Import Report Summary',
+      (humanSummary && String(humanSummary).trim()) ? 'Summary: ' + String(humanSummary).trim() : null,
       'Host: ' + safeText(host),
       'Version: ' + safeText(version),
       'Build stamp: ' + safeText(buildStamp),
@@ -726,7 +742,9 @@
       '- Attach screenshots of the source PDF and imported result.',
       '- Do not send confidential PDFs unless you are comfortable sharing them.'
     ];
-    support.textContent = supportLines.join('\n');
+    support.textContent = supportLines.filter(function(l) {
+      return l !== null && l !== undefined;
+    }).join('\n');
     emailLink.href = 'mailto:support@bluecollar-systems.com?subject=' +
       encodeURIComponent('PDF importer report review') +
       '&body=' + encodeURIComponent(support.textContent);
