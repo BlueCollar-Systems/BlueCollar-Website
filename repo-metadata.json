@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-10T21:48:11+00:00",
+  "generated_at": "2026-07-10T22:03:40+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -91,7 +91,7 @@
         "tag": "v1.0.58",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.58"
       },
-      "pushed_at": "2026-07-10T21:47:46Z",
+      "pushed_at": "2026-07-10T22:02:25Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD",
       "steel_release": null
     },
@@ -102,17 +102,17 @@
         "assets": [
           {
             "content_type": "application/octet-stream",
-            "name": "SketchUp-PDF-Importer_v3.7.86.rbz",
-            "size": 9266132,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.86/SketchUp-PDF-Importer_v3.7.86.rbz"
+            "name": "SketchUp-PDF-Importer_v3.7.87.rbz",
+            "size": 9266274,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.87/SketchUp-PDF-Importer_v3.7.87.rbz"
           }
         ],
-        "name": "v3.7.86 \u2014 PDF Vector Importer for SketchUp",
-        "published_at": "2026-07-10T21:18:03Z",
-        "tag": "v3.7.86",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.86"
+        "name": "v3.7.87 \u2014 PDF Vector Importer for SketchUp",
+        "published_at": "2026-07-10T22:03:12Z",
+        "tag": "v3.7.87",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.87"
       },
-      "pushed_at": "2026-07-10T21:33:32Z",
+      "pushed_at": "2026-07-10T22:03:12Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp",
       "steel_release": {
         "assets": [
