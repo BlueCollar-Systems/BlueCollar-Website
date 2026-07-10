@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Part Tag | BlueCollar Systems</title>
+    <title>Part Tracking | BlueCollar Systems</title>
     <meta name="description" content="Resolve a BlueCollar Part Tracking tag. Look up the piece mark from your imported drawing and open it in Steel Logic.">
     <meta name="robots" content="noindex">
     <link rel="icon" href="/favicon.ico" sizes="any">
@@ -14,7 +14,7 @@
     <script src="/nav.js" defer></script>
     <main class="max-w-2xl mx-auto px-6 py-16">
         <p class="text-sm uppercase tracking-widest text-blue-400 mb-2">Part Tracking</p>
-        <h1 class="text-3xl font-bold mb-6">Part tag: <span id="part-id" class="font-mono text-blue-200">…</span></h1>
+        <h1 class="text-3xl font-bold mb-6">Part Tracking ID: <span id="part-id" class="font-mono text-blue-200">…</span></h1>
 
         <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
             <p class="text-gray-300 leading-relaxed">
@@ -60,7 +60,7 @@
         if (id && /^[\w .\-\/#]{1,64}$/.test(id)) {
             el.textContent = id;
             link.href = 'steellogic://shape/' + encodeURIComponent(id);
-            document.title = 'Part ' + id + ' | BlueCollar Systems';
+            document.title = 'Part Tracking ' + id + ' | BlueCollar Systems';
         } else {
             el.textContent = 'unknown';
             link.href = 'steellogic://open';
