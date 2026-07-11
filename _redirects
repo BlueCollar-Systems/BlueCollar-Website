@@ -1,2 +1,4 @@
 # Part Tracking tag URLs: serve the resolver page for every /p/<part_id>.
+# Existing static files (/p/<id>.json, /p/part-resolver.js) take precedence
+# over this rewrite on Cloudflare Pages (no force flag).
 /p/* /p/index.html 200

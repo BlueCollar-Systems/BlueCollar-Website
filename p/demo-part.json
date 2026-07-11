@@ -1,0 +1,13 @@
+{
+  "schema": "bcs.part/1.0",
+  "part_id": "demo-part",
+  "piece_mark": "DEMO-W10X22",
+  "profile_hint": "W10X22",
+  "quantity": 1,
+  "tag_url": "https://bluecollar-systems.com/p/demo-part",
+  "import_build_stamp": {
+    "host": "demo",
+    "semver": "0.0.0",
+    "note": "Synthetic public demo — not a shop drawing"
+  }
+}
