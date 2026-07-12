@@ -45,7 +45,7 @@
                 Tag data lives in the
                 <code class="text-blue-200">parts_bootstrap.json</code> sidecar your
                 importer wrote next to the drawing. Optional public mirrors use
-                <code class="text-blue-200">/p/&lt;id&gt;.json</code>
+                <code class="text-blue-200">/p-records/&lt;id&gt;.json</code>
                 (<code class="text-blue-200">bcs.part/1.0</code>).
             </p>
         </div>
@@ -72,10 +72,10 @@
 
         <p class="text-sm text-gray-500">
             Nothing about your drawing is sent to this server unless the fabricator
-            explicitly publishes a <code>/p/&lt;id&gt;.json</code> record. This page
+            explicitly publishes a <code>/p-records/&lt;id&gt;.json</code> record. This page
             only reads the part ID from the address bar and optional static JSON.
         </p>
     </main>
-    <script src="/p/part-resolver.js" defer></script>
+    <script src="/part-resolver.js" defer></script>
 </body>
 </html>

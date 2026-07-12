@@ -9,6 +9,6 @@
 /repo-metadata.json
   Cache-Control: no-store, max-age=0, must-revalidate
 
-/p/*.json
+/p-records/*.json
   Cache-Control: no-store, max-age=0, must-revalidate
   Content-Type: application/json; charset=utf-8

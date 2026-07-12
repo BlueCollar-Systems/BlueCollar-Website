@@ -71,8 +71,9 @@
   if (link) link.href = 'steellogic://part/' + encodeURIComponent(id);
   document.title = 'Part Tracking ' + id + ' | BlueCollar Systems';
 
-  // Static JSON v1 (R5-6): optional published mirror at /p/<id>.json
-  fetch('/p/' + encodeURIComponent(id) + '.json', { cache: 'no-store' })
+  // Static JSON v1 (R5-6, moved R21-10): optional published mirror at
+  // /p-records/<id>.json — outside /p/ so the /p/* rewrite cannot shadow it.
+  fetch('/p-records/' + encodeURIComponent(id) + '.json', { cache: 'no-store' })
     .then(function (res) {
       if (res.status === 404) {
         showUnpublished(id);
