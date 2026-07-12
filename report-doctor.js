@@ -28,6 +28,27 @@
     return [];
   }
 
+  // R21 corrective §6: every displayed Tags value is sidecar-controlled
+  // (user-supplied JSON) and must never reach an HTML parser. Rows are built
+  // with createElement/textContent and explicit attribute assignment only —
+  // report-doctor.js must contain no innerHTML sinks fed by report/sidecar
+  // data (regression test: tests/report_doctor_xss_test.js).
+  var TAG_ORIGIN = 'https://bluecollar-systems.com';
+
+  function isValidPartId(value) {
+    // part_id is an opaque UUID minted by the Steel Logic app (R21-13,
+    // part.schema.json). Accept conservative opaque-ID characters only;
+    // anything else gets no tag link.
+    return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(value);
+  }
+
+  function tableCell(className, text) {
+    var td = document.createElement('td');
+    td.className = className;
+    td.textContent = text;
+    return td;
+  }
+
   function renderTagsTable(rows) {
     if (!tagsSection || !tagsTable) return;
     clearNode(tagsTable);
@@ -39,7 +60,16 @@
     var table = document.createElement('table');
     table.className = 'w-full text-sm text-left text-gray-300 border border-gray-700';
     var thead = document.createElement('thead');
-    thead.innerHTML = '<tr class="bg-gray-900/60"><th class="p-3">Piece mark</th><th class="p-3">Profile</th><th class="p-3">Qty</th><th class="p-3">Tag URL</th><th class="p-3"></th></tr>';
+    var headRow = document.createElement('tr');
+    headRow.className = 'bg-gray-900/60';
+    var headings = ['Piece mark', 'Profile', 'Qty', 'Tag URL', ''];
+    for (var h = 0; h < headings.length; h++) {
+      var th = document.createElement('th');
+      th.className = 'p-3';
+      th.textContent = headings[h];
+      headRow.appendChild(th);
+    }
+    thead.appendChild(headRow);
     table.appendChild(thead);
     var tbody = document.createElement('tbody');
     for (var i = 0; i < rows.length; i++) {
@@ -47,25 +77,31 @@
       // R21-10: only rows that carry a real part_id get a tag URL. Bootstrap
       // rows have none; minting a random UUID here produced tag URLs that
       // were unresolvable by design (nothing ever persisted them).
-      var partId = row.part_id || null;
-      var mark = safeText(row.piece_mark || row.mark || '—');
-      var profile = safeText(row.profile_hint || row.designation || '—');
-      var qty = safeText(row.quantity || 1);
+      var partId = row.part_id;
       var tr = document.createElement('tr');
       tr.className = 'border-t border-gray-700';
-      var tagCells;
-      if (partId) {
-        var tagUrl = 'https://bluecollar-systems.com/p/' + partId;
-        tagCells = '<td class="p-3 font-mono text-xs">' + tagUrl + '</td>' +
-          '<td class="p-3"><button type="button" class="copy-tag bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs" data-url="' + tagUrl + '">Copy</button></td>';
+      tr.appendChild(tableCell('p-3 font-mono', safeText(row.piece_mark || row.mark || '—')));
+      tr.appendChild(tableCell('p-3', safeText(row.profile_hint || row.designation || '—')));
+      tr.appendChild(tableCell('p-3', safeText(row.quantity || 1)));
+      if (isValidPartId(partId)) {
+        var tagUrl = TAG_ORIGIN + '/p/' + encodeURIComponent(partId);
+        tr.appendChild(tableCell('p-3 font-mono text-xs', tagUrl));
+        var buttonCell = document.createElement('td');
+        buttonCell.className = 'p-3';
+        var copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'copy-tag bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs';
+        copyBtn.setAttribute('data-url', tagUrl);
+        copyBtn.textContent = 'Copy';
+        buttonCell.appendChild(copyBtn);
+        tr.appendChild(buttonCell);
       } else {
-        tagCells = '<td class="p-3 text-gray-500">— (no part_id in sidecar)</td>' +
-          '<td class="p-3"></td>';
+        tr.appendChild(tableCell('p-3 text-gray-500',
+          (partId === undefined || partId === null || partId === '')
+            ? '— (no part_id in sidecar)'
+            : '— (invalid part_id in sidecar)'));
+        tr.appendChild(tableCell('p-3', ''));
       }
-      tr.innerHTML = '<td class="p-3 font-mono">' + mark + '</td>' +
-        '<td class="p-3">' + profile + '</td>' +
-        '<td class="p-3">' + qty + '</td>' +
-        tagCells;
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
