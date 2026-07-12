@@ -127,7 +127,13 @@ def _safe_latest_tagged_release(
         return None
 
     for release in releases:
-        tag = (release or {}).get("tag_name") or ""
+        release = release or {}
+        # R21-11: a PAT in the website-ci token chain sees drafts via
+        # /releases, so a draft (or prerelease) tag could be stamped live
+        # before its assets exist. Only published, final releases count.
+        if release.get("draft") or release.get("prerelease"):
+            continue
+        tag = release.get("tag_name") or ""
         if tag.startswith(tag_prefix):
             return _release_summary(release)
     return None
