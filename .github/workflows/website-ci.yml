@@ -132,6 +132,16 @@ jobs:
           print("Dynamic release link policy check passed.")
           PY
 
+      # R21 corrective §6: syntax-check every shipped script and prove a
+      # hostile parts_bootstrap sidecar renders as literal text in Report
+      # Doctor (no element/event-attribute injection, no innerHTML).
+      - name: JavaScript syntax + Report Doctor XSS regression
+        run: |
+          node --check nav.js
+          node --check part-resolver.js
+          node --check report-doctor.js
+          node tests/report_doctor_xss_test.js
+
       - name: Build repository metadata snapshot
         env:
           GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
