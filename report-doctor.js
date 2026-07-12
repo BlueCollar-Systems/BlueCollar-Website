@@ -822,13 +822,6 @@
 
   analyzeButton.addEventListener('click', parseAndAnalyze);
 
-  if (sampleButton) {
-    sampleButton.addEventListener('click', function() {
-      jsonInput.value = JSON.stringify(SAMPLE_REPORT, null, 2);
-      parseAndAnalyze();
-    });
-  }
-
   if (clearButton) {
     clearButton.addEventListener('click', function() {
       jsonInput.value = '';
