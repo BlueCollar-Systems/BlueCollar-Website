@@ -109,8 +109,13 @@ jobs:
 
           This release includes the static site source used for deployment."
 
+          # RB-21 / Round 21 corrective: existing releases are immutable. Site
+          # snapshots are versioned per release — never re-upload/clobber assets
+          # under an existing tag; the next push mints the next snapshot version.
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ZIP" --clobber
+            echo "Release ${TAG} already exists — immutable; skipping asset upload."
+            echo "::warning::Release ${TAG} already exists; its assets are immutable. Snapshot NOT uploaded — the next push mints the next snapshot version."
+            exit 0
           else
             gh release create "$TAG" --title "$TITLE" --notes "$NOTES" --latest "$ZIP"
           fi
