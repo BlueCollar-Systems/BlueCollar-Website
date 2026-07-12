@@ -1,4 +1,9 @@
 # Part Tracking tag URLs: serve the resolver page for every /p/<part_id>.
-# Existing static files (/p/<id>.json, /p/part-resolver.js) take precedence
-# over this rewrite on Cloudflare Pages (no force flag).
-/p/* /p/index.html 200
+# Cloudflare Pages rewrites run BEFORE static asset lookup — the old comment
+# claiming Netlify-style "static files take precedence" was wrong here. The
+# previous rule (/p/* /p/index.html 200) was silently dropped by Cloudflare's
+# parseRedirects infinite-loop guard (target matched its own /p/* source),
+# 404ing every tag URL in production (R21-10). Rewriting to /p/ serves the
+# directory index without tripping the guard. Published JSON mirrors live
+# under /p-records/ so this rewrite cannot shadow them.
+/p/* /p/ 200

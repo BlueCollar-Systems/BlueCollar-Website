@@ -20,14 +20,6 @@
 
   if (!jsonInput || !analyzeButton) return;
 
-  function uuidV4() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random() * 16 | 0;
-      var v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-  }
-
   function bootstrapRows(data) {
     if (!data || typeof data !== 'object') return [];
     if (Array.isArray(data.rows)) return data.rows;
@@ -52,18 +44,28 @@
     var tbody = document.createElement('tbody');
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i] || {};
-      var partId = row.part_id || uuidV4();
+      // R21-10: only rows that carry a real part_id get a tag URL. Bootstrap
+      // rows have none; minting a random UUID here produced tag URLs that
+      // were unresolvable by design (nothing ever persisted them).
+      var partId = row.part_id || null;
       var mark = safeText(row.piece_mark || row.mark || '—');
       var profile = safeText(row.profile_hint || row.designation || '—');
       var qty = safeText(row.quantity || 1);
-      var tagUrl = 'https://bluecollar-systems.com/p/' + partId;
       var tr = document.createElement('tr');
       tr.className = 'border-t border-gray-700';
+      var tagCells;
+      if (partId) {
+        var tagUrl = 'https://bluecollar-systems.com/p/' + partId;
+        tagCells = '<td class="p-3 font-mono text-xs">' + tagUrl + '</td>' +
+          '<td class="p-3"><button type="button" class="copy-tag bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs" data-url="' + tagUrl + '">Copy</button></td>';
+      } else {
+        tagCells = '<td class="p-3 text-gray-500">— (no part_id in sidecar)</td>' +
+          '<td class="p-3"></td>';
+      }
       tr.innerHTML = '<td class="p-3 font-mono">' + mark + '</td>' +
         '<td class="p-3">' + profile + '</td>' +
         '<td class="p-3">' + qty + '</td>' +
-        '<td class="p-3 font-mono text-xs">' + tagUrl + '</td>' +
-        '<td class="p-3"><button type="button" class="copy-tag bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs" data-url="' + tagUrl + '">Copy</button></td>';
+        tagCells;
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
