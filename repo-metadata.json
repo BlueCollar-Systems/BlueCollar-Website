@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-31T19:55:00+00:00",
+  "generated_at": "2026-07-31T21:33:30+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -29,23 +29,23 @@
         "assets": [
           {
             "content_type": "application/x-msdos-program",
-            "name": "FreeCAD-PDF-Importer-Setup_v4.0.73.exe",
-            "size": 17025764,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.73/FreeCAD-PDF-Importer-Setup_v4.0.73.exe"
+            "name": "FreeCAD-PDF-Importer-Setup_v4.0.75.exe",
+            "size": 16972576,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.75/FreeCAD-PDF-Importer-Setup_v4.0.75.exe"
           },
           {
             "content_type": "application/zip",
-            "name": "FreeCAD-PDF-Importer_v4.0.73.zip",
-            "size": 21483725,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.73/FreeCAD-PDF-Importer_v4.0.73.zip"
+            "name": "FreeCAD-PDF-Importer_v4.0.75.zip",
+            "size": 21209875,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.75/FreeCAD-PDF-Importer_v4.0.75.zip"
           }
         ],
-        "name": "v4.0.73 \u2014 PDF Vector Importer for FreeCAD",
-        "published_at": "2026-07-28T13:22:42Z",
-        "tag": "v4.0.73",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.73"
+        "name": "v4.0.75 \u2014 PDF Vector Importer for FreeCAD",
+        "published_at": "2026-07-31T20:37:20Z",
+        "tag": "v4.0.75",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.75"
       },
-      "pushed_at": "2026-07-28T13:22:41Z",
+      "pushed_at": "2026-07-31T20:37:20Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
@@ -148,5 +148,5 @@
       }
     }
   },
-  "source_event": "schedule"
+  "source_event": "repository_dispatch"
 }
