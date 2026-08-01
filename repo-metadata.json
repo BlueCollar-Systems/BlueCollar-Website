@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-01T01:21:24+00:00",
+  "generated_at": "2026-08-01T03:53:33+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -97,7 +97,7 @@
         "tag": "v1.0.69",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.69"
       },
-      "pushed_at": "2026-08-01T00:25:40Z",
+      "pushed_at": "2026-08-01T01:28:34Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD",
       "steel_release": null
     },
@@ -148,5 +148,5 @@
       }
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "schedule"
 }
