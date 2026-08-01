@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-01T12:39:37+00:00",
+  "generated_at": "2026-08-01T12:39:39+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -8,11 +8,13 @@
         "assets": [
           {
             "content_type": "application/zip",
+            "digest": "sha256:325cdcc1f72906555d78b47358ccc667f6504621dcc56ed3e3e2754f6069d5b9",
             "name": "Blender-PDF-Importer_v1.0.73.zip",
             "size": 19358691,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.73/Blender-PDF-Importer_v1.0.73.zip"
           }
         ],
+        "immutable": true,
         "name": "v1.0.73 \u2014 PDF Vector Importer for Blender",
         "published_at": "2026-08-01T01:20:51Z",
         "tag": "v1.0.73",
@@ -29,17 +31,20 @@
         "assets": [
           {
             "content_type": "application/x-msdownload",
+            "digest": "sha256:f23298e40b70fc05d68088e8833d3b7cdbc98dcdb3948b7307f198c748832ae0",
             "name": "FreeCAD-PDF-Importer-Setup_v4.0.78.exe",
             "size": 16978959,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.78/FreeCAD-PDF-Importer-Setup_v4.0.78.exe"
           },
           {
             "content_type": "application/zip",
+            "digest": "sha256:959942f47373a1af3bc6a317422b0d86ebf4c0bda79f7b735b9bc05d24185596",
             "name": "FreeCAD-PDF-Importer_v4.0.78.zip",
             "size": 21210678,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.78/FreeCAD-PDF-Importer_v4.0.78.zip"
           }
         ],
+        "immutable": true,
         "name": "v4.0.78 \u2014 PDF Vector Importer for FreeCAD",
         "published_at": "2026-08-01T10:07:38Z",
         "tag": "v4.0.78",
@@ -51,23 +56,27 @@
         "assets": [
           {
             "content_type": "text/plain",
+            "digest": "sha256:9e3edce9f9f539d8ae1f3a8be6c5af748eefc00324248fc8f4bdad609f4c720a",
             "name": "SHA256SUMS.txt",
             "size": 218,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/steel-v1.0.0/SHA256SUMS.txt"
           },
           {
             "content_type": "application/zip",
+            "digest": "sha256:8b9d3858cb3d17f30bb9b10d5f55d30a531e1f837de4bd6395a07a613a44b937",
             "name": "Structural-Steel-DXF-DWG-Shapes-latest.zip",
             "size": 9130688,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/steel-v1.0.0/Structural-Steel-DXF-DWG-Shapes-latest.zip"
           },
           {
             "content_type": "application/zip",
+            "digest": "sha256:8b9d3858cb3d17f30bb9b10d5f55d30a531e1f837de4bd6395a07a613a44b937",
             "name": "Structural-Steel-DXF-DWG-Shapes-v1.0.0.zip",
             "size": 9130688,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/steel-v1.0.0/Structural-Steel-DXF-DWG-Shapes-v1.0.0.zip"
           }
         ],
+        "immutable": false,
         "name": "Steel Shapes steel-v1.0.0",
         "published_at": "2026-06-19T02:04:12Z",
         "tag": "steel-v1.0.0",
@@ -81,17 +90,20 @@
         "assets": [
           {
             "content_type": "application/zip",
+            "digest": "sha256:166518f6b45bae759d91f55ebee116ba715119bd2b8ec66c65a59599b8ccfc0e",
             "name": "LibreCAD-PDF-Importer-Windows-Portable_v1.0.72.zip",
             "size": 263893086,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.72/LibreCAD-PDF-Importer-Windows-Portable_v1.0.72.zip"
           },
           {
             "content_type": "application/zip",
+            "digest": "sha256:fe94904ceaaf08975b8cd2fe90b1266a0baa376448bf47a7541b7b6dd3a03b1b",
             "name": "LibreCAD-PDF-Importer_v1.0.72.zip",
             "size": 259556,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.72/LibreCAD-PDF-Importer_v1.0.72.zip"
           }
         ],
+        "immutable": true,
         "name": "v1.0.72 \u2014 PDF to DXF Converter for LibreCAD",
         "published_at": "2026-08-01T12:39:03Z",
         "tag": "v1.0.72",
@@ -108,11 +120,13 @@
         "assets": [
           {
             "content_type": "application/octet-stream",
+            "digest": "sha256:5471b1ec4a300c1fdd256ac2144942ee1767dfc9fec712cc31b87307b8bdf391",
             "name": "SketchUp-PDF-Importer_v3.7.125.rbz",
             "size": 12775445,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.125/SketchUp-PDF-Importer_v3.7.125.rbz"
           }
         ],
+        "immutable": true,
         "name": "v3.7.125 \u2014 PDF Vector Importer for SketchUp",
         "published_at": "2026-07-31T23:53:20Z",
         "tag": "v3.7.125",
@@ -124,23 +138,27 @@
         "assets": [
           {
             "content_type": "text/plain",
+            "digest": "sha256:e372bc73a64e9d90ed05db4460690de47147d11e8963d3c7a3509a450e7c0c26",
             "name": "SHA256SUMS.txt",
             "size": 208,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/steel-v1.0.0/SHA256SUMS.txt"
           },
           {
             "content_type": "application/zip",
+            "digest": "sha256:96499705041973ffe0abf552212e31d757f25d1f77fc43121558b11a8cc79eae",
             "name": "Structural-Steel-SU-Shapes-latest.zip",
             "size": 6285441,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/steel-v1.0.0/Structural-Steel-SU-Shapes-latest.zip"
           },
           {
             "content_type": "application/zip",
+            "digest": "sha256:96499705041973ffe0abf552212e31d757f25d1f77fc43121558b11a8cc79eae",
             "name": "Structural-Steel-SU-Shapes-v1.0.0.zip",
             "size": 6285441,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/steel-v1.0.0/Structural-Steel-SU-Shapes-v1.0.0.zip"
           }
         ],
+        "immutable": false,
         "name": "Steel Shapes steel-v1.0.0",
         "published_at": "2026-06-19T02:03:56Z",
         "tag": "steel-v1.0.0",
@@ -148,5 +166,5 @@
       }
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "local"
 }

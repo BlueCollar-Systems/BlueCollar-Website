@@ -26,3 +26,22 @@ __pycache__/
 dev_logs/
 
 _LLM_CONTROL_PACK/
+
+# Restricted local PDF/CAD evidence must stay outside product repositories.
+# The CI/pre-commit content guard also catches these formats when renamed or
+# stored without an extension.
+*.[pP][dD][fF]
+*.[dD][xX][fF]
+*.[dD][wW][gG]
+*.[sS][kK][pP]
+*.[fF][cC][sS][tT][dD]
+*.[fF][cC][sS][tT][dD]1
+*.[bB][lL][eE][nN][dD]
+*.[bB][lL][eE][nN][dD]1
+*_import_report*.json
+*_failed_import_report*.json
+*_assets/
+**/.private-artifacts/
+**/local-artifacts/
+**/local-evidence/
+**/test-corpus/

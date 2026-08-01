@@ -132,6 +132,9 @@ jobs:
           print("Dynamic release link policy check passed.")
           PY
 
+      - name: Reject private PDF/CAD artifacts
+        run: python tools/validate_private_artifacts.py
+
       # R21 corrective §6: syntax-check every shipped script and prove a
       # hostile parts_bootstrap sidecar renders as literal text in Report
       # Doctor (no element/event-attribute injection, no innerHTML).
@@ -142,6 +145,9 @@ jobs:
           node --check report-doctor.js
           node tests/report_doctor_xss_test.js
           node tests/site_copy_contract_test.js
+
+      - name: Release metadata digest regression
+        run: python tests/test_sync_repo_metadata.py -v
 
       - name: Build repository metadata snapshot
         env:
@@ -169,6 +175,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
         run: python tools/sync_repo_metadata.py
+
+      # Re-run the release gate against the deploy job's fresh API snapshot.
+      # This closes the gap where a new mutable release could appear after
+      # static-checks completed but before Cloudflare publication.
+      - name: Validate final immutable release metadata
+        run: python tools/validate_static_metadata.py
 
       # The metadata sync stamps fresh release tags into the static HTML
       # fallbacks before deploy, so the LIVE site is always current — but the

@@ -86,6 +86,9 @@ def _release_summary(data: dict[str, Any]) -> dict[str, Any]:
         "name": data.get("name"),
         "url": data.get("html_url"),
         "published_at": data.get("published_at"),
+        # A digest identifies the current bytes; GitHub release immutability
+        # proves those bytes cannot later be replaced under the same URL.
+        "immutable": data.get("immutable"),
         "assets": _prioritize_release_assets(
             [
                 {
@@ -93,6 +96,10 @@ def _release_summary(data: dict[str, Any]) -> dict[str, Any]:
                     "url": asset.get("browser_download_url"),
                     "size": asset.get("size"),
                     "content_type": asset.get("content_type"),
+                    # GitHub computes this digest from the stored release
+                    # asset. Keep it in the downstream snapshot so a site
+                    # update is bound to final bytes, not only a filename.
+                    "digest": asset.get("digest"),
                 }
                 for asset in data.get("assets", [])
             ]

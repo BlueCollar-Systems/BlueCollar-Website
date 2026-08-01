@@ -26,6 +26,15 @@ _CODE_RE = re.compile(r"<code[^>]*>([^<]+)</code>")
 _ASSET_EXTENSIONS = (".exe", ".zip", ".rbz")
 # Accepts a real semver (v4.0.65), the docs convention vX.Y.Z, or v<version>.
 _VERSION_TOKEN_RE = re.compile(r"v(?:\d+(?:\.\d+){2}|X\.Y\.Z|<version>)")
+_ASSET_DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+REQUIRED_IMPORTER_REPOS = frozenset(
+    {
+        "BlueCollar-Systems/PDF-Importer-SketchUp",
+        "BlueCollar-Systems/PDF-Importer-FreeCAD",
+        "BlueCollar-Systems/PDF-Importer-Blender",
+        "BlueCollar-Systems/PDF-Importer-LibreCAD",
+    }
+)
 
 
 def _normalize_asset_name(name: str) -> str:
@@ -47,6 +56,51 @@ def _asset_name_patterns(repos: dict) -> set[str]:
                 if isinstance(name, str) and name:
                     patterns.add(_normalize_asset_name(name))
     return patterns
+
+
+def _check_release_asset_digests(repos: dict, failures: list[str]) -> int:
+    """Require each published importer download to bind to GitHub's bytes."""
+    checked = 0
+    for repo_key, repo in repos.items():
+        if not isinstance(repo, dict):
+            continue
+        release = repo.get("latest_release")
+        if not isinstance(release, dict):
+            continue
+        for asset in release.get("assets") or []:
+            name = (asset or {}).get("name")
+            if not isinstance(name, str) or "PDF-Importer" not in name:
+                continue
+            if not name.lower().endswith(_ASSET_EXTENSIONS):
+                continue
+            checked += 1
+            digest = (asset or {}).get("digest")
+            if not isinstance(digest, str) or not _ASSET_DIGEST_RE.fullmatch(digest):
+                failures.append(
+                    f"{repo_key} release asset {name!r} has no final sha256 digest "
+                    "in repo-metadata.json"
+                )
+    return checked
+
+
+def _check_importer_release_immutability(repos: dict, failures: list[str]) -> int:
+    """Require every product snapshot to come from a locked GitHub release."""
+    checked = 0
+    for repo_key in sorted(REQUIRED_IMPORTER_REPOS):
+        repo = repos.get(repo_key)
+        if not isinstance(repo, dict):
+            failures.append(f"{repo_key} has no release metadata record")
+            continue
+        release = repo.get("latest_release")
+        if not isinstance(release, dict):
+            failures.append(f"{repo_key} has no latest release metadata")
+            continue
+        checked += 1
+        if release.get("immutable") is not True:
+            failures.append(
+                f"{repo_key} latest release is not confirmed immutable"
+            )
+    return checked
 
 
 def _check_code_asset_names(
@@ -106,6 +160,10 @@ def main() -> int:
     asset_names_checked = 0
     failures: list[str] = []
     asset_patterns = _asset_name_patterns(repos)
+    immutable_releases_checked = _check_importer_release_immutability(
+        repos, failures
+    )
+    asset_digests_checked = _check_release_asset_digests(repos, failures)
     for page in sorted(Path(".").glob("*.html")):
         text = page.read_text(encoding="utf-8")
         asset_names_checked += _check_code_asset_names(
@@ -148,9 +206,23 @@ def main() -> int:
             "cards should name at least one downloadable asset (R21-4)"
         )
 
+    if asset_digests_checked == 0:
+        raise SystemExit(
+            "No importer release asset digests found; metadata must bind downloads "
+            "to final GitHub bytes"
+        )
+
+    if immutable_releases_checked != len(REQUIRED_IMPORTER_REPOS):
+        raise SystemExit(
+            "Not all importer releases have metadata records; final immutable "
+            "releases are required before website publication"
+        )
+
     print(
         f"Static metadata fallback check passed "
-        f"({checked} labels, {asset_names_checked} asset filenames)."
+        f"({checked} labels, {asset_names_checked} asset filenames, "
+        f"{asset_digests_checked} asset digests, "
+        f"{immutable_releases_checked} immutable releases)."
     )
     return 0
 
