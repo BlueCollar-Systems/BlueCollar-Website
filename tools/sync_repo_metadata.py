@@ -42,7 +42,10 @@ def _prioritize_release_assets(assets: list[dict[str, Any]]) -> list[dict[str, A
             primary.append(asset)
         else:
             other.append(asset)
-    return sorted(primary, key=_asset_priority) or other
+    # Keep the install/download artifacts first so nav.js selects the same
+    # user-friendly default, but retain verification sidecars (for example an
+    # installer attestation) in the downstream release snapshot as well.
+    return sorted(primary, key=_asset_priority) + other
 
 REPOS: tuple[str, ...] = (
     "BlueCollar-Systems/PDF-Importer-SketchUp",
@@ -86,6 +89,9 @@ def _release_summary(data: dict[str, Any]) -> dict[str, Any]:
         "name": data.get("name"),
         "url": data.get("html_url"),
         "published_at": data.get("published_at"),
+        # Bind the downstream snapshot to the exact product source revision,
+        # not only to a mutable branch name or a human-readable tag.
+        "target_commitish": data.get("target_commitish"),
         # A digest identifies the current bytes; GitHub release immutability
         # proves those bytes cannot later be replaced under the same URL.
         "immutable": data.get("immutable"),

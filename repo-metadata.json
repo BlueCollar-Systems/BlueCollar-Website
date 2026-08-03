@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-03T21:23:48+00:00",
+  "generated_at": "2026-08-03T21:39:09+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -18,6 +18,7 @@
         "name": "v1.0.79 \u2014 PDF Vector Importer for Blender",
         "published_at": "2026-08-03T16:40:49Z",
         "tag": "v1.0.79",
+        "target_commitish": "35fd2bd6f61deb7f350f334d1242964018a71413",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.79"
       },
       "pushed_at": "2026-08-03T16:40:40Z",
@@ -42,12 +43,20 @@
             "name": "FreeCAD-PDF-Importer_v4.0.85.zip",
             "size": 61115147,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.85/FreeCAD-PDF-Importer_v4.0.85.zip"
+          },
+          {
+            "content_type": "application/json",
+            "digest": "sha256:e6907b4e6ebba5355c628751ac451b849260d4d78f0fb24fd88928ffbf5c40b5",
+            "name": "FreeCAD-PDF-Importer-Setup_v4.0.85.attestation.json",
+            "size": 810,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.85/FreeCAD-PDF-Importer-Setup_v4.0.85.attestation.json"
           }
         ],
         "immutable": true,
         "name": "v4.0.85 \u2014 PDF Vector Importer for FreeCAD",
         "published_at": "2026-08-03T21:23:14Z",
         "tag": "v4.0.85",
+        "target_commitish": "48ca80ed2c47c91a66d6060fbf783d71653d7a3f",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.85"
       },
       "pushed_at": "2026-08-03T21:23:17Z",
@@ -80,6 +89,7 @@
         "name": "Steel Shapes steel-v1.0.1",
         "published_at": "2026-08-03T12:44:39Z",
         "tag": "steel-v1.0.1",
+        "target_commitish": "main",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/steel-v1.0.1"
       }
     },
@@ -107,6 +117,7 @@
         "name": "v1.0.81 \u2014 PDF to DXF Converter for LibreCAD",
         "published_at": "2026-08-03T19:15:02Z",
         "tag": "v1.0.81",
+        "target_commitish": "8ef5a1fe5c1cf6e86e673bc0f6bc327856ef279d",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.81"
       },
       "pushed_at": "2026-08-03T19:15:02Z",
@@ -124,12 +135,27 @@
             "name": "SketchUp-PDF-Importer_v3.7.128.rbz",
             "size": 12786495,
             "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.128/SketchUp-PDF-Importer_v3.7.128.rbz"
+          },
+          {
+            "content_type": "text/plain; charset=utf-8",
+            "digest": "sha256:2a09766682f30b9d68f112efd8457673053cb905ceeec90bbeb51b3e65a6af55",
+            "name": "SHA256SUMS.txt",
+            "size": 101,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.128/SHA256SUMS.txt"
+          },
+          {
+            "content_type": "text/plain; charset=utf-8",
+            "digest": "sha256:3fd70e977ee029a525840af1e4a4a5f8e2d856475befbeb364f4e5c690273d7c",
+            "name": "SOURCE_SHA256SUMS.txt",
+            "size": 550,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.128/SOURCE_SHA256SUMS.txt"
           }
         ],
         "immutable": true,
         "name": "v3.7.128 \u2014 PDF Vector Importer for SketchUp",
         "published_at": "2026-08-03T12:21:26Z",
         "tag": "v3.7.128",
+        "target_commitish": "22c8c8bf2fc91b5b3a56771c922367479728b93f",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.128"
       },
       "pushed_at": "2026-08-03T12:45:58Z",
@@ -162,9 +188,10 @@
         "name": "Steel Shapes steel-v1.0.2",
         "published_at": "2026-08-03T12:46:14Z",
         "tag": "steel-v1.0.2",
+        "target_commitish": "main",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/steel-v1.0.2"
       }
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "local"
 }

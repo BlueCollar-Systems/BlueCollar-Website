@@ -22,6 +22,57 @@ VALIDATE_SPEC.loader.exec_module(VALIDATE)
 
 
 class ReleaseSummaryTests(unittest.TestCase):
+    def test_release_summary_preserves_exact_target_commit(self) -> None:
+        commit = "48ca80ed2c47c91a66d6060fbf783d71653d7a3f"
+        summary = SYNC._release_summary(
+            {
+                "tag_name": "v4.0.85",
+                "target_commitish": commit,
+                "assets": [],
+            }
+        )
+
+        self.assertEqual(summary.get("target_commitish"), commit)
+
+    def test_primary_assets_precede_but_preserve_supporting_attestation(self) -> None:
+        summary = SYNC._release_summary(
+            {
+                "tag_name": "v4.0.85",
+                "assets": [
+                    {
+                        "name": "FreeCAD-PDF-Importer-Setup_v4.0.85.attestation.json",
+                        "browser_download_url": "https://example.invalid/attestation.json",
+                        "size": 810,
+                        "content_type": "application/json",
+                        "digest": "sha256:" + "c" * 64,
+                    },
+                    {
+                        "name": "FreeCAD-PDF-Importer_v4.0.85.zip",
+                        "browser_download_url": "https://example.invalid/freecad.zip",
+                        "size": 61_115_147,
+                        "content_type": "application/zip",
+                        "digest": "sha256:" + "a" * 64,
+                    },
+                    {
+                        "name": "FreeCAD-PDF-Importer-Setup_v4.0.85.exe",
+                        "browser_download_url": "https://example.invalid/freecad.exe",
+                        "size": 17_756_091,
+                        "content_type": "application/x-msdownload",
+                        "digest": "sha256:" + "b" * 64,
+                    },
+                ],
+            }
+        )
+
+        self.assertEqual(
+            [asset["name"] for asset in summary["assets"]],
+            [
+                "FreeCAD-PDF-Importer-Setup_v4.0.85.exe",
+                "FreeCAD-PDF-Importer_v4.0.85.zip",
+                "FreeCAD-PDF-Importer-Setup_v4.0.85.attestation.json",
+            ],
+        )
+
     def test_primary_asset_preserves_github_digest(self) -> None:
         digest = "sha256:" + "a" * 64
         summary = SYNC._release_summary(
@@ -101,7 +152,13 @@ class ReleaseDigestValidationTests(unittest.TestCase):
 
     def test_requires_every_importer_release_to_be_immutable(self) -> None:
         repos = {
-            repo: {"latest_release": {"immutable": True, "assets": []}}
+            repo: {
+                "latest_release": {
+                    "immutable": True,
+                    "target_commitish": "1" * 40,
+                    "assets": [],
+                }
+            }
             for repo in VALIDATE.REQUIRED_IMPORTER_REPOS
         }
         failures: list[str] = []
@@ -113,14 +170,18 @@ class ReleaseDigestValidationTests(unittest.TestCase):
         repos["BlueCollar-Systems/PDF-Importer-LibreCAD"]["latest_release"][
             "immutable"
         ] = False
+        repos["BlueCollar-Systems/PDF-Importer-SketchUp"]["latest_release"][
+            "target_commitish"
+        ] = "main"
         del repos["BlueCollar-Systems/PDF-Importer-Blender"]
         failures = []
         checked = VALIDATE._check_importer_release_immutability(repos, failures)
 
         self.assertEqual(checked, 3)
-        self.assertEqual(len(failures), 2)
+        self.assertEqual(len(failures), 3)
         self.assertTrue(any("LibreCAD" in failure for failure in failures))
         self.assertTrue(any("Blender" in failure for failure in failures))
+        self.assertTrue(any("SketchUp" in failure for failure in failures))
 
 
 if __name__ == "__main__":

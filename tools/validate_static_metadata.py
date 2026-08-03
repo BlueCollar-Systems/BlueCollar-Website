@@ -100,6 +100,13 @@ def _check_importer_release_immutability(repos: dict, failures: list[str]) -> in
             failures.append(
                 f"{repo_key} latest release is not confirmed immutable"
             )
+        target_commitish = release.get("target_commitish")
+        if not isinstance(target_commitish, str) or not re.fullmatch(
+            r"[0-9a-f]{40}", target_commitish
+        ):
+            failures.append(
+                f"{repo_key} latest release is not bound to an exact source commit"
+            )
     return checked
 
 
