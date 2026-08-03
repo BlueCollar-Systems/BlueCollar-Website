@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-03T13:28:20+00:00",
+  "generated_at": "2026-08-03T13:31:06+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -20,7 +20,7 @@
         "tag": "v1.0.78",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.78"
       },
-      "pushed_at": "2026-08-03T13:25:41Z",
+      "pushed_at": "2026-08-03T13:29:14Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender",
       "steel_release": null
     },
@@ -166,5 +166,5 @@
       }
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "workflow_dispatch"
 }
