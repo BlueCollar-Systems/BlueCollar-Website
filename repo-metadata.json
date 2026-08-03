@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-03T12:54:51+00:00",
+  "generated_at": "2026-08-03T13:28:20+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -8,19 +8,19 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "digest": "sha256:8dbb1c04e47a91727fe0d243d11f6dfca88b1c29a5db84697e528d858eff933a",
-            "name": "Blender-PDF-Importer_v1.0.77.zip",
-            "size": 19367843,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.77/Blender-PDF-Importer_v1.0.77.zip"
+            "digest": "sha256:7bb500daac63f95412d3e4b85d32f7038080588b19b53f3038c9199c0df8d7d1",
+            "name": "Blender-PDF-Importer_v1.0.78.zip",
+            "size": 19367903,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.78/Blender-PDF-Importer_v1.0.78.zip"
           }
         ],
         "immutable": true,
-        "name": "v1.0.77 \u2014 PDF Vector Importer for Blender",
-        "published_at": "2026-08-03T11:21:31Z",
-        "tag": "v1.0.77",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.77"
+        "name": "v1.0.78 \u2014 PDF Vector Importer for Blender",
+        "published_at": "2026-08-03T13:27:45Z",
+        "tag": "v1.0.78",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.78"
       },
-      "pushed_at": "2026-08-03T11:14:40Z",
+      "pushed_at": "2026-08-03T13:25:41Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender",
       "steel_release": null
     },
@@ -50,7 +50,7 @@
         "tag": "v4.0.83",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.83"
       },
-      "pushed_at": "2026-08-03T12:44:15Z",
+      "pushed_at": "2026-08-03T13:00:04Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
