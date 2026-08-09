@@ -144,6 +144,7 @@ jobs:
           node --check part-resolver.js
           node --check report-doctor.js
           node tests/report_doctor_file_inputs_test.js
+          node tests/report_doctor_browser_test.js
           node tests/report_doctor_xss_test.js
           node tests/site_copy_contract_test.js
 
