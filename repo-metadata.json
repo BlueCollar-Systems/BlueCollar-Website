@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-09T13:17:24+00:00",
+  "generated_at": "2026-08-09T13:30:20+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -100,27 +100,27 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "digest": "sha256:39743a9ae33bbff812b263b42f08e1e5a7139052133389928d935710e76e95c6",
-            "name": "LibreCAD-PDF-Importer-Windows-Portable_v1.0.81.zip",
-            "size": 264056738,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.81/LibreCAD-PDF-Importer-Windows-Portable_v1.0.81.zip"
+            "digest": "sha256:72e44fe5f6d2ecd0425773b55f9f8272bca872a0f941933544c9fc744623bf9e",
+            "name": "LibreCAD-PDF-Importer-Windows-Portable_v1.0.82.zip",
+            "size": 264078934,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.82/LibreCAD-PDF-Importer-Windows-Portable_v1.0.82.zip"
           },
           {
             "content_type": "application/zip",
-            "digest": "sha256:1f95cad47c1aeb63a41cd428b1ab55a0c2d5891d159bcc227d5ab38e790b171c",
-            "name": "LibreCAD-PDF-Importer_v1.0.81.zip",
-            "size": 291204,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.81/LibreCAD-PDF-Importer_v1.0.81.zip"
+            "digest": "sha256:9a3dc89f75afec4842925e783263fb1fe5137e7cd0a6b5036ce1b8fe1733e4a3",
+            "name": "LibreCAD-PDF-Importer_v1.0.82.zip",
+            "size": 298186,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/download/v1.0.82/LibreCAD-PDF-Importer_v1.0.82.zip"
           }
         ],
         "immutable": true,
-        "name": "v1.0.81 \u2014 PDF to DXF Converter for LibreCAD",
-        "published_at": "2026-08-03T19:15:02Z",
-        "tag": "v1.0.81",
-        "target_commitish": "8ef5a1fe5c1cf6e86e673bc0f6bc327856ef279d",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.81"
+        "name": "v1.0.82 \u2014 PDF to DXF Converter for LibreCAD",
+        "published_at": "2026-08-09T13:29:47Z",
+        "tag": "v1.0.82",
+        "target_commitish": "b9cc381719cb748b6a825c56a778ba4df539a8f6",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.82"
       },
-      "pushed_at": "2026-08-09T13:01:19Z",
+      "pushed_at": "2026-08-09T13:29:47Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD",
       "steel_release": null
     },
@@ -193,5 +193,5 @@
       }
     }
   },
-  "source_event": "schedule"
+  "source_event": "repository_dispatch"
 }
