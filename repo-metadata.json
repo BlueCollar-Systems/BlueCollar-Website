@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T23:31:02+00:00",
+  "generated_at": "2026-08-11T23:34:32+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -131,34 +131,34 @@
         "assets": [
           {
             "content_type": "application/octet-stream",
-            "digest": "sha256:2a7fc769c3317318b616788a282ba79d47c158526043e3d00a60d031fcd48cde",
-            "name": "SketchUp-PDF-Importer_v3.7.131.rbz",
-            "size": 13116834,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.131/SketchUp-PDF-Importer_v3.7.131.rbz"
+            "digest": "sha256:c95e1d640871ce493f08b0f55e0776cbc86f4fdd0babfcfca0521075de8322af",
+            "name": "SketchUp-PDF-Importer_v3.7.132.rbz",
+            "size": 13119652,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.132/SketchUp-PDF-Importer_v3.7.132.rbz"
           },
           {
             "content_type": "text/plain; charset=utf-8",
-            "digest": "sha256:be3fb856820b9d1208f3e03d3b3f1e0335f6433033d2ff3d9add26dbb5acd827",
+            "digest": "sha256:7f4470f74072e405e0074bfdc6ffdeb7adea79cd145a6a2e0fc7abb76ed2265b",
             "name": "SHA256SUMS.txt",
             "size": 101,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.131/SHA256SUMS.txt"
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.132/SHA256SUMS.txt"
           },
           {
             "content_type": "text/plain; charset=utf-8",
             "digest": "sha256:3fd70e977ee029a525840af1e4a4a5f8e2d856475befbeb364f4e5c690273d7c",
             "name": "SOURCE_SHA256SUMS.txt",
             "size": 550,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.131/SOURCE_SHA256SUMS.txt"
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.132/SOURCE_SHA256SUMS.txt"
           }
         ],
         "immutable": true,
-        "name": "v3.7.131 \u2014 PDF Vector Importer for SketchUp",
-        "published_at": "2026-08-11T00:15:52Z",
-        "tag": "v3.7.131",
-        "target_commitish": "3df5d641638dde1ab7e8acdcb195bb2feede4ee3",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.131"
+        "name": "v3.7.132 \u2014 PDF Vector Importer for SketchUp",
+        "published_at": "2026-08-11T23:33:47Z",
+        "tag": "v3.7.132",
+        "target_commitish": "47d3bd9de00d82859ffa875a7cb194c5c44875fe",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.132"
       },
-      "pushed_at": "2026-08-11T23:26:52Z",
+      "pushed_at": "2026-08-11T23:33:47Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp",
       "steel_release": {
         "assets": [
