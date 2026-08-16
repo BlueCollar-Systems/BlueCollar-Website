@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-16T02:57:40+00:00",
+  "generated_at": "2026-08-16T06:50:32+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -8,20 +8,20 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "digest": "sha256:c2df4417afaf314c082a8ff5aa728ae9cfa7b62e86f78154a821d3baae8b7650",
-            "name": "Blender-PDF-Importer_v1.0.87.zip",
-            "size": 19393750,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.87/Blender-PDF-Importer_v1.0.87.zip"
+            "digest": "sha256:1db00e20d48fe5a81c7a17e6bb2e337bf0a6172b5c0f12ff260a225ffc50920f",
+            "name": "Blender-PDF-Importer_v1.0.88.zip",
+            "size": 19396958,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.88/Blender-PDF-Importer_v1.0.88.zip"
           }
         ],
         "immutable": true,
-        "name": "v1.0.87 \u2014 PDF Vector Importer for Blender",
-        "published_at": "2026-08-15T20:00:17Z",
-        "tag": "v1.0.87",
-        "target_commitish": "279f5f54fb0ed42317a18cd090adf602d42afb1b",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.87"
+        "name": "v1.0.88 \u2014 PDF Vector Importer for Blender",
+        "published_at": "2026-08-16T06:49:53Z",
+        "tag": "v1.0.88",
+        "target_commitish": "e9d24618720412a3edce74604a22db660abba94f",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.88"
       },
-      "pushed_at": "2026-08-15T20:00:08Z",
+      "pushed_at": "2026-08-16T06:49:45Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender",
       "steel_release": null
     },
@@ -59,7 +59,7 @@
         "target_commitish": "09860be23bee776cb48115d8584dd50262e33445",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.92"
       },
-      "pushed_at": "2026-08-15T20:07:34Z",
+      "pushed_at": "2026-08-16T04:19:57Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
