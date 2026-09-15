@@ -43,6 +43,12 @@ Do **not** store API tokens in this repo. Configure in the Cloudflare dashboard 
 - **No separate Pages “build hook” required** unless you want a manual dashboard redeploy; CI is the source of truth.
 - After publishing a new GitHub **release** on an importer repo, ensure `WEBSITE_DISPATCH_TOKEN` (or equivalent) can fire `repository_dispatch` so metadata and deploy refresh without waiting for cron.
 
+## Deploy failure: Cloudflare auth 10000
+
+GitHub Actions `website-ci` `deploy-pages` has failed closed since **2026-09-01T05:15Z**. The `CLOUDFLARE_API_TOKEN` secret is present but Cloudflare returns `{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}` on `GET /accounts/{account_id}/pages/projects/bluecollar-website`. Badge-stamp commits still land on `main`; production Pages (`bluecollar-website`, custom domain `bluecollar-systems.com`) does not update.
+
+Fix: rotate the token in [API Tokens](https://dash.cloudflare.com/profile/api-tokens) with **Account → Cloudflare Pages: Edit** and **Account Settings: Read**, then `gh secret set CLOUDFLARE_API_TOKEN` on `BlueCollar-Systems/BlueCollar-Website`. Until that secret is valid, production can still be published with `wrangler pages deploy . --project-name bluecollar-website --branch main` after `wrangler login` against account `df143f08ce8d490ebf620fe776fbd375`.
+
 ## GitHub secrets (deploy)
 
 | Secret | Purpose |

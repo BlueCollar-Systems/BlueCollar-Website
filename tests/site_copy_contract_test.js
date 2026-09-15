@@ -80,6 +80,38 @@ assert(
   !html.includes("Install free Poppler or MuPDF once"),
   "site must not ask users to install helpers already included in the RBZ"
 );
+assert(
+  html.includes("Shop time tracking, plus AISC shapes and calculators"),
+  "Steel Logic copy must lead with shop time tracking"
+);
+assert(
+  html.includes("Job Clock for jobs and parts on the floor"),
+  "Steel Logic copy must name Job Clock"
+);
+assert(
+  !html.includes("AISC v16.0 Structural Steel Shapes Reference"),
+  "site must not keep the old shapes-first Steel Logic headline"
+);
+assert(
+  html.includes("Tag QC Builder"),
+  "site must advertise Tag QC Builder"
+);
+assert(
+  html.includes("v10.19"),
+  "Tag QC operator portable must be the current cut v10.19"
+);
+assert(
+  html.includes("v10.16"),
+  "Tag QC published snapshot v10.16 must remain listed"
+);
+assert(
+  html.includes("b88d7fd3c8dc4bc11e4251d7c8fd16266a9cc0148cc221347e81ab8d68912318"),
+  "published Tag QC v10.16 ZIP SHA-256 must remain the immutable digest"
+);
+assert(
+  html.includes("GitHub Release"),
+  "importer badges must be described as GitHub Release versions"
+);
 
 const primaryCtas = anchorTags.filter((tag) => {
   const classes = attributeValue(tag, "class");
