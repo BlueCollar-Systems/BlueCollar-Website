@@ -97,8 +97,8 @@ assert(
   "site must advertise Tag QC Builder"
 );
 assert(
-  html.includes("v10.20"),
-  "Tag QC operator portable must be the current cut v10.20"
+  html.includes("v10.21"),
+  "Tag QC operator portable must be the current cut v10.21"
 );
 assert(
   html.includes("v10.16"),
