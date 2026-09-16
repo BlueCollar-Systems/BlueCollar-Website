@@ -151,6 +151,9 @@ jobs:
       - name: Release metadata digest regression
         run: python tests/test_sync_repo_metadata.py -v
 
+      - name: Public deployment metadata regression
+        run: python tests/test_verify_deployed_metadata.py -v
+
       - name: Build repository metadata snapshot
         env:
           GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
@@ -183,25 +186,6 @@ jobs:
       # static-checks completed but before Cloudflare publication.
       - name: Validate final immutable release metadata
         run: python tools/validate_static_metadata.py
-
-      # The metadata sync stamps fresh release tags into the static HTML
-      # fallbacks before deploy, so the LIVE site is always current — but the
-      # repo copy used to rot until someone hand-bumped it (board Q-09-e).
-      # Committing the stamped files back retires that recurring task.
-      # GITHUB_TOKEN pushes do not retrigger workflows, so no loop and no
-      # release is minted for badge stamps.
-      - name: Commit stamped version badges back to repo
-        run: |
-          set -e
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- *.html repo-metadata.json
-          if git diff --cached --quiet; then
-            echo "Repo badges already current."
-          else
-            git commit -m "chore: stamp release badges from metadata sync [skip release]"
-            git push origin "HEAD:main" || echo "::warning::Badge stamp push failed (non-fatal; live deploy is unaffected)."
-          fi
 
       - name: Deploy to Cloudflare Pages
         env:
@@ -250,3 +234,24 @@ jobs:
           print("Cloudflare deploy credentials validated.")
           PY
           npx --yes wrangler@4.83.0 pages deploy . --project-name bluecollar-website --branch main
+
+      # A successful upload does not prove that the custom domain serves the
+      # new download links. Retry bounded propagation delays, then fail closed.
+      - name: Verify public download metadata
+        run: python tools/verify_deployed_metadata.py
+
+      # Persist only the snapshot verified on the public domain. Failed auth,
+      # failed deployments and stale public metadata must not stamp main.
+      # GITHUB_TOKEN pushes do not retrigger workflows or mint new releases.
+      - name: Commit stamped version badges back to repo
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- *.html repo-metadata.json
+          if git diff --cached --quiet; then
+            echo "Repo badges already current."
+          else
+            git commit -m "chore: stamp release badges from metadata sync [skip release]"
+            git push origin "HEAD:main" || echo "::warning::Badge stamp push failed (non-fatal; live deploy was verified)."
+          fi

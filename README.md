@@ -33,7 +33,7 @@ Deployed to **Cloudflare Pages** (project `bluecollar-website`) via GitHub Actio
 
 - Pushes to `main` run `website-ci`.
 - `static-checks` must pass before `deploy-pages` runs.
-- `deploy-pages` runs `tools/sync_repo_metadata.py`, then publishes the static tree with Wrangler.
+- `deploy-pages` syncs and validates release metadata, publishes with Wrangler, then verifies that the public domain serves the exact new metadata bytes before committing stamped badges back to `main`.
 - Pushes to `main`/`master` also run `auto-release` to bump `VERSION` and publish a GitHub Release snapshot zip.
 - A **cron** (`17 */6 * * *`) re-syncs release metadata even if no product repo fired a dispatch.
 
@@ -50,13 +50,16 @@ Product versions and ZIP download URLs are **not** hardcoded in HTML for version
 | [`nav.js`](nav.js) | Client-side enhancement: loads `/repo-metadata.json` (`Cache-Control: no-store`) and updates `data-repo-version`, `data-repo-release-link`, and `data-repo-asset-link` elements. Supports `data-release-channel="steel"` for shape-pack downloads hosted by importer repos. |
 | Static HTML fallbacks | `releases/latest` links and version badges work if JavaScript or metadata fetch fails. |
 
-Tracked repos: `PDF-Importer-SketchUp`, `PDF-Importer-FreeCAD`, `PDF-Importer-Blender`, `PDF-Importer-LibreCAD`, and `Steel-Shapes` (kept only if the API token can read it). The former standalone SketchUp and DXF/DWG shape repos are now represented by `steel-v*` releases in the SketchUp and FreeCAD importer repos.
+Tracked repos: `PDF-Importer-SketchUp`, `PDF-Importer-FreeCAD`, `PDF-Importer-Blender`, and `PDF-Importer-LibreCAD`. Private Steel Logic and Tag QC release assets are not exposed in this public snapshot. The former standalone SketchUp and DXF/DWG shape repos are now represented by `steel-v*` releases in the SketchUp and FreeCAD importer repos.
 
 ### End-to-end automation (product release → live site)
 
 1. Importer repo `auto-release` (or manual `release: published`) creates/updates a GitHub Release.
 2. Same pipeline dispatches `repository_dispatch` to `BlueCollar-Systems/BlueCollar-Website` with event type `product-release` (or `product-update`).
 3. `website-ci` `deploy-pages` re-runs `sync_repo_metadata.py` and deploys to Cloudflare Pages.
+4. `tools/verify_deployed_metadata.py` requests the public metadata with cache bypass headers and a unique query, allowing up to 12 attempts with 10 seconds between attempts and a 15-second request timeout. It requires exact bytes, so stale tags, download URLs, source revisions, asset digests, or an older snapshot fail the job. Only a verified deployment commits the stamped badges back to `main`.
+
+To check a prepared snapshot manually, run `python tools/verify_deployed_metadata.py --expected repo-metadata.json`. This reads the public metadata; it does not deploy or change any content.
 
 Importer workflows: `.github/workflows/auto-release.yml` and `.github/workflows/notify-website-deploy.yml` in each product repo.
 
