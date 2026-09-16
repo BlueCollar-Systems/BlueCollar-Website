@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-16T20:52:21+00:00",
+  "generated_at": "2026-09-16T21:09:57+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -8,20 +8,20 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "digest": "sha256:6a8b4c26ad76bfddf838f751b59ff19ebb36624205e30bdf3076b32dc094320f",
-            "name": "Blender-PDF-Importer_v1.0.97.zip",
-            "size": 19405311,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.97/Blender-PDF-Importer_v1.0.97.zip"
+            "digest": "sha256:e80b3a412f77bbcc20b4c37c61dc1b6e8e9f8bc9d250c1a468a86954ecaa3aaa",
+            "name": "Blender-PDF-Importer_v1.0.98.zip",
+            "size": 19408039,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.98/Blender-PDF-Importer_v1.0.98.zip"
           }
         ],
         "immutable": true,
-        "name": "v1.0.97 \u2014 PDF Vector Importer for Blender",
-        "published_at": "2026-09-16T20:48:01Z",
-        "tag": "v1.0.97",
-        "target_commitish": "0ca092279917513cf0f094cfe1a0088a78aee0a5",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.97"
+        "name": "v1.0.98 \u2014 PDF Vector Importer for Blender",
+        "published_at": "2026-09-16T21:02:01Z",
+        "tag": "v1.0.98",
+        "target_commitish": "ed284890e8924c3e5b58b29ca08c910f00c3ea48",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.98"
       },
-      "pushed_at": "2026-09-16T20:47:50Z",
+      "pushed_at": "2026-09-16T21:05:17Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender",
       "steel_release": null
     },
@@ -32,34 +32,34 @@
         "assets": [
           {
             "content_type": "application/x-msdownload",
-            "digest": "sha256:97f3ffd2aaf626aad58f7a84d21199b0064b8b2ca94c7d3821ae5e0c28cd9652",
-            "name": "FreeCAD-PDF-Importer-Setup_v4.0.102.exe",
-            "size": 17784997,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.102/FreeCAD-PDF-Importer-Setup_v4.0.102.exe"
+            "digest": "sha256:771f75d6500f6dd25590383ae967137e648be02098f04f4efc5ef86c33287bb2",
+            "name": "FreeCAD-PDF-Importer-Setup_v4.0.103.exe",
+            "size": 17786648,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.103/FreeCAD-PDF-Importer-Setup_v4.0.103.exe"
           },
           {
             "content_type": "application/zip",
-            "digest": "sha256:b3a109997a84364e6af0b353e631c3e2b5f84032fcb0fbcad380a0f668b67ea8",
-            "name": "FreeCAD-PDF-Importer_v4.0.102.zip",
-            "size": 61244080,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.102/FreeCAD-PDF-Importer_v4.0.102.zip"
+            "digest": "sha256:31e53ef1cece9dffa500632252772d2f41ad961720378b22baddcbf4e6d13f70",
+            "name": "FreeCAD-PDF-Importer_v4.0.103.zip",
+            "size": 61249437,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.103/FreeCAD-PDF-Importer_v4.0.103.zip"
           },
           {
             "content_type": "application/json",
-            "digest": "sha256:5d66d72b73674dec700e7ec25c44a8b840030634242b90f84726d35e3dcab917",
-            "name": "FreeCAD-PDF-Importer-Setup_v4.0.102.attestation.json",
+            "digest": "sha256:8b836bde37583cfc0f363b751a361160c65937b2d7e17145497de3a796d7883b",
+            "name": "FreeCAD-PDF-Importer-Setup_v4.0.103.attestation.json",
             "size": 812,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.102/FreeCAD-PDF-Importer-Setup_v4.0.102.attestation.json"
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.103/FreeCAD-PDF-Importer-Setup_v4.0.103.attestation.json"
           }
         ],
         "immutable": true,
-        "name": "v4.0.102 \u2014 PDF Vector Importer for FreeCAD",
-        "published_at": "2026-09-16T20:49:38Z",
-        "tag": "v4.0.102",
-        "target_commitish": "1b372a7e6816f52b521f63cf32a6d69c11ee52ff",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.102"
+        "name": "v4.0.103 \u2014 PDF Vector Importer for FreeCAD",
+        "published_at": "2026-09-16T21:03:35Z",
+        "tag": "v4.0.103",
+        "target_commitish": "d8d0e95baf0c532920d630d6cfe40a8da844089b",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.103"
       },
-      "pushed_at": "2026-09-16T20:49:41Z",
+      "pushed_at": "2026-09-16T21:03:38Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
@@ -120,7 +120,7 @@
         "target_commitish": "6f266ab8f5d60c633e23dadd4c22426548f498ad",
         "url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD/releases/tag/v1.0.94"
       },
-      "pushed_at": "2026-09-16T20:51:48Z",
+      "pushed_at": "2026-09-16T21:07:17Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-LibreCAD",
       "steel_release": null
     },
@@ -131,34 +131,34 @@
         "assets": [
           {
             "content_type": "application/octet-stream",
-            "digest": "sha256:501427c4a6bfb3c06fd03788afcf96ffd2a2d6a08deaa1915bff23239e32bd77",
-            "name": "SketchUp-PDF-Importer_v3.7.147.rbz",
-            "size": 13144382,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.147/SketchUp-PDF-Importer_v3.7.147.rbz"
+            "digest": "sha256:2a4d30ef1d34a2a0b0c86aa1c1fc4b37a4e0683ee840a0a64844693c22b5d3c2",
+            "name": "SketchUp-PDF-Importer_v3.7.148.rbz",
+            "size": 13144814,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.148/SketchUp-PDF-Importer_v3.7.148.rbz"
           },
           {
             "content_type": "text/plain; charset=utf-8",
-            "digest": "sha256:dc726457255d21fbf907559a73bcc0521dee33cac7784d7ad354943d70006223",
+            "digest": "sha256:e4a0e2a512156d4bfdace4a50ef3fb81172b5d453bf200ee9642d48b1528fdd2",
             "name": "SHA256SUMS.txt",
             "size": 101,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.147/SHA256SUMS.txt"
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.148/SHA256SUMS.txt"
           },
           {
             "content_type": "text/plain; charset=utf-8",
             "digest": "sha256:3fd70e977ee029a525840af1e4a4a5f8e2d856475befbeb364f4e5c690273d7c",
             "name": "SOURCE_SHA256SUMS.txt",
             "size": 550,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.147/SOURCE_SHA256SUMS.txt"
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/download/v3.7.148/SOURCE_SHA256SUMS.txt"
           }
         ],
         "immutable": true,
-        "name": "v3.7.147 \u2014 PDF Vector Importer for SketchUp",
-        "published_at": "2026-09-16T20:51:49Z",
-        "tag": "v3.7.147",
-        "target_commitish": "e798454b72780f178dde60239d2d52f79f48187d",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.147"
+        "name": "v3.7.148 \u2014 PDF Vector Importer for SketchUp",
+        "published_at": "2026-09-16T21:01:55Z",
+        "tag": "v3.7.148",
+        "target_commitish": "6136069861ed5083cea87b49c2358433fd232121",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases/tag/v3.7.148"
       },
-      "pushed_at": "2026-09-16T20:51:49Z",
+      "pushed_at": "2026-09-16T21:01:55Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp",
       "steel_release": {
         "assets": [
@@ -193,5 +193,5 @@
       }
     }
   },
-  "source_event": "repository_dispatch"
+  "source_event": "workflow_dispatch"
 }
