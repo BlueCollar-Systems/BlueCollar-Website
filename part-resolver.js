@@ -69,7 +69,7 @@
 
   if (idEl) idEl.textContent = id;
   if (link) link.href = 'steellogic://part/' + encodeURIComponent(id);
-  document.title = 'Part Tracking ' + id + ' | BlueCollar Systems';
+  document.title = 'Part Tracking ' + id + ' | BlueCollar-Systems';
 
   // Static JSON v1 (R5-6, moved R21-10): optional published mirror at
   // /p-records/<id>.json — outside /p/ so the /p/* rewrite cannot shadow it.

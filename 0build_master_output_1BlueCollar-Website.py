@@ -8,7 +8,7 @@ sys.path.insert(0, str(HERE))
 from repo_context_builder_core import main_with_preset
 
 PRESET = {
-  "title": "LLM Context Pack \u2014 BlueCollar Website",
+  "title": "LLM Context Pack \u2014 BlueCollar-Systems Website",
   "config_paths": [
     "README.md",
     "RELEASE_CHECKLIST.md",

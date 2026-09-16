@@ -501,7 +501,7 @@
     setStatus(level, report.status === 'pass' ? 'Ready' : (report.status === 'warn' ? 'Review' : 'Not Ready'));
     title.textContent = 'Ready Check — ' + safeText(report.product);
     var lines = [
-      'BlueCollar Ready Check Summary',
+      'BlueCollar-Systems Ready Check Summary',
       'Product: ' + safeText(report.product),
       'Version: ' + safeText(report.version),
       'Host: ' + safeText(getPath(report, ['host', 'name'])),
@@ -745,7 +745,7 @@
     title.textContent = buildStamp ? (heading + ' — ' + buildStamp) : heading;
 
     var supportLines = [
-      'BlueCollar Import Report Summary',
+      'BlueCollar-Systems Import Report Summary',
       (humanSummary && String(humanSummary).trim()) ? 'Summary: ' + String(humanSummary).trim() : null,
       'Host: ' + safeText(host),
       'Version: ' + safeText(version),

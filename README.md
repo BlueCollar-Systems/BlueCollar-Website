@@ -1,9 +1,9 @@
-# BlueCollar Systems Website
+# BlueCollar-Systems Website
 
 [![CI](https://github.com/BlueCollar-Systems/BlueCollar-Website/actions/workflows/website-ci.yml/badge.svg)](https://github.com/BlueCollar-Systems/BlueCollar-Website/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Static marketing site for **BlueCollar Systems** — precision software for fabricators, welders, and detailers.
+Static marketing site for **BlueCollar-Systems** — precision software for fabricators, welders, and detailers.
 
 ## Products
 

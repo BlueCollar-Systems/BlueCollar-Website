@@ -104,7 +104,7 @@ jobs:
         run: |
           TAG="v${{ steps.version.outputs.version }}"
           ZIP="BlueCollar-Website_v${{ steps.version.outputs.version }}.zip"
-          TITLE="$TAG — BlueCollar Website Snapshot"
+          TITLE="$TAG — BlueCollar-Systems Website Snapshot"
           NOTES="Automated release snapshot from latest \`main\` commit.
 
           This release includes the static site source used for deployment."
