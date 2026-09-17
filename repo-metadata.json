@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-17T01:01:10+00:00",
+  "generated_at": "2026-09-17T01:03:17+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -8,20 +8,20 @@
         "assets": [
           {
             "content_type": "application/zip",
-            "digest": "sha256:59d4671405d01dc7ca264b1c098aaa93f07badbd60a7db4d8b5351cdb2e13621",
-            "name": "Blender-PDF-Importer_v1.0.99.zip",
-            "size": 19408444,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.99/Blender-PDF-Importer_v1.0.99.zip"
+            "digest": "sha256:e429c5cd468e99dfb0b0e4e0dd92942bcd3774b7487c8ed8df0409d7df6d06f4",
+            "name": "Blender-PDF-Importer_v1.0.100.zip",
+            "size": 19413633,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/download/v1.0.100/Blender-PDF-Importer_v1.0.100.zip"
           }
         ],
         "immutable": true,
-        "name": "v1.0.99 \u2014 PDF Vector Importer for Blender",
-        "published_at": "2026-09-17T00:34:02Z",
-        "tag": "v1.0.99",
-        "target_commitish": "dd46f3ef37adc0dba9d1451b4684600ff1dd0ee8",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.99"
+        "name": "v1.0.100 \u2014 PDF Vector Importer for Blender",
+        "published_at": "2026-09-17T01:02:37Z",
+        "tag": "v1.0.100",
+        "target_commitish": "cec4c387a447917f0f4d973fe46667a32fc81610",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender/releases/tag/v1.0.100"
       },
-      "pushed_at": "2026-09-17T00:51:52Z",
+      "pushed_at": "2026-09-17T01:02:30Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-Blender",
       "steel_release": null
     },
@@ -193,5 +193,5 @@
       }
     }
   },
-  "source_event": "push"
+  "source_event": "repository_dispatch"
 }
