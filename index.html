@@ -203,11 +203,11 @@
         <h2 class="text-3xl font-bold mb-4 text-center uppercase tracking-widest text-gray-400">Easy Install (No Terminal Required)</h2>
         <p class="text-center text-gray-400 mb-10 max-w-2xl mx-auto">Each importer is designed for shop-floor PCs. Download the release, install once, and use the built-in checks if anything is missing.</p>
         <p class="text-center text-gray-300 mb-10 max-w-3xl mx-auto text-sm leading-relaxed"><strong>Works on any PC that runs the host application</strong> — SketchUp, FreeCAD, LibreCAD, or Blender. Current Windows release packages bundle their required runtime dependencies where needed, including Poppler helpers in the SketchUp RBZ; no system Python, Ruby gems, OS developer tools, or separate helper download is required for normal imports. <strong>No internet is required after the release is downloaded and installed.</strong> <strong>SketchUp Make 2017</strong> is supported with importer <strong>v3.7.67 or newer</strong>; we do not redistribute SketchUp — obtain it from Trimble or use an installer you already own.</p>
-        <p class="text-center text-gray-300 mb-10 max-w-3xl mx-auto text-sm leading-relaxed"><strong>Before you import:</strong> Labels = editable text; Outlines / Glyphs / Geometry = exact vector fidelity (not editable). 3D Text, Glyphs, and Geometry reproduce the PDF's text size and rotation exactly at equal zoom. Labels are editable but follow each host's native label behavior (in SketchUp, label size is screen-based and rotation is horizontal — use 3D Text when the import must look like the PDF). Shape extrusion is currently shelved. Every host writes <code>import_report.json</code> with a plain-English <code>human_summary</code>; check <code>extra.scale_crosscheck</code> if scale looks wrong.</p>
+        <p class="text-center text-gray-300 mb-10 max-w-3xl mx-auto text-sm leading-relaxed"><strong>Choose a text mode:</strong> <strong>Text</strong> and <strong>Labels</strong> request editable text. <strong>3D Text</strong> requests raised lettering. <strong>Glyphs</strong> and <strong>Geometry</strong> use vector outlines, while <strong>Raster</strong> uses images of the text. When a host or font cannot reproduce an item faithfully in the requested mode, its import report identifies the verified alternative. <strong>LibreCAD remains 2D in every mode.</strong> Use <a href="report-doctor.html" class="text-blue-400 hover:underline">Report Doctor</a> to read the result and any fallback explanation.</p>
 
         <div class="overflow-x-auto mb-10">
             <h3 class="text-lg font-bold text-blue-300 mb-3 text-center">What you'll get — by host</h3>
-            <p class="text-center text-gray-400 mb-4 text-xs max-w-2xl mx-auto">Honest capability matrix. Every host shares pdfcadcore extraction; host limits still apply.</p>
+            <p class="text-center text-gray-400 mb-4 text-xs max-w-2xl mx-auto">The requested mode is checked against the source drawing. Native capabilities differ by host; reported alternatives preserve the source appearance.</p>
             <table class="w-full text-left text-xs border border-gray-700 rounded-xl overflow-hidden">
                 <thead class="bg-gray-800 text-gray-300 uppercase tracking-wide">
                     <tr>
@@ -225,7 +225,7 @@
                         <td class="p-3 font-semibold text-blue-200">SketchUp</td>
                         <td class="p-3">Edges, faces, arcs, components</td>
                         <td class="p-3">Tags from PDF layers</td>
-                        <td class="p-3">Yes (Labels mode)</td>
+                        <td class="p-3">Verified source-outline equivalent on 2017</td>
                         <td class="p-3">Yes (Geometry / Glyphs)</td>
                         <td class="p-3">Faithful size &amp; rotation (v3.7.90+)</td>
                         <td class="p-3">Yes + <em>Import Health</em> menu</td>
@@ -234,7 +234,7 @@
                         <td class="p-3 font-semibold text-blue-200">FreeCAD</td>
                         <td class="p-3">Sketcher / Part geometry</td>
                         <td class="p-3">Groups / layers</td>
-                        <td class="p-3">Via ShapeString paths</td>
+                        <td class="p-3">Native labels; verified outlines when required</td>
                         <td class="p-3">Yes</td>
                         <td class="p-3">Faithful size &amp; rotation (v4.0.64+)</td>
                         <td class="p-3">Yes (<code>extra.human_summary</code>)</td>
@@ -252,7 +252,7 @@
                         <td class="p-3 font-semibold text-blue-200">LibreCAD</td>
                         <td class="p-3">DXF lines, arcs, polylines</td>
                         <td class="p-3">DXF layers</td>
-                        <td class="p-3">Yes (Labels / Outlines)</td>
+                        <td class="p-3">Native text or verified 2D outlines</td>
                         <td class="p-3">Outlines only (2D)</td>
                         <td class="p-3">No — 2D host</td>
                         <td class="p-3">Yes (<code>pdf2dxf</code> / GUI)</td>
@@ -283,7 +283,7 @@
                 <h3 class="text-lg font-bold text-blue-300 mb-2">LibreCAD — 2 clicks</h3>
                 <p><strong>Step 1:</strong> Download the Windows portable ZIP (e.g. <code>LibreCAD-PDF-Importer-Windows-Portable_vX.Y.Z.zip</code>) and extract it anywhere.</p>
                 <p class="mt-2"><strong>Step 2:</strong> Run <code>lcpdf-gui.exe</code> from the extracted folder, or use the bundled CLI (<code>pdf2dxf.exe</code> / <code>lcpdf-batch.exe</code>).</p>
-                <p class="mt-2 text-gray-400">The portable ZIP bundles Python, PyMuPDF, ezdxf, pdfcadcore, and the GUI — no separate install required. <strong>2D limits:</strong> use <em>Labels</em> or <em>Outlines</em> text modes only; LibreCAD has no true 3D text — do not expect FreeCAD/SketchUp glyph or 3D-text parity.</p>
+                <p class="mt-2 text-gray-400">The portable ZIP bundles the runtime and GUI — no separate install required. All six text modes are available. <strong>LibreCAD is a 2D host:</strong> a 3D Text request uses a verified 2D alternative, with the delivered representation explained in the import report.</p>
             </div>
         </div>
 
