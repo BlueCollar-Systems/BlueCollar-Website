@@ -65,11 +65,11 @@ const anchorTags = html.match(/<a\b[^>]*>/gi) || [];
 const elementTags = html.match(/<[A-Za-z][^>]*>/g) || [];
 
 assert(
-  html.includes("Current Windows RBZ files bundle Poppler helpers"),
-  "SketchUp install copy must state that the Windows RBZ bundles Poppler"
+  html.includes("The Windows RBZ includes the PDF tools needed for rendering and font repair."),
+  "SketchUp install copy must state that the Windows RBZ includes rendering and font repair tools"
 );
 assert(
-  html.includes("no separate helper download is required for normal imports"),
+  html.includes("No separate helper download is required for normal imports."),
   "SketchUp install copy must state that normal imports need no helper download"
 );
 assert(
