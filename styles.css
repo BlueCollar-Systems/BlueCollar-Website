@@ -333,3 +333,30 @@ ul[role="list"] { list-style-position: inside; }
   /* Ensure hero text doesn't overflow */
   header h1 { font-size: 1.75rem; line-height: 2.25rem; }
 }
+
+/* ─── Industrial Tech Aesthetics & Polish ─── */
+.bg-industrial-grid {
+  background-image: radial-gradient(rgba(99, 179, 237, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.card-technical {
+  position: relative;
+  transition: all 0.25s ease;
+}
+.card-technical:hover {
+  border-color: rgba(99, 179, 237, 0.4);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 20px -5px rgba(99, 179, 237, 0.15);
+  transform: translateY(-2px);
+}
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
