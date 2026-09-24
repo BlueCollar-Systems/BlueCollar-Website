@@ -135,6 +135,9 @@ jobs:
       - name: Reject private PDF/CAD artifacts
         run: python tools/validate_private_artifacts.py
 
+      - name: Private artifact guard regression
+        run: python tests/test_validate_private_artifacts.py -v
+
       # R21 corrective §6: syntax-check every shipped script and prove a
       # hostile parts_bootstrap sidecar renders as literal text in Report
       # Doctor (no element/event-attribute injection, no innerHTML).

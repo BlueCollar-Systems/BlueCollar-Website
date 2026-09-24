@@ -7,3 +7,6 @@
 # directory index without tripping the guard. Published JSON mirrors live
 # under /p-records/ so this rewrite cannot shadow them.
 /p/* /p/ 200
+# RFC 9116 legacy location: send /security.txt to the one maintained copy
+# (a second static copy at the root had drifted to an older Expires date).
+/security.txt /.well-known/security.txt 301
