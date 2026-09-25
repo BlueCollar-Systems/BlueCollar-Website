@@ -151,6 +151,10 @@ var REPORT_TEST = String.raw`
     var bootstrapJson = document.getElementById('bootstrap-json');
     var pickers = [reportFile, bootstrapFile];
 
+    check(bootstrapJson.labels.length === 1, 'optional bootstrap JSON must have one associated label');
+    check(bootstrapJson.labels[0].control === bootstrapJson, 'bootstrap label must control its textarea');
+    check(bootstrapJson.labels[0].textContent.trim() === 'Or paste optional parts bootstrap JSON', 'bootstrap label must describe pasting optional JSON');
+
     pickers.forEach(function(input) {
       check(input instanceof HTMLInputElement, '#' + input.id + ' must be a real HTMLInputElement');
       check(input.type === 'file', '#' + input.id + ' must remain a file input');

@@ -1,6 +1,11 @@
 (function () {
   var m = location.pathname.match(/^\/p\/([^\/]+)\/?$/);
-  var id = m ? decodeURIComponent(m[1]) : null;
+  var id = null;
+  try {
+    id = m ? decodeURIComponent(m[1]) : null;
+  } catch (_) {
+    // A malformed escape is an invalid tag link, not a pending lookup.
+  }
   var idEl = document.getElementById('part-id');
   var link = document.getElementById('deep-link');
   var statusEl = document.getElementById('part-status');
@@ -13,7 +18,7 @@
       link.href = 'steellogic://open';
       link.textContent = 'open the app';
     }
-    if (statusEl) statusEl.textContent = 'Invalid or missing Part Tracking ID.';
+    if (statusEl) statusEl.textContent = 'Invalid or missing Part Tracking ID. Check the tag link and try again.';
   }
 
   function showUnpublished(partId) {

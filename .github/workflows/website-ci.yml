@@ -149,6 +149,7 @@ jobs:
           node tests/report_doctor_file_inputs_test.js
           node tests/report_doctor_browser_test.js
           node tests/report_doctor_xss_test.js
+          node tests/part_resolver_invalid_id_test.js
           node tests/site_copy_contract_test.js
 
       - name: Release metadata digest regression
