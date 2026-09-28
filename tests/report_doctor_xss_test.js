@@ -13,6 +13,8 @@
 //  4. A valid opaque part_id yields exactly the fixed-origin encoded
 //     https://bluecollar-systems.com/p/<id> URL (text + copy button data-url).
 //  5. A hostile/malformed part_id is rejected: no tag link.
+//  6. Failed/cancelled/incomplete imports cannot be called healthy, and invalid
+//     input cannot retain an earlier result or support summary.
 'use strict';
 
 var fs = require('fs');
@@ -36,9 +38,11 @@ function StubElement(tagName) {
   this.value = '';
   this.href = '';
   this.hidden = false;
+  var classes = new Set();
   this.classList = {
-    add: function () {},
-    remove: function () {}
+    add: classes.add.bind(classes),
+    remove: classes.delete.bind(classes),
+    contains: classes.has.bind(classes)
   };
 }
 
@@ -271,3 +275,166 @@ assert.strictEqual(innerHTMLWrites.length, 0, 're-render must not assign innerHT
 console.log('PASS report_doctor_xss_test: hostile sidecar rendered as literal text;');
 console.log('  no injected elements/attributes, no innerHTML, no random UUIDs,');
 console.log('  valid part_id -> ' + expectedUrl);
+
+// Import result fixtures use the shared bcs.import_report/1.1 fields written
+// by pdfcadcore/import_report.py across the Python hosts and SketchUp QAReport.
+// The terminal fixtures mirror FreeCAD's _write_terminal_representation_failure_report
+// and Blender's write_import_report delivery map; all values are fictional.
+function sharedReport() {
+  return {
+    schema: 'bcs.import_report/1.1',
+    host: { app: 'freecad' },
+    importer: { version: '1.2.3' },
+    input: { pages: 1 },
+    mode: 'vector',
+    result: { primitives: 7, text_entities: 2, layers: 1 },
+    fallback: { used: false },
+    extra: { text_mode: 'labels' }
+  };
+}
+
+function analyzeInput(value) {
+  elements['report-json'].value = typeof value === 'string' ? value : JSON.stringify(value);
+  elements['analyze-report'].dispatch('click');
+}
+
+var validReportCases = 0;
+var invalidReportCases = 0;
+
+function expectReport(value, expectedStatus, expectedHeading) {
+  analyzeInput(value);
+  assert.strictEqual(elements['doctor-error'].textContent, '', 'valid report was rejected');
+  assert.strictEqual(elements['doctor-output'].classList.contains('hidden'), false);
+  assert.strictEqual(elements['doctor-status'].textContent, expectedStatus);
+  if (expectedHeading) assert.strictEqual(elements['doctor-title'].textContent, expectedHeading);
+  validReportCases++;
+}
+
+function metricValue(label) {
+  var card = elements['doctor-metrics'].childNodes.find(function(node) {
+    return node.childNodes[0].textContent === label;
+  });
+  return card && card.childNodes[1].textContent;
+}
+
+// First exercise the original false-positive defect so this suite fails on
+// the old script for its misleading health claim, not an unrelated alias.
+var failed = sharedReport();
+failed.extra.result_status = 'failed';
+failed.extra.terminal_failure = { type: 'TextRepresentationFailure', message: HOSTILE };
+failed.fallback = { used: true, reason: 'fixture fallback' };
+failed.extra.auto_resolved_mode = 'raster';
+failed.result.primitives = 100001; // later performance warning cannot demote failure
+expectReport(failed, 'Failed', 'Import Failed');
+assert.strictEqual(elements['doctor-status'].className, 'doctor-pill doctor-pill-risk');
+assert.ok(elements['doctor-support'].textContent.includes('Import result: Failed'));
+assert.ok(elements['doctor-support'].textContent.includes('Failure details: ' + HOSTILE));
+assert.ok(rowText(elements['doctor-findings']).includes('Failure details: ' + HOSTILE));
+assert.strictEqual(innerHTMLWrites.length, 0, 'failure details must remain literal text');
+assert.ok(!collectDescendants(elements['doctor-findings']).some(function(node) { return node.tagName === 'IMG'; }));
+
+var healthy = sharedReport();
+healthy.extra.result_status = 'success';
+expectReport(healthy, 'Healthy', 'Import Looks Healthy');
+assert.strictEqual(metricValue('Host'), 'FreeCAD');
+assert.strictEqual(metricValue('Version'), '1.2.3');
+assert.strictEqual(metricValue('Pages'), '1');
+assert.strictEqual(metricValue('Text items'), '2');
+healthy.schema = 'bcs.import_report/1.0';
+expectReport(healthy, 'Healthy');
+delete healthy.schema;
+expectReport(healthy, 'Healthy');
+expectReport({ app: { name: 'Blender' }, result: { pages: 1, geometry: 12 } }, 'Healthy');
+expectReport({ application: { name: 'SketchUp' }, summary: { page_count: 1, entities: 9 } }, 'Healthy');
+expectReport({ host: 'LibreCAD', pages: 1, text_mode: 'labels' }, 'Healthy');
+
+[
+  ['failed', 'Failed'], ['error', 'Failed'], ['cancelled', 'Cancelled'], ['canceled', 'Cancelled'],
+  ['incomplete', 'Incomplete'], ['pending', 'Incomplete'], ['pending_export', 'Incomplete']
+].forEach(function(example) {
+  ['extra', 'result'].forEach(function(location) {
+    var report = sharedReport();
+    report[location][location === 'extra' ? 'result_status' : 'status'] = example[0];
+    expectReport(report, example[1], 'Import ' + example[1]);
+    assert.strictEqual(elements['doctor-status'].className, 'doctor-pill doctor-pill-risk');
+  });
+});
+
+var incomplete = sharedReport();
+incomplete.host.app = 'blender';
+incomplete.extra.result_status = 'incomplete';
+incomplete.extra.terminal_failure = { text_delivery: { required_source_items: 2, delivered_items: 1 } };
+expectReport(incomplete, 'Incomplete');
+assert.ok(elements['doctor-support'].textContent.includes('"delivered_items":1'));
+
+var terminalOnly = sharedReport();
+terminalOnly.extra.terminal_failure = { message: 'Requested representation was not delivered.' };
+expectReport(terminalOnly, 'Failed');
+terminalOnly.extra.result_status = 'success';
+expectReport(terminalOnly, 'Failed');
+assert.ok(elements['doctor-support'].textContent.includes('Import result: Failed'));
+delete terminalOnly.extra.terminal_failure;
+terminalOnly.result.status = 'failed';
+expectReport(terminalOnly, 'Failed');
+delete terminalOnly.result.status;
+terminalOnly.extra.open_failure = { message: 'Fixture PDF could not be opened.' };
+expectReport(terminalOnly, 'Failed');
+delete terminalOnly.extra.open_failure;
+terminalOnly.extra.result_status = 'future_unrecognized_status';
+expectReport(terminalOnly, 'Review', 'Import Status Needs Review');
+
+[
+  '', 'broken json', '{}', 'null', '[]', '42', '"hello"',
+  '{"unrelated":"document"}', '{"host":"Blender"}',
+  '{"schema":{"toString":null,"valueOf":null}}',
+  '{"host":{"toString":null,"valueOf":null},"result":{"pages":1}}',
+  '{"host":"Blender","result":{"pages":-1}}',
+  '{"schema":"bcs.import_report/1.1"}',
+  '{"schema":"bcs.parts_bootstrap/1.0","rows":[]}',
+  '{"schema":"other/1.0","host":"Blender","result":{"pages":1}}',
+  '{"schema":"bcs.ready_check/1.0","status":"pass","checks":[]}'
+].forEach(function(invalid) {
+  // Always precede failure with a real result and tag table to expose stale UI.
+  expectReport(sharedReport(), 'Healthy');
+  assert.ok(elements['doctor-tags-table'].childNodes.length);
+  analyzeInput(invalid);
+  assert.ok(elements['doctor-error'].textContent, 'invalid input must explain why it was rejected');
+  assert.strictEqual(elements['doctor-output'].classList.contains('hidden'), true);
+  assert.strictEqual(elements['doctor-tags-section'].classList.contains('hidden'), true);
+  assert.strictEqual(elements['doctor-title'].textContent, '');
+  assert.strictEqual(elements['doctor-status'].textContent, 'Waiting');
+  assert.strictEqual(elements['doctor-support'].textContent, '');
+  assert.strictEqual(elements['email-support'].href, 'mailto:support@bluecollar-systems.com');
+  ['doctor-metrics', 'doctor-findings', 'doctor-actions', 'doctor-tags-table'].forEach(function(id) {
+    assert.strictEqual(elements[id].childNodes.length, 0, id + ' must not retain stale output');
+  });
+  invalidReportCases++;
+});
+
+expectReport({
+  schema: 'bcs.ready_check/1.0', product: 'Fixture', status: 'pass',
+  checks: [{ id: 'fixture', status: 'pass', message: 'Fixture passed.' }]
+}, 'Ready', 'Ready Check — Fixture');
+assert.strictEqual(elements['doctor-tags-section'].classList.contains('hidden'), true);
+[['fail', 'Not Ready'], ['warn', 'Review']].forEach(function(example) {
+  expectReport({
+    schema: 'bcs.ready_check/1.0', product: 'Fixture', status: 'pass',
+    checks: [{ id: 'fixture', status: example[0], message: 'Fixture needs attention.' }]
+  }, example[1], 'Ready Check — Fixture');
+  assert.strictEqual(metricValue('Status'), example[0]);
+  assert.ok(elements['doctor-support'].textContent.includes('Status: ' + example[0]));
+  assert.ok(elements['doctor-support'].textContent.includes('Reported status: pass'));
+  assert.ok(!rowText(elements['doctor-actions']).includes('No repair actions needed'));
+});
+expectReport({
+  schema: 'bcs.ready_check/1.0', product: 'Fixture', status: 'fail',
+  checks: [{ id: 'fixture', status: 'pass', message: 'Fixture passed.' }]
+}, 'Not Ready');
+assert.ok(!rowText(elements['doctor-findings']).includes('All ready checks passed'));
+assert.ok(!rowText(elements['doctor-actions']).includes('No repair actions needed'));
+elements['clear-report'].dispatch('click');
+assert.strictEqual(elements['report-json'].value, '');
+assert.strictEqual(elements['doctor-support'].textContent, '');
+assert.strictEqual(elements['doctor-output'].classList.contains('hidden'), true);
+console.log('PASS report_doctor_result_contract: ' + validReportCases + ' valid report renders, ' + invalidReportCases +
+  ' invalid input rejections; failure precedence, legacy/shared reports and stale-result clearing');

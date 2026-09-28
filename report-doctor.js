@@ -136,6 +136,21 @@
     errorBox.textContent = message || '';
   }
 
+  function resetResult() {
+    if (output) output.classList.add('hidden');
+    if (tagsSection) tagsSection.classList.add('hidden');
+    [metrics, findings, actions, tagsTable].forEach(function(node) {
+      if (node) clearNode(node);
+    });
+    if (title) title.textContent = '';
+    if (status) {
+      status.className = 'doctor-pill';
+      status.textContent = 'Waiting';
+    }
+    if (support) support.textContent = '';
+    if (emailLink) emailLink.href = 'mailto:support@bluecollar-systems.com';
+  }
+
   function safeText(value) {
     if (value === null || value === undefined || value === '') return 'Unknown';
     if (typeof value === 'number') return String(value);
@@ -218,12 +233,14 @@
       ['app', 'name'],
       ['application', 'name'],
       ['tool'],
+      ['host', 'app'],
+      ['host', 'name'],
       ['host'],
       ['extra', 'host'],
       ['extra', 'target_app'],
       ['metadata', 'host']
     ]);
-    var text = safeText(raw);
+    var text = typeof raw === 'string' && raw.trim() ? raw.trim() : 'Unknown';
     var lower = text.toLowerCase();
     if (lower.indexOf('sketchup') >= 0) return 'SketchUp';
     if (lower.indexOf('freecad') >= 0) return 'FreeCAD';
@@ -236,6 +253,7 @@
     return firstValue(report, [
       ['app', 'version'],
       ['application', 'version'],
+      ['importer', 'version'],
       ['version'],
       ['extra', 'version'],
       ['metadata', 'version']
@@ -308,7 +326,7 @@
       labels: resultNumber(report, ['labels', 'text_labels', 'editable_text']),
       text3d: resultNumber(report, ['text3d', 'text_3d', '3d_text']),
       outlines: resultNumber(report, ['glyphs', 'text_glyphs', 'outlines', 'text_geometry']),
-      total: resultNumber(report, ['text', 'texts', 'text_items'])
+      total: resultNumber(report, ['text', 'texts', 'text_items', 'text_entities'])
     };
     if (actual && typeof actual === 'object') {
       if (breakdown.labels === null) breakdown.labels = toNumber(objectValue(actual, ['labels', 'text_labels', 'editable_text']));
@@ -467,7 +485,79 @@
   }
 
   function isReadyCheck(report) {
-    return String((report && report.schema) || '').indexOf('bcs.ready_check/') === 0;
+    return report && typeof report.schema === 'string' && report.schema.indexOf('bcs.ready_check/') === 0;
+  }
+
+  function isRecord(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  function importOutcome(report) {
+    // The shared bcs.import_report writers use extra.result_status/result.status.
+    // FreeCAD failures carry a message; Blender can carry delivery-detail maps.
+    var failure = firstValue(report, [
+      ['extra', 'terminal_failure'], ['terminal_failure'],
+      ['extra', 'open_failure']
+    ]);
+    var state = '';
+    var rank = 0;
+    var reported = [];
+    [['extra', 'result_status'], ['result', 'status'], ['result_status'], ['status']].forEach(function(path) {
+      var raw = getPath(report, path);
+      if (raw === undefined || raw === null || raw === '') return;
+      var value = typeof raw === 'string' ? raw.trim().toLowerCase() : 'invalid status';
+      if (!value) return;
+      reported.push(value);
+      var candidate = '';
+      var priority = 0;
+      if (['failed', 'error', 'failure', 'aborted'].indexOf(value) >= 0) {
+        candidate = 'failed'; priority = 4;
+      } else if (value === 'cancelled' || value === 'canceled') {
+        candidate = 'cancelled'; priority = 3;
+      } else if (['incomplete', 'pending', 'pending_export', 'partial'].indexOf(value) >= 0) {
+        candidate = 'incomplete'; priority = 2;
+      } else if (['success', 'succeeded', 'complete', 'completed', 'ok', 'pass'].indexOf(value) < 0) {
+        candidate = 'unknown'; priority = 1;
+      }
+      if (priority > rank) { state = candidate; rank = priority; }
+    });
+    if (failure !== undefined && rank < 2) state = 'failed';
+    return {
+      state: state,
+      reported: reported.join(', '),
+      failure: failure === undefined ? '' : (isRecord(failure) && typeof failure.message === 'string'
+        ? failure.message : (typeof failure === 'string' ? failure : JSON.stringify(failure)))
+    };
+  }
+
+  function reportValidationError(report) {
+    if (!isRecord(report)) return 'Report JSON must be an object.';
+    if (isReadyCheck(report)) {
+      if (!Array.isArray(report.checks) || !report.checks.length ||
+          ['pass', 'warn', 'fail'].indexOf(report.status) < 0 ||
+          report.checks.some(function(check) {
+            return !isRecord(check) || ['pass', 'warn', 'fail', 'skip'].indexOf(check.status) < 0;
+          })) return 'Ready Check JSON must include a valid status and checks.';
+      return '';
+    }
+    var hasSchema = report.schema !== undefined;
+    if (hasSchema && (typeof report.schema !== 'string' || !/^bcs\.import_report\/1\.\d+$/.test(report.schema))) {
+      return 'This JSON is not a supported import report or Ready Check. Choose import_report.json.';
+    }
+    // Keep the older app/application/host + result/summary shapes usable.
+    // A schema name or host name alone is not evidence of an import result.
+    var outcome = importOutcome(report);
+    var count = resultNumber(report, [
+      'pages', 'page_count', 'geometry', 'entities', 'primitives', 'edges',
+      'text', 'texts', 'text_items', 'text_entities', 'images', 'image_count', 'layers'
+    ]);
+    var hasEvidence = (count !== null && count >= 0) || outcome.reported !== '' || outcome.failure !== '';
+    var host = detectHost(report);
+    var hasIdentity = host !== 'Unknown host' && host !== '[object Object]';
+    if (!hasEvidence || (!hasSchema && !hasIdentity)) {
+      return 'No recognizable import result was found. Choose an import report or Ready Check JSON file.';
+    }
+    return '';
   }
 
   function analyzeReadyCheck(report) {
@@ -480,10 +570,12 @@
       var state = String((check && check.status) || '').toLowerCase();
       if (counts[state] !== undefined) counts[state]++;
     });
+    var effectiveStatus = report.status === 'fail' || counts.fail ? 'fail' :
+      (report.status === 'warn' || counts.warn ? 'warn' : 'pass');
     metric('Product', report.product);
     metric('Version', report.version);
     metric('Host', getPath(report, ['host', 'name']));
-    metric('Status', report.status);
+    metric('Status', effectiveStatus);
     metric('Checks passed', counts.pass + '/' + checks.length);
     if (counts.warn) metric('Warnings', counts.warn);
     if (counts.fail) metric('Failures', counts.fail);
@@ -491,23 +583,28 @@
       if (!check || check.status === 'pass') return;
       addListItem(findings, '[' + String(check.status).toUpperCase() + '] ' + safeText(check.id) + ': ' + safeText(check.message));
     });
-    if (!findings.childNodes.length) addListItem(findings, 'All ready checks passed.');
+    if (!findings.childNodes.length) addListItem(findings, effectiveStatus === 'pass'
+      ? 'All ready checks passed.'
+      : 'The overall Ready Check status needs review, although the listed checks passed.');
     var hints = Array.isArray(report.repair_hints) ? report.repair_hints : [];
     hints.forEach(function(hint) {
       if (hint) addListItem(actions, safeText(hint.summary) + ' — ' + safeText(hint.action));
     });
-    if (!actions.childNodes.length) addListItem(actions, 'No repair actions needed. Attach this Ready Check to human confirmation test runs.');
-    var level = report.status === 'pass' ? 'ok' : (report.status === 'warn' ? 'warn' : 'risk');
-    setStatus(level, report.status === 'pass' ? 'Ready' : (report.status === 'warn' ? 'Review' : 'Not Ready'));
+    if (!actions.childNodes.length) addListItem(actions, effectiveStatus === 'pass'
+      ? 'No repair actions needed. Attach this Ready Check to human confirmation test runs.'
+      : 'Review the reported status and any failed or warning checks, then run Ready Check again.');
+    var level = effectiveStatus === 'pass' ? 'ok' : (effectiveStatus === 'warn' ? 'warn' : 'risk');
+    setStatus(level, effectiveStatus === 'pass' ? 'Ready' : (effectiveStatus === 'warn' ? 'Review' : 'Not Ready'));
     title.textContent = 'Ready Check — ' + safeText(report.product);
     var lines = [
       'BlueCollar-Systems Ready Check Summary',
       'Product: ' + safeText(report.product),
       'Version: ' + safeText(report.version),
       'Host: ' + safeText(getPath(report, ['host', 'name'])),
-      'Status: ' + safeText(report.status),
+      'Status: ' + effectiveStatus,
       'Checks: ' + counts.pass + ' pass / ' + counts.warn + ' warn / ' + counts.fail + ' fail / ' + counts.skip + ' skip'
     ];
+    if (effectiveStatus !== report.status) lines.push('Reported status: ' + report.status);
     support.textContent = lines.join('\n');
     emailLink.href = 'mailto:support@bluecollar-systems.com?subject=' +
       encodeURIComponent('Ready Check review') +
@@ -532,6 +629,7 @@
     var resolvedMode = detectResolvedMode(report);
     var textMode = detectTextMode(report);
     var pages = resultNumber(report, ['pages', 'page_count']);
+    if (pages === null) pages = toNumber(getPath(report, ['input', 'pages']));
     var geometry = resultNumber(report, ['geometry', 'entities', 'primitives', 'edges']);
     var images = resultNumber(report, ['images', 'image_count']);
     if (images === null && report.extra && report.extra.embedded_images !== undefined && report.extra.embedded_images !== null) {
@@ -546,6 +644,7 @@
     var totalMs = detectTotalMs(report);
     var text = collectTextBreakdown(report);
     var usedFallback = fallbackUsed(report);
+    var outcome = importOutcome(report);
     var reason = fallbackReason(report);
     var renderer = rendererSummary(report);
     var normalizedTextMode = normalizeModeName(textMode);
@@ -739,13 +838,28 @@
       addListItem(findings, 'Import build stamp: ' + safeText(buildStamp) + '.');
     }
 
+    // Apply the terminal result last so advisory warnings never downgrade it.
+    var outcomeLabels = { failed: 'Failed', cancelled: 'Cancelled', incomplete: 'Incomplete', unknown: 'Review' };
+    if (outcome.state) {
+      severity = outcome.state === 'unknown' ? 'warn' : 'risk';
+      heading = outcome.state === 'unknown' ? 'Import Status Needs Review' : 'Import ' + outcomeLabels[outcome.state];
+      addListItem(findings, 'Import result: ' + outcomeLabels[outcome.state] +
+        (outcome.reported ? ' (reported status: ' + outcome.reported + ')' : '') + '.');
+      if (outcome.failure) addListItem(findings, 'Failure details: ' + outcome.failure);
+      addListItem(actions, 'This report does not establish a completed import. Review the recorded result and failure details before using the output.');
+    }
+
     if (severity === 'ok') setStatus('ok', 'Healthy');
     if (severity === 'warn') setStatus('warn', 'Review');
     if (severity === 'risk') setStatus('risk', 'High Review');
+    if (outcome.state) setStatus(severity, outcomeLabels[outcome.state]);
     title.textContent = buildStamp ? (heading + ' — ' + buildStamp) : heading;
 
     var supportLines = [
       'BlueCollar-Systems Import Report Summary',
+      'Import result: ' + (outcome.state ? outcomeLabels[outcome.state] : (outcome.reported || 'Not reported')),
+      outcome.state && outcome.reported ? 'Reported status: ' + outcome.reported : null,
+      outcome.failure ? 'Failure details: ' + outcome.failure : null,
       (humanSummary && String(humanSummary).trim()) ? 'Summary: ' + String(humanSummary).trim() : null,
       'Host: ' + safeText(host),
       'Version: ' + safeText(version),
@@ -792,15 +906,29 @@
 
   function parseAndAnalyze() {
     setError('');
+    resetResult();
     var text = jsonInput.value.trim();
     if (!text) {
       setError('Paste report JSON or choose a report file first.');
       return;
     }
+    var report;
     try {
-      analyze(JSON.parse(text));
+      report = JSON.parse(text);
     } catch (err) {
       setError('Could not parse JSON: ' + err.message);
+      return;
+    }
+    try {
+      var validationError = reportValidationError(report);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+      analyze(report);
+    } catch (err) {
+      resetResult();
+      setError('Could not analyze this report: ' + err.message);
     }
   }
 
@@ -808,6 +936,8 @@
     fileInput.addEventListener('change', function() {
       var file = fileInput.files && fileInput.files[0];
       if (!file) return;
+      resetResult();
+      setError('');
       var reader = new FileReader();
       reader.onload = function() {
         jsonInput.value = String(reader.result || '');
@@ -829,8 +959,7 @@
       if (bootstrapJsonInput) bootstrapJsonInput.value = '';
       if (bootstrapFileInput) bootstrapFileInput.value = '';
       setError('');
-      if (output) output.classList.add('hidden');
-      if (tagsSection) tagsSection.classList.add('hidden');
+      resetResult();
     });
   }
 
