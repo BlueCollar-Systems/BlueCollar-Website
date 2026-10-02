@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-02T00:02:42+00:00",
+  "generated_at": "2026-10-02T00:04:04+00:00",
   "repos": {
     "BlueCollar-Systems/PDF-Importer-Blender": {
       "default_branch": "main",
@@ -32,34 +32,34 @@
         "assets": [
           {
             "content_type": "application/x-msdownload",
-            "digest": "sha256:ecd437629c45d8e26e93d8f4c8936126ad98dac1e86f72882603aa72db154885",
-            "name": "FreeCAD-PDF-Importer-Setup_v4.0.108.exe",
-            "size": 17871547,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.108/FreeCAD-PDF-Importer-Setup_v4.0.108.exe"
+            "digest": "sha256:53276ca4a264b75817265fe4b58add8b3615e0f704749621910941b1bf60e2cb",
+            "name": "FreeCAD-PDF-Importer-Setup_v4.0.109.exe",
+            "size": 17927885,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.109/FreeCAD-PDF-Importer-Setup_v4.0.109.exe"
           },
           {
             "content_type": "application/zip",
-            "digest": "sha256:c9584591c7d238e00b1df427172cd3f9255c2fdc97afd5c1f7f96cf560365e8d",
-            "name": "FreeCAD-PDF-Importer_v4.0.108.zip",
-            "size": 61682381,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.108/FreeCAD-PDF-Importer_v4.0.108.zip"
+            "digest": "sha256:3a29c931d81af654f66ef1c5f5e309882c712056a4a9c426af5d1bd5ebc9bc64",
+            "name": "FreeCAD-PDF-Importer_v4.0.109.zip",
+            "size": 61964127,
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.109/FreeCAD-PDF-Importer_v4.0.109.zip"
           },
           {
             "content_type": "application/json",
-            "digest": "sha256:896c92f33bd1a17551576b7e7dd21832fd22fe4fdab1abb489ef02fd7b089049",
-            "name": "FreeCAD-PDF-Importer-Setup_v4.0.108.attestation.json",
+            "digest": "sha256:62965f50a567d0700e40f8610987e4158e581f108377a4ae42f02a27363d290e",
+            "name": "FreeCAD-PDF-Importer-Setup_v4.0.109.attestation.json",
             "size": 812,
-            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.108/FreeCAD-PDF-Importer-Setup_v4.0.108.attestation.json"
+            "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/download/v4.0.109/FreeCAD-PDF-Importer-Setup_v4.0.109.attestation.json"
           }
         ],
         "immutable": true,
-        "name": "v4.0.108 \u2014 PDF Vector Importer for FreeCAD",
-        "published_at": "2026-09-22T23:22:22Z",
-        "tag": "v4.0.108",
-        "target_commitish": "685a993171bac71ced45bcd5c5653efe9075533e",
-        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.108"
+        "name": "v4.0.109 \u2014 PDF Vector Importer for FreeCAD",
+        "published_at": "2026-10-02T00:03:24Z",
+        "tag": "v4.0.109",
+        "target_commitish": "2962d62155d20d0961f104336cb9e310973bdb64",
+        "url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/tag/v4.0.109"
       },
-      "pushed_at": "2026-10-02T00:00:10Z",
+      "pushed_at": "2026-10-02T00:03:27Z",
       "repo_url": "https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD",
       "steel_release": {
         "assets": [
