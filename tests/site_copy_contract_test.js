@@ -96,17 +96,14 @@ assert(
   html.includes("Tag QC Builder"),
   "site must advertise Tag QC Builder"
 );
+// Owner decision 2026-10-05: no direct download of Tag QC Builder from the website yet.
 assert(
-  html.includes("v10.37"),
-  "Tag QC operator portable must be the current cut v10.37"
+  html.includes("Tag QC Builder is not available for download yet"),
+  "Tag QC section must say it is not available for download yet"
 );
 assert(
-  html.includes("v10.16"),
-  "Tag QC published snapshot v10.16 must remain listed"
-);
-assert(
-  html.includes("b88d7fd3c8dc4bc11e4251d7c8fd16266a9cc0148cc221347e81ab8d68912318"),
-  "published Tag QC v10.16 ZIP SHA-256 must remain the immutable digest"
+  !/1Tag-QC-Builder\/releases|Download Tag QC|OPEN_BlueCollar_Systems_Tag_QC_Builder/.test(html),
+  "site must not offer a Tag QC Builder download until the owner releases it"
 );
 assert(
   html.includes("GitHub Release"),
