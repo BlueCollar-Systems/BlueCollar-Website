@@ -112,6 +112,10 @@ assert(
   html.includes("GitHub Release"),
   "importer badges must be described as GitHub Release versions"
 );
+assert(
+  !html.includes("1Tag-QC-Builder/releases"),
+  "site must not expose direct download access to the Tag tool yet"
+);
 
 const primaryCtas = anchorTags.filter((tag) => {
   const classes = attributeValue(tag, "class");
