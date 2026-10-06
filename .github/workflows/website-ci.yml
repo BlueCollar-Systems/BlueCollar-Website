@@ -145,6 +145,7 @@ jobs:
         run: |
           node --check nav.js
           node --check part-resolver.js
+          node tests/part_resolver_test.js
           node --check report-doctor.js
           node tests/report_doctor_file_inputs_test.js
           node tests/report_doctor_browser_test.js

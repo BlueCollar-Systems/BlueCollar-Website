@@ -1,6 +1,11 @@
 (function () {
   var m = location.pathname.match(/^\/p\/([^\/]+)\/?$/);
-  var id = m ? decodeURIComponent(m[1]) : null;
+  var id = null;
+  try {
+    id = m ? decodeURIComponent(m[1]) : null;
+  } catch (_) {
+    // Damaged or manually entered URLs must still show useful feedback.
+  }
   var idEl = document.getElementById('part-id');
   var link = document.getElementById('deep-link');
   var statusEl = document.getElementById('part-status');
@@ -27,6 +32,15 @@
     }
     if (link) {
       link.href = 'steellogic://part/' + encodeURIComponent(partId);
+    }
+  }
+
+  function showUnavailable(message) {
+    if (statusEl) statusEl.textContent = message || 'Part lookup unavailable. Open the part in Steel Logic or try again.';
+    if (unpublishedEl) unpublishedEl.hidden = true;
+    if (detailsEl) {
+      detailsEl.hidden = true;
+      detailsEl.innerHTML = '';
     }
   }
 
@@ -62,6 +76,7 @@
       .replace(/"/g, '&quot;');
   }
 
+  // Keep the existing accepted alphabet for historical Steel Logic IDs.
   if (!id || !/^[\w .\-\/#]{1,64}$/.test(id)) {
     setUnknown();
     return;
@@ -77,20 +92,21 @@
     .then(function (res) {
       if (res.status === 404) {
         showUnpublished(id);
-        return null;
+        return undefined;
       }
       if (!res.ok) throw new Error('part fetch failed');
       return res.json();
     })
     .then(function (payload) {
-      if (!payload) return;
-      if (payload.schema === 'bcs.part/1.0' && payload.part_id && payload.piece_mark) {
+      if (payload === undefined) return;
+      if (payload && payload.schema === 'bcs.part/1.0' && payload.part_id === id &&
+          typeof payload.piece_mark === 'string' && payload.piece_mark.trim()) {
         showPublished(payload);
       } else {
-        showUnpublished(id);
+        showUnavailable('Part record does not match this tag. Open the part in Steel Logic.');
       }
     })
     .catch(function () {
-      showUnpublished(id);
+      showUnavailable();
     });
 })();
