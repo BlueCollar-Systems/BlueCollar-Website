@@ -33,8 +33,9 @@ from urllib.parse import unquote, urljoin, urlsplit
 SITE_ORIGIN = "https://bluecollar-systems.com"
 OWN_HOSTS = frozenset({"bluecollar-systems.com", "www.bluecollar-systems.com"})
 
-# Every *.html page in the repository root is public.
-ALLOWED_GLOBS: tuple[str, ...] = ("*.html",)
+# Every *.html page and *.css stylesheet in the repository root is public
+# (a page-specific stylesheet such as part-page.css ships without a list edit).
+ALLOWED_GLOBS: tuple[str, ...] = ("*.html", "*.css")
 
 # Individual public files in the repository root. Keep this list explicit:
 # a file that is not listed here is not published.

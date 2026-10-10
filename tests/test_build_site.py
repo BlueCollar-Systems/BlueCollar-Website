@@ -166,6 +166,16 @@ class BuildSiteTests(unittest.TestCase):
             BUILD.build_site(source, source / "inner")
         self.assertTrue((source / "index.html").is_file())
 
+    def test_new_root_stylesheet_ships_without_a_list_edit(self):
+        source = self.build_real_site()
+        (source / "part-page.css").write_text("main{margin:0}", encoding="utf-8")
+        (source / "p" / "index.html").write_text(
+            '<link rel="stylesheet" href="/part-page.css"><script src="/part-resolver.js"></script>', encoding="utf-8"
+        )
+        out = self.temp / "out6"
+        BUILD.build_site(source, out)
+        self.assertTrue((out / "part-page.css").is_file())
+
     def test_rebuild_removes_stale_files(self):
         out = self.build_real_site()
         (out / "stale.txt").write_text("old", encoding="utf-8")
