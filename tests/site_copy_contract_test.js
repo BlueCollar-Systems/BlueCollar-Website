@@ -180,4 +180,57 @@ assert(
   "site must not contain the unavailable public Google Play listing URL"
 );
 
+// Downloads: say the importers are free, say they are Windows packages,
+// keep the SketchUp 2017 floor current, and caption every Download Latest
+// button so nav.js can show the file type and size.
+assert(
+  html.includes("free and open source"),
+  "Toolkit copy must say the PDF importers are free and open source"
+);
+assert(
+  !html.includes("Works on any PC"),
+  "site must not claim the Windows packages work on any PC"
+);
+assert(
+  html.includes("64-bit Windows packages"),
+  "install copy must say the downloads are Windows packages"
+);
+assert(
+  html.includes("v3.7.90 or newer") && !html.includes("3.7.67"),
+  "SketchUp Make 2017 floor must match COMPATIBILITY.md (v3.7.90 or newer)"
+);
+for (const repo of [
+  "BlueCollar-Systems/PDF-Importer-SketchUp",
+  "BlueCollar-Systems/PDF-Importer-FreeCAD",
+  "BlueCollar-Systems/PDF-Importer-Blender",
+  "BlueCollar-Systems/PDF-Importer-LibreCAD",
+]) {
+  const infoTags = elementTags.filter(
+    (tag) => attributeValue(tag, "data-repo-asset-info") === repo
+  );
+  assert.strictEqual(
+    infoTags.length,
+    1,
+    repo + " Download Latest card must have one data-repo-asset-info caption"
+  );
+}
+for (const host of ["After upgrading FreeCAD", "after upgrading SketchUp", "after upgrading Blender"]) {
+  assert(html.includes(host), "install steps must tell people what to do " + host.toLowerCase());
+}
+
+const shapesHtml = fs.readFileSync("shapes.html", "utf8");
+assert(
+  !shapesHtml.includes("listed above"),
+  "shapes.html must not point to a checksum 'listed above' that the page does not show"
+);
+for (const asset of [
+  "Structural-Steel-SU-Shapes-latest.zip",
+  "Structural-Steel-DXF-DWG-Shapes-latest.zip",
+]) {
+  assert(
+    shapesHtml.includes('data-asset-digest-for="' + asset + '"'),
+    "shapes.html must show the SHA-256 under the " + asset + " download"
+  );
+}
+
 console.log("site copy contract: PASS");

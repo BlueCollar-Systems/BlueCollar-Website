@@ -151,6 +151,7 @@ jobs:
         run: |
           node --check nav.js
           node tests/nav_browser_test.js
+          node tests/download_info_browser_test.js
           node --check part-resolver.js
           node tests/part_resolver_test.js
           node tests/part_page_browser_test.js
