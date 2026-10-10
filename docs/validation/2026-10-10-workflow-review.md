@@ -83,8 +83,14 @@ part IDs with TEST app links, and closed mobile navigation after choosing a page
 Archive: `Website-Windows-Test-2026-10-10.zip`.
 SHA-256: `e96439b3d45315a39ac834b3c413972d030002261ff9ea9ec000d18016a198c5`.
 All archive-member hashes were checked after extracting into a fresh folder
-whose name contains spaces. Route/ownership/lifecycle records live beside that
-extracted test folder once complete.
+whose name contains spaces. **10** public routes returned HTTP 200, and **8**
+private/development routes returned 404. Repeated Start reused the owning
+process, changing its port while running was refused, and another bundle's
+Stop launcher could not stop it. Restart/move tests preserved the Tag scanner
+database and both original website/Tag previews stayed available. Package
+evidence is saved as
+`C:\BlueCollar-Test-Builds\2026-10-10\Tag-QC-Website-Package-Verification.json`;
+the extracted servers were stopped through their own launchers.
 
 The bundled runtime is checked on this computer; other Windows versions and
 hardware need separate tests. External download/support links need internet.
