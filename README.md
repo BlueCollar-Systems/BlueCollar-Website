@@ -9,8 +9,8 @@ Static marketing site for **BlueCollar-Systems** — precision software for fabr
 
 | Product | Description | Link |
 |---------|-------------|------|
-| **Steel Logic** | Shop time tracking with AISC v16.0 shapes and calculators (mobile app) | [Google Play beta](https://play.google.com/apps/testing/com.bluecollarsystems.steellogic) |
-| **Tag QC Builder** | Hang tags and QC logs; latest published build v10.40; not available for download from the website yet | [bluecollar-systems.com/#tag-qc](https://bluecollar-systems.com/#tag-qc) |
+| **Steel Logic** | Job Clock for fitter and welder time, plus AISC v16.0 shapes, calculators, converters, and inventory. The Android beta is free with ads. A free version and a paid Pro version are the plan; iOS is in development. | [Google Play beta](https://play.google.com/apps/testing/com.bluecollarsystems.steellogic) |
+| **Tag QC Builder** | Hang tags with a QR code that opens the piece in Steel Logic. New tags start with an editable BCS1: prefix; older CS1: tags still scan. Latest published build v10.40; not a download from this website yet. | [bluecollar-systems.com/#tag-qc](https://bluecollar-systems.com/#tag-qc) |
 | **Free Shape Packs** | Public-domain SketchUp + DXF/DWG shape packs | [Shapes Hub](https://bluecollar-systems.com/shapes) |
 | **SketchUp PDF Importer** | Vector-accurate PDF geometry import for SketchUp | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp) |
 | **FreeCAD PDF Importer** | PDF vector import workbench for FreeCAD | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD) |

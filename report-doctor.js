@@ -127,6 +127,33 @@
     }
   }
 
+  // A wrong or unreadable parts file used to vanish with an empty table.
+  // Tell the reader which schema this page can list.
+  function bootstrapProblem() {
+    if (!bootstrapJsonInput) return '';
+    var text = bootstrapJsonInput.value.trim();
+    if (!text) return '';
+    try {
+      var data = JSON.parse(text);
+      if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        return 'This parts file is not a JSON object. Report Doctor expects schema bcs.parts_bootstrap/1.0.';
+      }
+      if (data.schema && data.schema !== 'bcs.parts_bootstrap/1.0') {
+        return 'This parts file is not schema bcs.parts_bootstrap/1.0, so its rows were not listed.';
+      }
+      return '';
+    } catch (err) {
+      return 'Could not read the parts file as JSON. Report Doctor expects schema bcs.parts_bootstrap/1.0.';
+    }
+  }
+
+  function showBootstrapProblem() {
+    var problem = bootstrapProblem();
+    if (problem) setError(problem);
+    else if (errorBox && errorBox.textContent.indexOf('parts file') !== -1) setError('');
+    return problem;
+  }
+
   function clearNode(node) {
     while (node.firstChild) node.removeChild(node.firstChild);
   }
@@ -943,6 +970,7 @@
         return;
       }
       analyze(report);
+      showBootstrapProblem();
     } catch (err) {
       resetResult();
       setError('Could not analyze this report: ' + err.message);
@@ -988,7 +1016,10 @@
       reader.onload = function() {
         if (bootstrapJsonInput) bootstrapJsonInput.value = String(reader.result || '');
         if (jsonInput.value.trim()) parseAndAnalyze();
-        else renderTagsTable(parseBootstrapInput());
+        else {
+          renderTagsTable(parseBootstrapInput());
+          showBootstrapProblem();
+        }
       };
       reader.readAsText(file);
     });
@@ -997,6 +1028,7 @@
   if (bootstrapJsonInput) {
     bootstrapJsonInput.addEventListener('blur', function() {
       renderTagsTable(parseBootstrapInput());
+      showBootstrapProblem();
     });
   }
 
