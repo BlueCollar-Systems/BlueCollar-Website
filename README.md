@@ -27,13 +27,15 @@ Static marketing site for **BlueCollar-Systems** — precision software for fabr
 
 Open `index.html` in a browser. No build step required.
 
+To see exactly what gets published, run `python tools/build_site.py`. It copies only the public site files into `_site/` (ignored by git) and fails if a repository-only file would be published or an on-site link points at a missing file.
+
 ## Deployment
 
 Deployed to **Cloudflare Pages** (project `bluecollar-website`) via GitHub Actions workflow [`.github/workflows/website-ci.yml`](.github/workflows/website-ci.yml).
 
 - Pushes to `main` run `website-ci`.
 - `static-checks` must pass before `deploy-pages` runs.
-- `deploy-pages` syncs and validates release metadata, publishes with Wrangler, then verifies that the public domain serves the exact new metadata bytes before committing stamped badges back to `main`.
+- `deploy-pages` syncs and validates release metadata, builds `_site/` with `tools/build_site.py` (public files only), publishes that folder with Wrangler, then verifies that the public domain serves the exact new metadata bytes and that repository files such as `/README.md` answer 404 before committing stamped badges back to `main`.
 - Pushes to `main`/`master` also run `auto-release` to bump `VERSION` and publish a GitHub Release snapshot zip.
 - A **cron** (`17 */6 * * *`) re-syncs release metadata even if no product repo fired a dispatch.
 
@@ -46,7 +48,7 @@ Product versions and ZIP download URLs are **not** hardcoded in HTML for version
 | Layer | Role |
 |-------|------|
 | [`repo-metadata.json`](repo-metadata.json) | Build-time snapshot of each GitHub repo's importer release plus any `steel-v*` release channel (generated in CI). It records each release's exact target commit and immutable GitHub asset digests. Primary installers/downloads stay first for the download UI, while published verification sidecars such as attestations remain available. |
-| [`tools/sync_repo_metadata.py`](tools/sync_repo_metadata.py) | Fetches GitHub API data and optionally stamps `data-repo-version` fallbacks in `*.html`. |
+| [`tools/sync_repo_metadata.py`](tools/sync_repo_metadata.py) | Fetches GitHub API data and optionally stamps `data-repo-version` fallbacks in `*.html`. When nothing a visitor can see has changed (only the run time, or a push date no badge shows), it leaves `repo-metadata.json` and the pages byte-for-byte unchanged, so the 6-hour schedule adds no badge-stamp commit. It refuses to run if a tracked repo is private, because its download links would be dead for visitors. |
 | [`nav.js`](nav.js) | Client-side enhancement: loads `/repo-metadata.json` (`Cache-Control: no-store`) and updates `data-repo-version`, `data-repo-release-link`, and `data-repo-asset-link` elements. Supports `data-release-channel="steel"` for shape-pack downloads hosted by importer repos. |
 | Static HTML fallbacks | `releases/latest` links and version badges work if JavaScript or metadata fetch fails. |
 

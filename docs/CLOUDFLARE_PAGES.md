@@ -2,7 +2,7 @@
 
 Account ID (reference): `df143f08ce8d490ebf620fe776fbd375`  
 Project: `bluecollar-website`  
-Production deploy: GitHub Actions [`.github/workflows/website-ci.yml`](../.github/workflows/website-ci.yml) (`wrangler pages deploy`, branch `main`).
+Production deploy: GitHub Actions [`.github/workflows/website-ci.yml`](../.github/workflows/website-ci.yml) (`python tools/build_site.py`, then `wrangler pages deploy _site`, branch `main`).
 
 ## Verified from the public edge (no API token)
 
@@ -22,7 +22,8 @@ Do **not** store API tokens in this repo. Configure in the Cloudflare dashboard 
 ### Pages project
 
 - **Production branch:** not used for builds (deploy is direct upload from CI); keep project linked to repo only if you use dashboard previews.
-- **Build command / output:** leave empty or unused — CI uploads the repo root as static assets.
+- **Build command / output:** leave empty or unused — CI builds `_site/` with [`tools/build_site.py`](../tools/build_site.py) and uploads only that folder.
+- **What gets published:** only the allowlist in `tools/build_site.py` (root `*.html` and `*.css`, the site scripts, favicons, `og-image.png`, `robots.txt`, `sitemap.xml`, `repo-metadata.json`, `_headers`, `_redirects`, `.well-known/`, `p/`, `p-records/`). Cloudflare Pages does **not** read `.cfignore`, so that file was removed. A new public file (for example `app-ads.txt`) must be added to the allowlist or it will 404. The build fails if a `.py`, `.md`, `.yml`, `LICENSE` or `VERSION` file would be published, or if any on-site link points at a file outside `_site/`.
 - **Disable `*.pages.dev` for production** (optional hardening): redirect `bluecollar-website.pages.dev` → `https://bluecollar-systems.com` via [Bulk Redirect](https://developers.cloudflare.com/rules/url-forwarding/bulk-redirects/) if you want apex-only traffic.
 
 ### Caching
@@ -43,11 +44,17 @@ Do **not** store API tokens in this repo. Configure in the Cloudflare dashboard 
 - **No separate Pages “build hook” required** unless you want a manual dashboard redeploy; CI is the source of truth.
 - After publishing a new GitHub **release** on an importer repo, ensure `WEBSITE_DISPATCH_TOKEN` (or equivalent) can fire `repository_dispatch` so metadata and deploy refresh without waiting for cron.
 
-## Deploy failure: Cloudflare auth 10000
+## Deploy status
 
-GitHub Actions `website-ci` `deploy-pages` has failed closed since **2026-09-01T05:15Z**. The `CLOUDFLARE_API_TOKEN` secret is present but Cloudflare returns `{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}` on `GET /accounts/{account_id}/pages/projects/bluecollar-website`. Badge-stamp commits still land on `main`; production Pages (`bluecollar-website`, custom domain `bluecollar-systems.com`) does not update.
+**Resolved (2026-10-10):** the Cloudflare auth 10000 failure noted on 2026-09-15 no longer happens. `deploy-pages` succeeds on every run, for example run `38052687522` on 2026-10-10 ("Deployment complete!"). If it ever returns, rotate the token in [API Tokens](https://dash.cloudflare.com/profile/api-tokens) with **Account → Cloudflare Pages: Edit** and **Account Settings: Read**, then update the deploy token secret on `BlueCollar-Systems/BlueCollar-Website` (the workflow uses `CLOUDFLARE_PAGES_API_TOKEN`, then `CLOUDFLARE_API_TOKEN`, then `CF_API_TOKEN`, whichever is set first).
 
-Fix: rotate the token in [API Tokens](https://dash.cloudflare.com/profile/api-tokens) with **Account → Cloudflare Pages: Edit** and **Account Settings: Read**, then `gh secret set CLOUDFLARE_API_TOKEN` on `BlueCollar-Systems/BlueCollar-Website`. Until that secret is valid, production can still be published with `wrangler pages deploy . --project-name bluecollar-website --branch main` after `wrangler login` against account `df143f08ce8d490ebf620fe776fbd375`.
+Manual deploy (only if CI cannot run), after `wrangler login` against the account below:
+
+```
+python tools/build_site.py && wrangler pages deploy _site --project-name bluecollar-website --branch main
+```
+
+After any deploy, `python tools/verify_deployed_metadata.py` confirms the public metadata matches and that `/README.md` and `/.github/workflows/website-ci.yml` answer 404.
 
 ## GitHub secrets (deploy)
 
