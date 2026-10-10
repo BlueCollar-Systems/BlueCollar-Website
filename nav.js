@@ -8,6 +8,14 @@
     btn.setAttribute('aria-expanded', String(isNowOpen));
     if (isNowOpen) { var first = menu.querySelector('a'); if (first) first.focus(); }
   });
+  // On a phone, tapping a menu link closes the menu so it does not cover
+  // the section it jumps to. (On computers the menu always shows.)
+  menu.addEventListener('click', function(e) {
+    var link = e.target.closest && e.target.closest('a');
+    if (!link || menu.classList.contains('hidden')) return;
+    menu.classList.add('hidden');
+    btn.setAttribute('aria-expanded', 'false');
+  });
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && !menu.classList.contains('hidden')) {
       menu.classList.add('hidden');

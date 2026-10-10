@@ -178,6 +178,11 @@ ul[role="list"] { list-style-position: inside; }
 .divide-y > * + * { border-top-width: 1px; border-top-style: solid; }
 .divide-gray-700 > * + * { border-color: #374151; }
 
+/* ─── Hidden utility ───
+   Kept above the md: rules so .md\:flex wins over .hidden at 768 px and wider
+   (the top menu carries both classes). */
+.hidden { display: none !important; }
+
 /* ─── Responsive: md (768px+) ─── */
 @media (min-width: 768px) {
   .md\:flex { display: flex !important; }
@@ -201,6 +206,28 @@ ul[role="list"] { list-style-position: inside; }
   .max-md\:px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
   .max-md\:py-4 { padding-top: 1rem; padding-bottom: 1rem; }
   .max-md\:gap-4 { gap: 1rem; }
+}
+
+/* ─── Top menu ───
+   In-page jumps land below the sticky top bar; labels never break; phones
+   get a 44 px menu button and a vertical list of 44 px rows. */
+html { scroll-padding-top: 5rem; }
+nav > .flex { column-gap: 1.5rem; }
+nav > .flex > a:first-child { white-space: nowrap; flex-shrink: 0; }
+#nav-menu a { white-space: nowrap; }
+#nav-toggle { background: transparent; border: 0; padding: 0.5rem; min-width: 44px; min-height: 44px; }
+#nav-toggle svg { margin: auto; }
+#nav-toggle:focus-visible,
+#nav-menu a:focus-visible { outline: 2px solid #63b3ed; outline-offset: 2px; }
+@media (min-width: 768px) {
+  #nav-menu { flex-wrap: wrap; justify-content: flex-end; row-gap: 0.25rem; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  #nav-menu { column-gap: 1rem; }
+}
+@media (max-width: 767px) {
+  #nav-menu:not(.hidden) { display: flex; flex-direction: column; gap: 0; max-height: calc(100dvh - 4.75rem); overflow-y: auto; }
+  #nav-menu a { display: block; padding: 0.75rem 0; min-height: 44px; font-size: 1rem; }
 }
 
 .pb-20 { padding-bottom: 5rem; }
@@ -300,9 +327,6 @@ ul[role="list"] { list-style-position: inside; }
   font-size: 0.875rem;
   line-height: 1.5rem;
 }
-
-/* ─── Hidden utility ─── */
-.hidden { display: none !important; }
 
 /* ─── Fill-current for SVGs ─── */
 .fill-current { fill: currentColor; }

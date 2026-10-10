@@ -144,6 +144,7 @@ jobs:
       - name: JavaScript syntax + Report Doctor XSS regression
         run: |
           node --check nav.js
+          node tests/nav_browser_test.js
           node --check part-resolver.js
           node tests/part_resolver_test.js
           node --check report-doctor.js
