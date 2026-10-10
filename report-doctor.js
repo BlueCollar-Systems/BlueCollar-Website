@@ -739,11 +739,23 @@
       addListItem(actions, 'If the source PDF is vector-based, retry with Auto or Vector and check whether the report still resolves to Raster.');
     }
 
+    // LibreCAD Labels and 3D Text output measured identical to Glyphs (outlines,
+    // no visible DXF TEXT), so LibreCAD gets its own advice for editable words.
+    var isLibreCAD = String(host).toLowerCase().indexOf('librecad') >= 0;
+    var libreCADAdviceGiven = false;
+    function addLibreCADEditableAdvice() {
+      if (libreCADAdviceGiven) return;
+      libreCADAdviceGiven = true;
+      addListItem(actions, 'For editable words in LibreCAD, choose the new "Editable text (LibreCAD font)" option once your LibreCAD importer has it. Until that release, LibreCAD output keeps the exact look of the text as outlines, so Labels and 3D Text do not give editable DXF text.');
+    }
+
     if (normalizedTextMode === 'geometry' || normalizedTextMode === 'glyphs') {
       addListItem(findings, 'Text was requested as visual geometry/outlines, not editable labels.');
-      addListItem(actions, 'Use Labels or 3D Text if the downstream workflow needs editable text.');
+      if (isLibreCAD) addLibreCADEditableAdvice();
+      else addListItem(actions, 'Use Labels or 3D Text if the downstream workflow needs editable text.');
     } else if (normalizedTextMode === 'labels') {
       addListItem(findings, 'Text was requested as editable labels where the host can support it.');
+      if (isLibreCAD) addLibreCADEditableAdvice();
       if (text.outlines !== null && text.outlines > 0) {
         severity = severity === 'ok' ? 'warn' : severity;
         addListItem(findings, 'Some text appears to have landed as outlines/glyph geometry even though Labels mode was requested.');
@@ -763,7 +775,12 @@
     if (text.outlines !== null && text.outlines > 5000) {
       severity = severity === 'ok' ? 'warn' : severity;
       addListItem(findings, 'The report suggests a large amount of text/glyph geometry. Dense glyph pages can be slow and hard to edit.');
-      addListItem(actions, 'Try Labels for editable text, or Raster/Hybrid when exact appearance matters more than editability.');
+      if (isLibreCAD) {
+        addListItem(actions, 'Try Raster/Hybrid when exact appearance matters more than editability.');
+        addLibreCADEditableAdvice();
+      } else {
+        addListItem(actions, 'Try Labels for editable text, or Raster/Hybrid when exact appearance matters more than editability.');
+      }
     }
 
     if (geometry !== null && geometry > 100000) {
@@ -809,9 +826,9 @@
       addListItem(findings, 'Importer performance hint: ' + safeText(perfHint));
     }
 
-    if (String(host).toLowerCase().indexOf('librecad') >= 0 && normalizedTextMode === '3d_text') {
-      addListItem(findings, 'LibreCAD is 2D-only; 3D Text maps to editable DXF TEXT rather than true 3D geometry.');
-      addListItem(actions, 'Use Labels for editable DXF text or Outlines/Geometry for visual linework.');
+    if (isLibreCAD && normalizedTextMode === '3d_text') {
+      addListItem(findings, 'LibreCAD is 2D-only; a 3D Text request is delivered as flat 2D text outlines that keep the exact look, not as 3D geometry or editable DXF text.');
+      addLibreCADEditableAdvice();
     }
 
     if (!actions.childNodes.length) {

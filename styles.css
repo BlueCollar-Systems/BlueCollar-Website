@@ -3,7 +3,7 @@
 /* ─── Reset & Base ─── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; line-height: 1.5; -webkit-text-size-adjust: 100%; }
-body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #1a202c; }
 a { color: inherit; text-decoration: inherit; }
 img, svg { display: block; max-width: 100%; }
 button { cursor: pointer; font: inherit; color: inherit; }
@@ -13,6 +13,8 @@ ul[role="list"] { list-style-position: inside; }
 .bg-industrial { background-color: #1a202c; }
 .accent-steel { color: #63b3ed; }
 .btn-safety { background-color: #ed8936; }
+/* Dark text on the safety orange reads at about 8:1; white was 2.55:1. */
+.btn-safety.text-white { color: #111827; }
 .btn-safety:hover { background-color: #dd6b20; }
 
 /* ─── Layout utilities ─── */
@@ -28,6 +30,7 @@ ul[role="list"] { list-style-position: inside; }
 .gap-4 { gap: 1rem; }
 .gap-8 { gap: 2rem; }
 .inline-block { display: inline-block; }
+.block { display: block; }
 .w-full { width: 100%; }
 .overflow-hidden { overflow: hidden; }
 .overflow-x-auto { overflow-x: auto; }
@@ -40,11 +43,14 @@ ul[role="list"] { list-style-position: inside; }
 .mx-auto { margin-left: auto; margin-right: auto; }
 
 /* ─── Spacing ─── */
+.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
 .px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
 .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
 .px-8 { padding-left: 2rem; padding-right: 2rem; }
 .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
 .py-0\.5 { padding-top: 0.125rem; padding-bottom: 0.125rem; }
+.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
 .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
 .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
 .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
@@ -66,13 +72,17 @@ ul[role="list"] { list-style-position: inside; }
 .mb-8 { margin-bottom: 2rem; }
 .mb-10 { margin-bottom: 2.5rem; }
 .mb-12 { margin-bottom: 3rem; }
+.mt-1 { margin-top: 0.25rem; }
 .mt-2 { margin-top: 0.5rem; }
 .mt-3 { margin-top: 0.75rem; }
 .mt-4 { margin-top: 1rem; }
 .mt-5 { margin-top: 1.25rem; }
 .mt-6 { margin-top: 1.5rem; }
+.mt-10 { margin-top: 2.5rem; }
+.my-6 { margin-top: 1.5rem; margin-bottom: 1.5rem; }
 .space-y-1 > * + * { margin-top: 0.25rem; }
 .space-y-2 > * + * { margin-top: 0.5rem; }
+.space-y-3 > * + * { margin-top: 0.75rem; }
 .space-y-6 > * + * { margin-top: 1.5rem; }
 .space-y-10 > * + * { margin-top: 2.5rem; }
 
@@ -100,23 +110,29 @@ ul[role="list"] { list-style-position: inside; }
 .text-center { text-align: center; }
 .list-disc { list-style-type: disc; }
 .list-inside { list-style-position: inside; }
+.list-none { list-style: none; }
+.break-all { word-break: break-all; overflow-wrap: anywhere; }
 
 /* ─── Colors ─── */
 .text-white { color: #fff; }
 .text-gray-100 { color: #f7fafc; }
+.text-gray-200 { color: #e5e7eb; }
 .text-gray-300 { color: #d1d5db; }
 .text-gray-400 { color: #9ca3af; }
-.text-gray-500 { color: #6b7280; }
+.text-gray-500 { color: #9ca3af; }
 .text-blue-200 { color: #bfdbfe; }
 .text-blue-300 { color: #93c5fd; }
 .text-blue-400 { color: #63b3ed; }
 .bg-blue-700 { background-color: #1d4ed8; }
 .bg-gray-700 { background-color: #374151; }
 .bg-gray-800 { background-color: #1f2937; }
+.bg-gray-900 { background-color: #111827; }
+.bg-gray-950 { background-color: #030712; }
 .bg-gray-800\/30 { background-color: rgba(31, 41, 55, 0.3); }
 .bg-gray-800\/50 { background-color: rgba(31, 41, 55, 0.5); }
 .bg-gray-800\/60 { background-color: rgba(31, 41, 55, 0.6); }
 .bg-gray-900\/50 { background-color: rgba(17, 24, 39, 0.5); }
+.bg-gray-900\/60 { background-color: rgba(17, 24, 39, 0.6); }
 .bg-gray-900\/90 { background-color: rgba(17, 24, 39, 0.9); }
 
 /* ─── Borders & Rounded ─── */
@@ -131,6 +147,7 @@ ul[role="list"] { list-style-position: inside; }
 .rounded-lg { border-radius: 0.5rem; }
 .rounded-xl { border-radius: 0.75rem; }
 .rounded-2xl { border-radius: 1rem; }
+.rounded-3xl { border-radius: 1.5rem; }
 
 /* ─── Effects ─── */
 .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,.1), 0 8px 10px -6px rgba(0,0,0,.1); }
@@ -178,6 +195,11 @@ ul[role="list"] { list-style-position: inside; }
 .divide-y > * + * { border-top-width: 1px; border-top-style: solid; }
 .divide-gray-700 > * + * { border-color: #374151; }
 
+/* ─── Hidden utility ───
+   Kept above the md: rules so .md\:flex wins over .hidden at 768 px and wider
+   (the top menu carries both classes). */
+.hidden { display: none !important; }
+
 /* ─── Responsive: md (768px+) ─── */
 @media (min-width: 768px) {
   .md\:flex { display: flex !important; }
@@ -203,8 +225,29 @@ ul[role="list"] { list-style-position: inside; }
   .max-md\:gap-4 { gap: 1rem; }
 }
 
+/* ─── Top menu ───
+   In-page jumps land below the sticky top bar; labels never break; phones
+   get a 44 px menu button and a vertical list of 44 px rows. */
+html { scroll-padding-top: 5rem; }
+nav > .flex { column-gap: 1.5rem; }
+nav > .flex > a:first-child { white-space: nowrap; flex-shrink: 0; }
+#nav-menu a { white-space: nowrap; }
+#nav-toggle { background: transparent; border: 0; padding: 0.5rem; min-width: 44px; min-height: 44px; }
+#nav-toggle svg { margin: auto; }
+#nav-toggle:focus-visible,
+#nav-menu a:focus-visible { outline: 2px solid #63b3ed; outline-offset: 2px; }
+@media (min-width: 768px) {
+  #nav-menu { flex-wrap: wrap; justify-content: flex-end; row-gap: 0.25rem; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  #nav-menu { column-gap: 1rem; }
+}
+@media (max-width: 767px) {
+  #nav-menu:not(.hidden) { display: flex; flex-direction: column; gap: 0; max-height: calc(100dvh - 4.75rem); overflow-y: auto; }
+  #nav-menu a { display: block; padding: 0.75rem 0; min-height: 44px; font-size: 1rem; }
+}
+
 .pb-20 { padding-bottom: 5rem; }
-.footer-version { opacity: 0.5; }
 .text-left { text-align: left; }
 .underline { text-decoration: underline; }
 .no-underline { text-decoration: none; }
@@ -301,8 +344,16 @@ ul[role="list"] { list-style-position: inside; }
   line-height: 1.5rem;
 }
 
-/* ─── Hidden utility ─── */
-.hidden { display: none !important; }
+/* ─── Part Tracking page (/p/<id>) ───
+   Moved out of an inline <style> in p/index.html, which the site's
+   Content-Security-Policy (style-src 'self') blocks. */
+.part-dl { display: grid; grid-template-columns: minmax(0, 8rem) minmax(0, 1fr); gap: 0.5rem 1rem; margin: 0; }
+.part-dl dt { color: #9ca3af; font-size: 0.875rem; }
+.part-dl dd { margin: 0; color: #e5e7eb; font-weight: 500; overflow-wrap: anywhere; }
+@media (max-width: 479px) {
+  .part-dl { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
+  .part-dl dd + dt { margin-top: 0.5rem; }
+}
 
 /* ─── Fill-current for SVGs ─── */
 .fill-current { fill: currentColor; }

@@ -132,6 +132,12 @@ jobs:
           print("Dynamic release link policy check passed.")
           PY
 
+      # Every class used by the pages must have a rule in styles.css (there is
+      # no Tailwind build), and no page may carry an inline <style> that the
+      # site CSP blocks.
+      - name: CSS class coverage
+        run: node tests/css_class_coverage_test.js
+
       - name: Reject private PDF/CAD artifacts
         run: python tools/validate_private_artifacts.py
 
@@ -144,13 +150,19 @@ jobs:
       - name: JavaScript syntax + Report Doctor XSS regression
         run: |
           node --check nav.js
+          node tests/nav_browser_test.js
+          node tests/download_info_browser_test.js
           node --check part-resolver.js
           node tests/part_resolver_test.js
+          node tests/part_page_browser_test.js
           node --check report-doctor.js
           node tests/report_doctor_file_inputs_test.js
           node tests/report_doctor_browser_test.js
+          node tests/report_doctor_librecad_advice_test.js
           node tests/report_doctor_xss_test.js
           node tests/site_copy_contract_test.js
+          node tests/privacy_policy_contract_test.js
+          node tests/meta_copy_test.js
 
       - name: Release metadata digest regression
         run: python tests/test_sync_repo_metadata.py -v
