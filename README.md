@@ -48,7 +48,7 @@ Product versions and ZIP download URLs are **not** hardcoded in HTML for version
 | Layer | Role |
 |-------|------|
 | [`repo-metadata.json`](repo-metadata.json) | Build-time snapshot of each GitHub repo's importer release plus any `steel-v*` release channel (generated in CI). It records each release's exact target commit and immutable GitHub asset digests. Primary installers/downloads stay first for the download UI, while published verification sidecars such as attestations remain available. |
-| [`tools/sync_repo_metadata.py`](tools/sync_repo_metadata.py) | Fetches GitHub API data and optionally stamps `data-repo-version` fallbacks in `*.html`. |
+| [`tools/sync_repo_metadata.py`](tools/sync_repo_metadata.py) | Fetches GitHub API data and optionally stamps `data-repo-version` fallbacks in `*.html`. When nothing a visitor can see has changed (only the run time, or a push date no badge shows), it leaves `repo-metadata.json` and the pages byte-for-byte unchanged, so the 6-hour schedule adds no badge-stamp commit. It refuses to run if a tracked repo is private, because its download links would be dead for visitors. |
 | [`nav.js`](nav.js) | Client-side enhancement: loads `/repo-metadata.json` (`Cache-Control: no-store`) and updates `data-repo-version`, `data-repo-release-link`, and `data-repo-asset-link` elements. Supports `data-release-channel="steel"` for shape-pack downloads hosted by importer repos. |
 | Static HTML fallbacks | `releases/latest` links and version badges work if JavaScript or metadata fetch fails. |
 

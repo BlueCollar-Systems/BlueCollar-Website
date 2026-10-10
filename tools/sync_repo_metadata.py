@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import copy
 import datetime as dt
 import json
 import os
@@ -152,15 +153,59 @@ def _safe_latest_tagged_release(
     return None
 
 
-def _load_previous_repos(path: Path) -> dict[str, Any]:
+def _load_previous_payload(path: Path) -> dict[str, Any] | None:
     if not path.exists():
-        return {}
+        return None
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return {}
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _load_previous_repos(path: Path) -> dict[str, Any]:
+    payload = _load_previous_payload(path) or {}
     repos = payload.get("repos")
     return repos if isinstance(repos, dict) else {}
+
+
+# Written fresh on every run; no visitor ever sees them.
+_RUN_ONLY_FIELDS: tuple[str, ...] = ("generated_at", "source_event")
+
+
+def _pushed_at_is_shown(repo_key: str, repo_data: dict[str, Any]) -> bool:
+    """True when nav.js would show this repo's push date on a badge.
+
+    nav.js shows "Updated: <pushed_at>" only where the badge's release
+    channel has no tag: the importer channel (latest_release) for every repo,
+    plus the steel channel (steel_release) for repos in STEEL_RELEASE_REPOS.
+    """
+    latest = repo_data.get("latest_release") or {}
+    if not (isinstance(latest, dict) and latest.get("tag")):
+        return True
+    if repo_key in STEEL_RELEASE_REPOS:
+        steel = repo_data.get("steel_release") or {}
+        if not (isinstance(steel, dict) and steel.get("tag")):
+            return True
+    return False
+
+
+def visible_metadata(payload: dict[str, Any]) -> dict[str, Any]:
+    """The part of a snapshot that can change what a visitor sees.
+
+    Drops the per-run timestamp fields and any push date that no badge
+    shows. Tags, names, links, sizes, digests and immutability all stay, so
+    any real change still rewrites the snapshot.
+    """
+    view = copy.deepcopy(payload)
+    for field in _RUN_ONLY_FIELDS:
+        view.pop(field, None)
+    repos = view.get("repos")
+    if isinstance(repos, dict):
+        for repo_key, repo_data in repos.items():
+            if isinstance(repo_data, dict) and not _pushed_at_is_shown(repo_key, repo_data):
+                repo_data.pop("pushed_at", None)
+    return view
 
 
 def build_metadata(token: str | None, previous_repos: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -172,6 +217,14 @@ def build_metadata(token: str | None, previous_repos: dict[str, Any] | None = No
         try:
             repo_data = _json_get(repo_api, token)
             repo_error = None
+            if isinstance(repo_data, dict) and repo_data.get("private") is True:
+                # A token that can read private repos must never publish
+                # their download links on the public website.
+                raise SystemExit(
+                    f"Refusing to publish {repo}: it is a private repository, so its "
+                    "download links would be dead for visitors. Make it public or "
+                    "remove it from REPOS in tools/sync_repo_metadata.py."
+                )
         except urllib.error.HTTPError as exc:
             if exc.code == 404:
                 repos[repo] = {
@@ -225,8 +278,7 @@ def stamp_html_versions(payload: dict[str, Any]) -> None:
 
     repos = payload.get("repos", {})
     for page in sorted(Path(".").glob("*.html")):
-        html = page.read_text(encoding="utf-8")
-        changed = False
+        original = html = page.read_text(encoding="utf-8")
         for repo_key, repo_data in repos.items():
             release_attr = (
                 r'(?:data-release-channel="steel"[^>]*data-repo-version="'
@@ -246,10 +298,10 @@ def stamp_html_versions(payload: dict[str, Any]) -> None:
                     value = f"Latest: {tag}" if current.startswith("latest:") else tag
                     return f"{match.group(1)}{value}{match.group(3)}"
 
-                html, n = steel_pattern.subn(steel_repl, html)
-                if n > 0:
-                    changed = True
+                stamped = steel_pattern.sub(steel_repl, html)
+                if stamped != html:
                     print(f"  stamped {page.name}: {repo_key} steel -> {tag}")
+                html = stamped
 
             release = (repo_data or {}).get("latest_release")
             if not release or not release.get("tag"):
@@ -267,21 +319,31 @@ def stamp_html_versions(payload: dict[str, Any]) -> None:
                 value = f"Latest: {tag}" if current.startswith("latest:") else tag
                 return f"{match.group(1)}{value}{match.group(3)}"
 
-            html, n = pattern.subn(repl, html)
-            if n > 0:
-                changed = True
+            stamped = pattern.sub(repl, html)
+            if stamped != html:
                 print(f"  stamped {page.name}: {repo_key} -> {tag}")
+            html = stamped
 
-        if changed:
-            page.write_text(html, encoding="utf-8")
+        # Rewrite only on a real change, with the repository's LF endings, so
+        # an unchanged badge never shows up as a modified file.
+        if html != original:
+            page.write_text(html, encoding="utf-8", newline="\n")
             print(f"updated {page.name} with static version badges")
 
 
 def main() -> int:
     token = os.getenv("GH_TOKEN") or os.getenv("GITHUB_TOKEN")
     output = Path("repo-metadata.json")
-    payload = build_metadata(token, _load_previous_repos(output))
-    output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    previous = _load_previous_payload(output)
+    previous_repos = (previous or {}).get("repos")
+    payload = build_metadata(token, previous_repos if isinstance(previous_repos, dict) else {})
+    if previous is not None and visible_metadata(previous) == visible_metadata(payload):
+        # Keep the exact bytes so the badge-stamp step finds nothing to
+        # commit. Only generated_at/source_event or an unshown push date moved.
+        print(f"metadata unchanged (timestamps only); kept {output} as is")
+        stamp_html_versions(previous)
+        return 0
+    output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {output}")
     stamp_html_versions(payload)
     return 0
