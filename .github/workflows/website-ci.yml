@@ -159,6 +159,7 @@ jobs:
           node tests/report_doctor_browser_test.js
           node tests/report_doctor_xss_test.js
           node tests/site_copy_contract_test.js
+          node tests/privacy_policy_contract_test.js
 
       - name: Release metadata digest regression
         run: python tests/test_sync_repo_metadata.py -v
