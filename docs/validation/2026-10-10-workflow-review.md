@@ -58,3 +58,36 @@ Part-tag mirrors still require an explicitly published matching record; a
 fictional preview tag correctly has no published data. App installation,
 actual mobile deep-link resolution and cross-device tracking require their
 own integration tests.
+## Source-free Windows website test bundle
+
+`C:\BlueCollar-Test-Builds\2026-10-10\Website\OPEN_BlueCollar_Website.bat`
+opens `http://127.0.0.1:18341/`. Bundled Windows x64 Node 22.13.1 serves the
+explicit public asset allowlist; no Python, npm, source checkout or internet is
+needed for local pages. Its STOP launcher validates the owning folder. Hosted
+pages, release metadata and external download/support destinations are unchanged.
+
+The bundle contains only **35** files: public site assets, loopback server and
+launchers/runtime, notices, and unmistakably fictional report/bootstrap/part
+fixtures. Development paths, credentials, real shop records and runtime `data/`
+are excluded. Public part-page styles moved to an external CSS file so the local
+site works with a strict same-origin content policy. TEST markup alone selects
+`steellogictest://` part links and localhost Report Doctor copy links; normal
+source pages retain their production links. No part records were published.
+
+Source checks passed: **28 Python tests/35 subtests**, **8 control tests**,
+**7 part-resolver tests**, and the report contract's **47 valid cases/16 input
+rejections**. The native extracted-package browser accepted sample file pickers,
+copied the real summary/tag URL to the clipboard, resolved exact fictional
+part IDs with TEST app links, and closed mobile navigation after choosing a page.
+
+Archive: `Website-Windows-Test-2026-10-10.zip`.
+SHA-256: `e96439b3d45315a39ac834b3c413972d030002261ff9ea9ec000d18016a198c5`.
+All archive-member hashes were checked after extracting into a fresh folder
+whose name contains spaces. Route/ownership/lifecycle records live beside that
+extracted test folder once complete.
+
+The bundled runtime is checked on this computer; other Windows versions and
+hardware need separate tests. External download/support links need internet.
+Part links still require the matching register in Steel Logic TEST; a real
+mobile device/OS dispatch check remains outstanding. No production content,
+website deployment, commit or push was made by this review.
