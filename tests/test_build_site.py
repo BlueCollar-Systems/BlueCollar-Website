@@ -1,0 +1,193 @@
+"""The deploy folder holds only public website files and every on-site link resolves."""
+
+from __future__ import annotations
+
+import contextlib
+import importlib.util
+import io
+import shutil
+import tempfile
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SPEC = importlib.util.spec_from_file_location("build_site", ROOT / "tools" / "build_site.py")
+assert SPEC is not None and SPEC.loader is not None
+BUILD = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(BUILD)
+
+PAGES = ("index.html", "feedback.html", "shapes.html", "report-doctor.html", "privacy.html", "404.html")
+REQUIRED = PAGES + (
+    "p/index.html",
+    "p-records/demo-part.json",
+    ".well-known/security.txt",
+    "_headers",
+    "_redirects",
+    "styles.css",
+    "nav.js",
+    "part-resolver.js",
+    "report-doctor.js",
+    "favicon.ico",
+    "favicon.svg",
+    "og-image.png",
+    "robots.txt",
+    "sitemap.xml",
+    "repo-metadata.json",
+)
+NEVER_PUBLISHED = (
+    "README.md",
+    "CONTRIBUTING.md",
+    "RELEASE_CHECKLIST.md",
+    "LICENSE",
+    "VERSION",
+    ".cfignore",
+    ".gitignore",
+    ".gitattributes",
+    ".pre-commit-config.yaml",
+    "repo_context_builder_core.py",
+    "0build_master_output_1BlueCollar-Website.py",
+    "0build_master_output_1BlueCollar-Website.cmd",
+    "docs/CLOUDFLARE_PAGES.md",
+    "tools/sync_repo_metadata.py",
+    "tests/test_build_site.py",
+    ".github/workflows/website-ci.yml",
+)
+
+
+class BuildSiteTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="bc-site-"))
+        self.addCleanup(shutil.rmtree, self.temp, ignore_errors=True)
+        self.stdout = io.StringIO()
+        self.stderr = io.StringIO()
+        self.enterContext(contextlib.redirect_stdout(self.stdout))
+        self.enterContext(contextlib.redirect_stderr(self.stderr))
+
+    def build_real_site(self) -> Path:
+        out = self.temp / "_site"
+        self.assertEqual(BUILD.main(["--source", str(ROOT), "--out", str(out)]), 0, self.stderr.getvalue())
+        return out
+
+    def test_every_public_page_and_asset_is_published(self):
+        out = self.build_real_site()
+        for rel in REQUIRED:
+            with self.subTest(file=rel):
+                self.assertTrue((out / rel).is_file(), f"{rel} missing from the deploy folder")
+        for page in ROOT.glob("*.html"):
+            self.assertTrue((out / page.name).is_file(), f"{page.name} missing from the deploy folder")
+        self.assertEqual((out / "repo-metadata.json").read_bytes(), (ROOT / "repo-metadata.json").read_bytes())
+
+    def test_repository_only_files_are_not_published(self):
+        out = self.build_real_site()
+        for rel in NEVER_PUBLISHED:
+            with self.subTest(file=rel):
+                self.assertFalse((out / rel).exists(), f"{rel} would be public")
+        self.assertEqual(BUILD.forbidden_files(out), [])
+        suffixes = {p.suffix.lower() for p in out.rglob("*") if p.is_file()}
+        self.assertFalse(suffixes & {".py", ".md", ".yml", ".yaml", ".cmd"}, suffixes)
+        self.assertFalse(any(p.name in {"LICENSE", "VERSION"} for p in out.rglob("*")))
+
+    def test_reference_check_passes_on_the_real_site(self):
+        out = self.build_real_site()
+        self.assertEqual(BUILD.check_references(out), [])
+        self.assertIn("every on-site link resolves", self.stdout.getvalue())
+
+    def test_pages_rules_match_cloudflare(self):
+        out = self.build_real_site()
+        expected = {
+            "/": "index.html",
+            "/shapes": "shapes.html",
+            "/report-doctor": "report-doctor.html",
+            "/report-doctor.html": "report-doctor.html",
+            "/feedback": "feedback.html",
+            "/privacy": "privacy.html",
+            "/p/demo-part": "p/index.html",
+            "/p/": "p/index.html",
+            "/p-records/demo-part.json": "p-records/demo-part.json",
+            "/repo-metadata.json": "repo-metadata.json",
+            "/.well-known/security.txt": ".well-known/security.txt",
+            "/security.txt": ".well-known/security.txt",
+            "/og-image.png": "og-image.png",
+        }
+        for path, served in expected.items():
+            with self.subTest(path=path):
+                self.assertEqual(BUILD.resolve_site_path(out, path), served)
+        for path in ("/README.md", "/tools/sync_repo_metadata.py", "/.github/workflows/website-ci.yml",
+                     "/docs/CLOUDFLARE_PAGES.md", "/missing", "/../README.md"):
+            with self.subTest(path=path):
+                self.assertIsNone(BUILD.resolve_site_path(out, path))
+
+    def test_page_with_missing_image_fails_the_build(self):
+        source = self.build_real_site()
+        (source / "broken.html").write_text(
+            '<!DOCTYPE html><title>x</title><img src="/images/missing.png" alt="">', encoding="utf-8"
+        )
+        result = BUILD.main(["--source", str(source), "--out", str(self.temp / "out2")])
+        self.assertEqual(result, 1)
+        self.assertIn("broken.html", self.stderr.getvalue())
+        self.assertIn("/images/missing.png", self.stderr.getvalue())
+
+    def test_relative_link_and_fetch_targets_are_checked(self):
+        source = self.build_real_site()
+        (source / "rel.html").write_text('<a href="nowhere.html">x</a>', encoding="utf-8")
+        (source / "nav.js").write_text("fetch('/gone.json'); fetch('/no-folder/' + id);", encoding="utf-8")
+        with self.assertRaises(BUILD.BuildError) as ctx:
+            BUILD.build_site(source, self.temp / "out3")
+        message = str(ctx.exception)
+        self.assertIn("rel.html: nowhere.html", message)
+        self.assertIn("fetch('/gone.json')", message)
+        self.assertIn("/no-folder/", message)
+
+    def test_repository_file_inside_a_public_folder_fails_the_build(self):
+        source = self.build_real_site()
+        (source / "p" / "notes.md").write_text("internal", encoding="utf-8")
+        result = BUILD.main(["--source", str(source), "--out", str(self.temp / "out4")])
+        self.assertEqual(result, 1)
+        self.assertIn("p/notes.md", self.stderr.getvalue())
+
+    def test_missing_listed_file_fails_instead_of_publishing_a_broken_site(self):
+        source = self.build_real_site()
+        (source / "og-image.png").unlink()
+        result = BUILD.main(["--source", str(source), "--out", str(self.temp / "out5")])
+        self.assertEqual(result, 1)
+        self.assertIn("og-image.png", self.stderr.getvalue())
+
+    def test_refuses_to_wipe_the_source_folder(self):
+        # Uses a throwaway copy so a broken guard could never delete the repo.
+        source = self.build_real_site()
+        with self.assertRaises(BUILD.BuildError):
+            BUILD.build_site(source, source)
+        with self.assertRaises(BUILD.BuildError):
+            BUILD.build_site(source, self.temp)
+        (source / "inner").mkdir()
+        (source / "inner" / ".git").write_text("gitdir: elsewhere", encoding="utf-8")
+        with self.assertRaises(BUILD.BuildError):
+            BUILD.build_site(source, source / "inner")
+        self.assertTrue((source / "index.html").is_file())
+
+    def test_rebuild_removes_stale_files(self):
+        out = self.build_real_site()
+        (out / "stale.txt").write_text("old", encoding="utf-8")
+        self.build_real_site()
+        self.assertFalse((out / "stale.txt").exists())
+
+    def test_workflow_deploys_only_the_built_folder(self):
+        workflow = (ROOT / ".github" / "workflows" / "website-ci.yml").read_text(encoding="utf-8")
+        self.assertFalse("pages deploy . " in workflow, "deploy must not upload the repository root")
+        self.assertTrue("pages deploy _site " in workflow, "deploy must upload the built _site folder")
+        deploy_job = workflow[workflow.index("deploy-pages:"):]
+        validation = deploy_job.index("- name: Validate final immutable release metadata")
+        build = deploy_job.index("python tools/build_site.py")
+        deployment = deploy_job.index("npx --yes wrangler@")
+        self.assertLess(validation, build)
+        self.assertLess(build, deployment)
+        static_job = workflow[workflow.index("static-checks:"):workflow.index("deploy-pages:")]
+        self.assertIn("python tools/build_site.py", static_job)
+        self.assertIn("python tests/test_build_site.py -v", static_job)
+        self.assertIn("_site/", (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines())
+        self.assertFalse((ROOT / ".cfignore").exists(), ".cfignore is not read by Cloudflare Pages")
+
+
+if __name__ == "__main__":
+    unittest.main()

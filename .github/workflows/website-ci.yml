@@ -166,6 +166,15 @@ jobs:
       - name: Validate static metadata fallbacks
         run: python tools/validate_static_metadata.py
 
+      # Cloudflare Pages publishes every file in the folder it is given and
+      # ignores .cfignore. Build the allowlisted public folder here too, so a
+      # pull request that adds a page or asset outside the list fails before
+      # it can 404 in production.
+      - name: Build site folder
+        run: |
+          python tools/build_site.py
+          python tests/test_build_site.py -v
+
   deploy-pages:
     needs: static-checks
     if: |
@@ -190,6 +199,13 @@ jobs:
       # static-checks completed but before Cloudflare publication.
       - name: Validate final immutable release metadata
         run: python tools/validate_static_metadata.py
+
+      # Copy only the public site files (pages, styles, scripts, images,
+      # metadata, _headers, _redirects, .well-known/, p/, p-records/) into
+      # _site/. Runs after the metadata sync so the stamped HTML and the
+      # verified repo-metadata.json are the files that get published.
+      - name: Build site folder
+        run: python tools/build_site.py
 
       - name: Deploy to Cloudflare Pages
         env:
@@ -237,10 +253,11 @@ jobs:
 
           print("Cloudflare deploy credentials validated.")
           PY
-          npx --yes wrangler@4.83.0 pages deploy . --project-name bluecollar-website --branch main
+          npx --yes wrangler@4.83.0 pages deploy _site --project-name bluecollar-website --branch main
 
       # A successful upload does not prove that the custom domain serves the
       # new download links. Retry bounded propagation delays, then fail closed.
+      # The same step proves repository-only files (README, workflows) 404.
       - name: Verify public download metadata
         run: python tools/verify_deployed_metadata.py
 

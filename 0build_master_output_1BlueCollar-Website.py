@@ -16,8 +16,7 @@ PRESET = {
     "sitemap.xml",
     "_headers",
     "_redirects",
-    ".gitignore",
-    ".cfignore"
+    ".gitignore"
   ],
   "script_paths": [
     "0build_master_output.py",
