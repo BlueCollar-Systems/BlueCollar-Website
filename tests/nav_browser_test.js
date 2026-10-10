@@ -55,6 +55,23 @@ var NAV_TEST = String.raw`
         'page scrolls sideways: scrollWidth ' + document.documentElement.scrollWidth + ' > ' + innerWidth);
       notes.push(links.length + ' links shown');
 
+      if (CONFIG.contrast) {
+        // Text people must read in bright shop light: the orange Android Beta
+        // button, the grey version/help lines and the footer version line.
+        var targets = [];
+        document.querySelectorAll('.btn-safety').forEach(function(el) { targets.push(['Android Beta button', el]); });
+        document.querySelectorAll('.text-gray-500').forEach(function(el) { targets.push(['grey line "' + el.textContent.trim().slice(0, 40) + '"', el]); });
+        document.querySelectorAll('.footer-version').forEach(function(el) { targets.push(['footer version', el]); });
+        check(targets.length >= 3, 'contrast check found only ' + targets.length + ' elements');
+        var worst = 99;
+        targets.forEach(function(target) {
+          var ratio = textContrast(target[1]);
+          worst = Math.min(worst, ratio);
+          check(ratio >= 4.5, target[0] + ' contrast ' + ratio.toFixed(2) + ':1 is below 4.5:1');
+        });
+        notes.push('contrast >= 4.5 on ' + targets.length + ' elements (lowest ' + worst.toFixed(2) + ':1)');
+      }
+
       if (CONFIG.clickToolkit) {
         var deskLink = menu.querySelector('a[href="#toolkit"]');
         check(deskLink, 'index menu must link to #toolkit');
@@ -157,6 +174,7 @@ try {
         page: page,
         width: size.width,
         clickToolkit: page === 'index.html' && size.width === 1280,
+        contrast: page === 'index.html' && size.width === 1280,
         jumps: page === 'index.html' && size.width < 768
       };
       var name = page.replace('.html', '') + '-' + size.width;

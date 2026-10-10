@@ -12,8 +12,9 @@ var path = require('path');
 var ROOT = path.resolve(__dirname, '..');
 var css = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
 
-// Classes used only as JavaScript hooks, never styled on their own.
-var HOOK_CLASSES = ['doctor-output', 'doctor-summary', 'copy-tag'];
+// Classes used only as hooks, never styled on their own (footer-version
+// marks the version that .github/workflows/auto-release.yml stamps).
+var HOOK_CLASSES = ['doctor-output', 'doctor-summary', 'copy-tag', 'footer-version'];
 // Prefixes completed at run time (e.g. 'doctor-pill-' + level).
 var HOOK_PREFIXES = ['doctor-pill-'];
 

@@ -13,6 +13,8 @@ ul[role="list"] { list-style-position: inside; }
 .bg-industrial { background-color: #1a202c; }
 .accent-steel { color: #63b3ed; }
 .btn-safety { background-color: #ed8936; }
+/* Dark text on the safety orange reads at about 8:1; white was 2.55:1. */
+.btn-safety.text-white { color: #111827; }
 .btn-safety:hover { background-color: #dd6b20; }
 
 /* ─── Layout utilities ─── */
@@ -117,7 +119,7 @@ ul[role="list"] { list-style-position: inside; }
 .text-gray-200 { color: #e5e7eb; }
 .text-gray-300 { color: #d1d5db; }
 .text-gray-400 { color: #9ca3af; }
-.text-gray-500 { color: #6b7280; }
+.text-gray-500 { color: #9ca3af; }
 .text-blue-200 { color: #bfdbfe; }
 .text-blue-300 { color: #93c5fd; }
 .text-blue-400 { color: #63b3ed; }
@@ -246,7 +248,6 @@ nav > .flex > a:first-child { white-space: nowrap; flex-shrink: 0; }
 }
 
 .pb-20 { padding-bottom: 5rem; }
-.footer-version { opacity: 0.5; }
 .text-left { text-align: left; }
 .underline { text-decoration: underline; }
 .no-underline { text-decoration: none; }
