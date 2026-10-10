@@ -9,11 +9,6 @@
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css">
-    <style>
-      .part-dl { display: grid; grid-template-columns: 8rem 1fr; gap: 0.5rem 1rem; margin: 0; }
-      .part-dl dt { color: #9ca3af; font-size: 0.875rem; }
-      .part-dl dd { margin: 0; color: #e5e7eb; font-weight: 500; }
-    </style>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen">
     <script src="/nav.js" defer></script>
@@ -51,7 +46,7 @@
         </div>
 
         <h2 class="text-xl font-semibold mb-3">Open this part</h2>
-        <ul class="space-y-3 text-gray-300 mb-8">
+        <ul class="list-none space-y-3 text-gray-300 mb-8">
             <li class="bg-gray-900/60 border border-gray-800 rounded p-4">
                 <strong class="text-gray-100">In Steel Logic:</strong>
                 <a id="deep-link" class="text-blue-400 underline break-all" href="#">open in the app</a>
@@ -59,9 +54,10 @@
             </li>
             <li class="bg-gray-900/60 border border-gray-800 rounded p-4">
                 <strong class="text-gray-100">No app?</strong>
-                Open your <code>import_report.json</code> in the
+                Load both <code>import_report.json</code> and
+                <code>parts_bootstrap.json</code> from the import into the
                 <a class="text-blue-400 underline" href="/report-doctor">Report Doctor</a>
-                and use the Tags tab to see every mark on the drawing.
+                to list every mark on the drawing.
             </li>
             <li class="bg-gray-900/60 border border-gray-800 rounded p-4">
                 <strong class="text-gray-100">Get the tools:</strong>
