@@ -1,5 +1,12 @@
 import { createServer } from "node:http";
-import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
@@ -16,15 +23,34 @@ mkdirSync(join(root, "data"), { recursive: true });
 delete process.env.DATABASE_URL;
 delete process.env.NODE_OPTIONS;
 process.env.TAGQC_LOCAL_DATA_DIR = join(root, "data", "shop-db");
-const application = config.kind === "tag-qc"
-  ? (await import(pathToFileURL(join(root, "server", "index.mjs")).href)).default
-  : null;
-const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".xml": "application/xml", ".txt": "text/plain; charset=utf-8", ".wasm": "application/wasm", ".pdf": "application/pdf" };
+const application =
+  config.kind === "tag-qc"
+    ? (await import(pathToFileURL(join(root, "server", "index.mjs")).href)).default
+    : null;
+const MIME = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".ico": "image/x-icon",
+  ".xml": "application/xml",
+  ".txt": "text/plain; charset=utf-8",
+  ".wasm": "application/wasm",
+  ".pdf": "application/pdf",
+};
 
 function staticPath(pathname) {
   let decoded;
-  try { decoded = decodeURIComponent(pathname); } catch { return null; }
-  if (decoded.includes("\\") || decoded.split("/").some((part) => part === ".." || part === ".")) return null;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return null;
+  }
+  if (decoded.includes("\\") || decoded.split("/").some((part) => part === ".." || part === "."))
+    return null;
   let relative = decoded.replace(/^\/+/, "");
   if (config.kind === "website") {
     if (!relative) relative = "index.html";
@@ -51,7 +77,9 @@ async function shutdown() {
   try {
     const database = await globalThis.__pgliteInstance__;
     if (database) await database.close();
-  } finally { process.exit(0); }
+  } finally {
+    process.exit(0);
+  }
 }
 
 const server = createServer(async (req, res) => {
@@ -59,37 +87,61 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url, `http://127.0.0.1:${port}`);
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "no-referrer");
+    if (config.kind === "website") {
+      res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+      res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    }
     if (url.pathname === "/_local/health") {
       json(res, 200, { kind: config.kind, build: config.build, instance, pid: process.pid });
       return;
     }
     if (url.pathname === "/_local/stop") {
-      if (req.method !== "POST" || req.headers["x-bluecollar-instance"] !== instance ||
-          (req.headers.origin && req.headers.origin !== url.origin)) {
+      if (
+        req.method !== "POST" ||
+        req.headers["x-bluecollar-instance"] !== instance ||
+        (req.headers.origin && req.headers.origin !== url.origin)
+      ) {
         json(res, 403, { error: "Stop only this package through its Stop launcher" });
         return;
       }
       json(res, 200, { stopping: true });
-      setImmediate(() => { void shutdown(); });
+      setImmediate(() => {
+        void shutdown();
+      });
       return;
     }
     if (["GET", "HEAD"].includes(req.method)) {
       const file = staticPath(url.pathname);
       if (file) {
-        res.writeHead(200, { "Content-Type": MIME[extname(file)] || "application/octet-stream", "Cache-Control": "no-store" });
+        res.writeHead(200, {
+          "Content-Type": MIME[extname(file)] || "application/octet-stream",
+          "Cache-Control": "no-store",
+        });
         if (req.method === "HEAD") res.end();
         else createReadStream(file).pipe(res);
         return;
       }
     }
-    if (!application) { json(res, 404, { error: "Public page not found" }); return; }
+    if (!application) {
+      json(res, 404, { error: "Public page not found" });
+      return;
+    }
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
       if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
     }
-    const request = new Request(url, { method: req.method, headers,
-      ...(!["GET", "HEAD"].includes(req.method) ? { body: Readable.toWeb(req), duplex: "half" } : {}) });
-    const response = await application.fetch(request, { waitUntil(promise) { promise.catch(console.error); } });
+    const request = new Request(url, {
+      method: req.method,
+      headers,
+      ...(!["GET", "HEAD"].includes(req.method)
+        ? { body: Readable.toWeb(req), duplex: "half" }
+        : {}),
+    });
+    const response = await application.fetch(request, {
+      waitUntil(promise) {
+        promise.catch(console.error);
+      },
+    });
     res.writeHead(response.status, Object.fromEntries(response.headers));
     if (!response.body || req.method === "HEAD") res.end();
     else Readable.fromWeb(response.body).pipe(res);
@@ -99,10 +151,20 @@ const server = createServer(async (req, res) => {
     else res.end();
   }
 });
-server.on("error", (error) => { console.error(error); process.exitCode = 1; });
+server.on("error", (error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
 server.listen(port, "127.0.0.1", () => {
-  writeFileSync(join(root, "data", "session.json"), JSON.stringify({ port, instance, pid: process.pid }));
+  writeFileSync(
+    join(root, "data", "session.json"),
+    JSON.stringify({ port, instance, pid: process.pid }),
+  );
   console.log(`${config.title}: http://127.0.0.1:${port}${config.startPath}`);
 });
-process.on("SIGTERM", () => { void shutdown(); });
-process.on("SIGINT", () => { void shutdown(); });
+process.on("SIGTERM", () => {
+  void shutdown();
+});
+process.on("SIGINT", () => {
+  void shutdown();
+});
