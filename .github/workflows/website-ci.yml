@@ -158,10 +158,18 @@ jobs:
       - name: Public deployment metadata regression
         run: python tests/test_verify_deployed_metadata.py -v
 
+      - name: Public link check regression
+        run: python tests/test_check_public_links.py -v
+
       - name: Build repository metadata snapshot
         env:
           GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
         run: python tools/sync_repo_metadata.py
+
+      # Every link and download button, checked the way a stranger sees it:
+      # no token, no login. A download in a private repo fails here.
+      - name: Check links the way a visitor sees them
+        run: python tools/check_public_links.py
 
       - name: Validate static metadata fallbacks
         run: python tools/validate_static_metadata.py
@@ -260,6 +268,11 @@ jobs:
       # The same step proves repository-only files (README, workflows) 404.
       - name: Verify public download metadata
         run: python tools/verify_deployed_metadata.py
+
+      # Same visitor's-eye link check, now against the live site: every page,
+      # on-site link, external link and download button.
+      - name: Check live links the way a visitor sees them
+        run: python tools/check_public_links.py --base https://bluecollar-systems.com
 
       # Persist only the snapshot verified on the public domain. Failed auth,
       # failed deployments and stale public metadata must not stamp main.
