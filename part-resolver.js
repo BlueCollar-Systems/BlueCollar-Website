@@ -11,11 +11,14 @@
   var statusEl = document.getElementById('part-status');
   var detailsEl = document.getElementById('part-details');
   var unpublishedEl = document.getElementById('unpublished-panel');
+  // Only the explicitly marked offline TEST package uses the isolated app.
+  var appScheme = document.body && document.body.getAttribute('data-steel-logic-scheme') === 'steellogictest'
+    ? 'steellogictest' : 'steellogic';
 
   function setUnknown() {
     if (idEl) idEl.textContent = 'unknown';
     if (link) {
-      link.href = 'steellogic://open';
+      link.href = appScheme + '://open';
       link.textContent = 'open the app';
     }
     if (statusEl) statusEl.textContent = 'Invalid or missing Part Tracking ID.';
@@ -31,7 +34,7 @@
       detailsEl.innerHTML = '';
     }
     if (link) {
-      link.href = 'steellogic://part/' + encodeURIComponent(partId);
+      link.href = appScheme + '://part/' + encodeURIComponent(partId);
     }
   }
 
@@ -64,7 +67,7 @@
       detailsEl.innerHTML = html;
     }
     if (link && record.part_id) {
-      link.href = 'steellogic://part/' + encodeURIComponent(record.part_id);
+      link.href = appScheme + '://part/' + encodeURIComponent(record.part_id);
     }
   }
 
@@ -83,7 +86,7 @@
   }
 
   if (idEl) idEl.textContent = id;
-  if (link) link.href = 'steellogic://part/' + encodeURIComponent(id);
+  if (link) link.href = appScheme + '://part/' + encodeURIComponent(id);
   document.title = 'Part Tracking ' + id + ' | BlueCollar-Systems';
 
   // Static JSON v1 (R5-6, moved R21-10): optional published mirror at

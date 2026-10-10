@@ -36,6 +36,10 @@
   // report-doctor.js must contain no innerHTML sinks fed by report/sidecar
   // data (regression test: tests/report_doctor_xss_test.js).
   var TAG_ORIGIN = 'https://bluecollar-systems.com';
+  if (document.documentElement && document.documentElement.getAttribute('data-local-test-build') === 'true' &&
+      typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+    TAG_ORIGIN = location.origin;
+  }
 
   function isValidPartId(value) {
     // part_id is an opaque UUID minted by the Steel Logic app (R21-13,
