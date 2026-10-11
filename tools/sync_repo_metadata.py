@@ -10,6 +10,7 @@ import os
 import re
 import urllib.error
 import urllib.request
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
@@ -173,29 +174,65 @@ def _load_previous_repos(path: Path) -> dict[str, Any]:
 _RUN_ONLY_FIELDS: tuple[str, ...] = ("generated_at", "source_event")
 
 
-def _pushed_at_is_shown(repo_key: str, repo_data: dict[str, Any]) -> bool:
+class _SteelBadgeParser(HTMLParser):
+    """Collects data-repo-version keys of badges on the steel channel."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.repos: set[str] = set()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        key = values.get("data-repo-version")
+        if key and values.get("data-release-channel") == "steel":
+            self.repos.add(key)
+
+
+def steel_badge_repos(pages_root: Path = Path(".")) -> set[str]:
+    """Repos that have a steel-channel version badge on any root *.html page."""
+    found: set[str] = set()
+    for page in sorted(Path(pages_root).glob("*.html")):
+        parser = _SteelBadgeParser()
+        try:
+            parser.feed(page.read_text(encoding="utf-8"))
+            parser.close()
+        except (OSError, UnicodeDecodeError):
+            continue
+        found |= parser.repos
+    return found
+
+
+def _pushed_at_is_shown(
+    repo_key: str,
+    repo_data: dict[str, Any],
+    steel_badges: frozenset[str] | set[str] = STEEL_RELEASE_REPOS,
+) -> bool:
     """True when nav.js would show this repo's push date on a badge.
 
     nav.js shows "Updated: <pushed_at>" only where the badge's release
     channel has no tag: the importer channel (latest_release) for every repo,
-    plus the steel channel (steel_release) for repos in STEEL_RELEASE_REPOS.
+    plus the steel channel (steel_release) for every repo with a steel badge.
     """
     latest = repo_data.get("latest_release") or {}
     if not (isinstance(latest, dict) and latest.get("tag")):
         return True
-    if repo_key in STEEL_RELEASE_REPOS:
+    if repo_key in steel_badges:
         steel = repo_data.get("steel_release") or {}
         if not (isinstance(steel, dict) and steel.get("tag")):
             return True
     return False
 
 
-def visible_metadata(payload: dict[str, Any]) -> dict[str, Any]:
+def visible_metadata(
+    payload: dict[str, Any],
+    steel_badges: frozenset[str] | set[str] = STEEL_RELEASE_REPOS,
+) -> dict[str, Any]:
     """The part of a snapshot that can change what a visitor sees.
 
     Drops the per-run timestamp fields and any push date that no badge
     shows. Tags, names, links, sizes, digests and immutability all stay, so
-    any real change still rewrites the snapshot.
+    any real change still rewrites the snapshot. steel_badges names the
+    repos with a steel-channel badge (main() reads them from the pages).
     """
     view = copy.deepcopy(payload)
     for field in _RUN_ONLY_FIELDS:
@@ -203,7 +240,7 @@ def visible_metadata(payload: dict[str, Any]) -> dict[str, Any]:
     repos = view.get("repos")
     if isinstance(repos, dict):
         for repo_key, repo_data in repos.items():
-            if isinstance(repo_data, dict) and not _pushed_at_is_shown(repo_key, repo_data):
+            if isinstance(repo_data, dict) and not _pushed_at_is_shown(repo_key, repo_data, steel_badges):
                 repo_data.pop("pushed_at", None)
     return view
 
@@ -337,7 +374,10 @@ def main() -> int:
     previous = _load_previous_payload(output)
     previous_repos = (previous or {}).get("repos")
     payload = build_metadata(token, previous_repos if isinstance(previous_repos, dict) else {})
-    if previous is not None and visible_metadata(previous) == visible_metadata(payload):
+    # A steel badge added to a page later still refreshes its "Updated" date,
+    # even before its repo joins STEEL_RELEASE_REPOS.
+    steel_badges = STEEL_RELEASE_REPOS | steel_badge_repos(Path("."))
+    if previous is not None and visible_metadata(previous, steel_badges) == visible_metadata(payload, steel_badges):
         # Keep the exact bytes so the badge-stamp step finds nothing to
         # commit. Only generated_at/source_event or an unshown push date moved.
         print(f"metadata unchanged (timestamps only); kept {output} as is")

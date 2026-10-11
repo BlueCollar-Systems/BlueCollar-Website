@@ -332,11 +332,40 @@ def forbidden_files(site_root: Path) -> list[str]:
     return bad
 
 
+# Files every finished build leaves in its folder. An existing folder must
+# hold all of them (and no repository-only files) before it may be wiped.
+_BUILD_SIGNATURE: tuple[str, ...] = ("index.html", "_headers", "_redirects", "repo-metadata.json", "nav.js")
+DEFAULT_OUT = "_site"
+
+
+def _looks_like_earlier_build(out: Path) -> bool:
+    return all((out / name).is_file() for name in _BUILD_SIGNATURE) and not forbidden_files(out)
+
+
 def _check_output_location(source: Path, out: Path) -> None:
+    """Refuse an output folder whose wipe could destroy anything but a build.
+
+    The folder is deleted and rebuilt, so it must be missing, empty, the
+    git-ignored default <source>/_site, or the result of an earlier build
+    (its usual files present and no repository-only file such as .py, .md
+    or .yml). A mistyped --out such as docs, tools or .github is refused.
+    """
     if out == source or source.is_relative_to(out):
         raise BuildError(f"Refusing to build into {out}: it would delete the source folder.")
+    if out.exists() and not out.is_dir():
+        raise BuildError(f"Refusing to build into {out}: it is not a plain folder.")
     if (out / ".git").exists():
         raise BuildError(f"Refusing to build into {out}: it contains a .git folder.")
+    if not out.exists() or not any(out.iterdir()):
+        return
+    if out == source / DEFAULT_OUT:
+        return
+    if not _looks_like_earlier_build(out):
+        raise BuildError(
+            f"Refusing to build into {out}: it already holds files that build_site.py did not make, "
+            f"and building there would delete them. Use --out {DEFAULT_OUT} (the default), "
+            "a new or empty folder, or delete the folder yourself first."
+        )
 
 
 def build_site(source: Path, out: Path) -> list[str]:
@@ -385,7 +414,11 @@ def build_site(source: Path, out: Path) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--source", type=Path, default=Path("."), help="repository root (default: .)")
-    parser.add_argument("--out", type=Path, default=Path("_site"), help="output folder (default: _site)")
+    parser.add_argument(
+        "--out", type=Path, default=Path(DEFAULT_OUT),
+        help="output folder, deleted and rebuilt; must be new, empty, _site or an earlier build "
+             "(default: _site)",
+    )
     args = parser.parse_args(argv)
     try:
         files = build_site(args.source, args.out)
