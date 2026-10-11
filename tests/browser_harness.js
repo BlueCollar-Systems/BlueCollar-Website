@@ -56,6 +56,7 @@ function localFileUrl(name) {
 function localizeAssets(html) {
   return html
     .split('href="/styles.css"').join('href="' + localFileUrl('styles.css') + '"')
+    .split('href="/part-page.css"').join('href="' + localFileUrl('part-page.css') + '"')
     .split('src="/nav.js"').join('src="' + localFileUrl('nav.js') + '"')
     .split('src="/report-doctor.js"').join('src="' + localFileUrl('report-doctor.js') + '"')
     .split('src="/part-resolver.js"').join('src="' + localFileUrl('part-resolver.js') + '"');
