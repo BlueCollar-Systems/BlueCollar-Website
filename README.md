@@ -9,8 +9,8 @@ Static marketing site for **BlueCollar-Systems** — precision software for fabr
 
 | Product | Description | Link |
 |---------|-------------|------|
-| **Steel Logic** | Shop time tracking with AISC v16.0 shapes and calculators (mobile app) | [Google Play beta](https://play.google.com/apps/testing/com.bluecollarsystems.steellogic) |
-| **Tag QC Builder** | Hang tags and QC logs; latest published build v10.40; not available for download from the website yet | [bluecollar-systems.com/#tag-qc](https://bluecollar-systems.com/#tag-qc) |
+| **Steel Logic** | Job Clock for fitter and welder time, plus AISC v16.0 shapes, calculators, converters, and inventory. The Android beta is free with ads. A free version and a paid Pro version are the plan; iOS is in development. | [Google Play beta](https://play.google.com/apps/testing/com.bluecollarsystems.steellogic) |
+| **Tag QC Builder** | Hang tags with a QR code that opens the piece in Steel Logic. New tags start with an editable BCS1: prefix; older CS1: tags still scan. Latest published build v10.40; not a download from this website yet. | [bluecollar-systems.com/#tag-qc](https://bluecollar-systems.com/#tag-qc) |
 | **Free Shape Packs** | Public-domain SketchUp + DXF/DWG shape packs | [Shapes Hub](https://bluecollar-systems.com/shapes) |
 | **SketchUp PDF Importer** | Vector-accurate PDF geometry import for SketchUp | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp) |
 | **FreeCAD PDF Importer** | PDF vector import workbench for FreeCAD | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD) |
@@ -27,13 +27,13 @@ Static marketing site for **BlueCollar-Systems** — precision software for fabr
 
 Open `index.html` in a browser. No build step required.
 
+To see exactly what gets published, run `python tools/build_site.py`. It copies only the public site files into `_site/` (ignored by git) and fails if a repository-only file would be published or an on-site link points at a missing file.
+
 For a working local preview with the same page and part-tag routes as the hosted
 site, run `python tools/preview_site.py` and open
 `http://127.0.0.1:8082/`. Stop it with Ctrl+C. The preview uses only public site
 files; it does not publish anything. This also lets Report Doctor copy buttons
 use a secure localhost clipboard instead of a `file:` page.
-
-To see exactly what gets published, run `python tools/build_site.py`. It copies only the public site files into `_site/` (ignored by git) and fails if a repository-only file would be published or an on-site link points at a missing file.
 
 To check every link and download button the way a visitor sees them (no login, no token), run `python tools/check_public_links.py`. A dead link (404 or 410) or a download that needs a login fails the check. A site that stays busy or unreachable (5xx, 429, network errors) after about a minute of retries is reported as a warning naming the page and URL, so brief GitHub throttling cannot block a deploy. `--offline` checks on-site links with no network; `--base https://bluecollar-systems.com` checks the live pages after a deploy.
 

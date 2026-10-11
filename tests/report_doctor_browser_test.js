@@ -170,11 +170,12 @@ try {
   );
   runBrowserPage(browser, tempRoot, 'feedback', injectTest(feedbackHtml, FEEDBACK_TEST));
   var indexHtml = localizeAssets(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
-  // The menu button is a phone control (md:hidden): from 768 px up it is not
-  // shown and cannot take focus back on Escape. Run the phone-menu checks in
-  // a 375 x 812 viewport so they do not depend on the browser's default
-  // window (800 px wide on the Linux CI runner, narrower on Windows).
-  runBrowserPage(browser, tempRoot, 'navigation', injectTest(indexHtml, NAV_TEST), { width: 375, height: 812 });
+  // The menu button is a phone control (md:hidden): from 768 px up it is
+  // hidden, so Escape cannot move focus back to it. Run the phone-menu checks
+  // in a 390 x 844 viewport (the size main chose). The shared harness sets the
+  // viewport with a frame, so it is exact on Windows too, where headless
+  // browsers will not shrink their window below about 500 px.
+  runBrowserPage(browser, tempRoot, 'navigation', injectTest(indexHtml, NAV_TEST), { width: 390, height: 844 });
 } finally {
   harness.removeTempRoot(tempRoot);
 }

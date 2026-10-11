@@ -155,4 +155,26 @@ pickerBehavior.forEach(function(testCase) {
   );
 });
 
+var errorBox = documentStub.getElementById('doctor-error');
+var bootstrapJson = documentStub.getElementById('bootstrap-json');
+bootstrapJson.value = '{"schema":"other/1.0","rows":[]}';
+bootstrapJson.dispatch('blur');
+assert.ok(
+  /bcs\.parts_bootstrap\/1\.0/.test(errorBox.textContent),
+  'a parts file with the wrong schema must say which schema Report Doctor expects'
+);
+bootstrapJson.value = '{not json';
+bootstrapJson.dispatch('blur');
+assert.ok(
+  /parts file/i.test(errorBox.textContent),
+  'a parts file that is not JSON must be explained'
+);
+bootstrapJson.value = '{"schema":"bcs.parts_bootstrap/1.0","rows":[]}';
+bootstrapJson.dispatch('blur');
+assert.strictEqual(
+  errorBox.textContent,
+  '',
+  'a valid parts file must clear the parts-file message'
+);
+
 console.log('PASS report_doctor_file_inputs_test: unique label targets and working callbacks');

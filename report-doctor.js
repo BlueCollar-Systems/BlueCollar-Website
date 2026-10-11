@@ -128,16 +128,16 @@
     try {
       var data = JSON.parse(text);
       if (!data || typeof data !== 'object' || Array.isArray(data)) {
-        setError('The parts sidecar must be a JSON object containing rows, parts, or candidates.');
+        setError('The parts sidecar must be a JSON object containing rows, parts, or candidates. Report Doctor expects schema bcs.parts_bootstrap/1.0.');
         return [];
       }
       if (data.schema && data.schema !== 'bcs.parts_bootstrap/1.0') {
-        setError('Unsupported parts sidecar schema: ' + safeText(data.schema));
+        setError('Unsupported parts sidecar schema: ' + safeText(data.schema) + '. This parts file is not schema bcs.parts_bootstrap/1.0, so its rows were not listed.');
         return [];
       }
       return bootstrapRows(data);
     } catch (err) {
-      setError('Could not parse parts sidecar JSON: ' + err.message);
+      setError('Could not parse parts sidecar JSON: ' + err.message + ' This parts file is not readable. Report Doctor expects schema bcs.parts_bootstrap/1.0.');
       return [];
     }
   }
