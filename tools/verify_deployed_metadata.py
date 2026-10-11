@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Require the public download metadata to match the snapshot just deployed."""
+"""Require the public download metadata to match the snapshot just deployed.
+
+After the metadata matches, also require that repository-only files (the
+README and the CI workflow) are NOT served on the public site. Only the
+_site folder built by tools/build_site.py may be published.
+"""
 
 from __future__ import annotations
 
@@ -18,6 +23,13 @@ from typing import Callable
 
 
 DEFAULT_URL = "https://bluecollar-systems.com/repo-metadata.json"
+
+# Repository-only files that must answer 404 on the live site. If either is
+# served, the deploy uploaded the repository root instead of _site/.
+PRIVATE_PATHS: tuple[str, ...] = (
+    "/README.md",
+    "/.github/workflows/website-ci.yml",
+)
 
 
 class MetadataVerificationError(RuntimeError):
@@ -93,6 +105,59 @@ def verify_deployed_metadata(
     )
 
 
+def verify_private_paths_hidden(
+    url: str = DEFAULT_URL,
+    paths: tuple[str, ...] = PRIVATE_PATHS,
+    *,
+    attempts: int = 12,
+    delay: float = 10,
+    timeout: float = 15,
+    opener: Callable | None = None,
+    sleep: Callable = time.sleep,
+) -> None:
+    """Require every repository-only path to answer HTTP 404 on the site.
+
+    A 200 (or any answer other than 404) uses the same bounded retry budget
+    as the metadata check, so a slow edge cache can catch up, then fails.
+    """
+    if attempts < 1 or delay < 0 or timeout <= 0:
+        raise ValueError("attempts must be positive, delay nonnegative and timeout positive")
+    open_url = opener or urllib.request.urlopen
+    for path in paths:
+        target = urllib.parse.urljoin(url, path)
+        last_error = "No response received"
+        for attempt in range(1, attempts + 1):
+            request = urllib.request.Request(
+                target + "?publication_check=" + uuid.uuid4().hex,
+                headers={
+                    "Cache-Control": "no-cache, no-store",
+                    "Pragma": "no-cache",
+                    "User-Agent": "Mozilla/5.0 (BlueCollar Website deployment verification)",
+                },
+            )
+            try:
+                with open_url(request, timeout=timeout) as response:
+                    status = response.getcode()
+            except urllib.error.HTTPError as exc:
+                status = exc.code
+            except (OSError, http.client.HTTPException) as exc:
+                status = None
+                last_error = str(exc)
+            if status == 404:
+                print(f"Verified {path} is not published (HTTP 404)")
+                break
+            if status is not None:
+                last_error = f"HTTP {status}, expected 404"
+            print(f"Private file check {path} attempt {attempt}/{attempts}: {last_error}", file=sys.stderr)
+            if attempt < attempts:
+                sleep(delay)
+        else:
+            raise MetadataVerificationError(
+                f"Repository file {path} is still public on the website ({last_error}). "
+                "Deploy only the _site folder built by tools/build_site.py."
+            )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--expected", type=Path, default=Path("repo-metadata.json"))
@@ -105,6 +170,9 @@ def main(argv: list[str] | None = None) -> int:
         verify_deployed_metadata(
             args.expected.read_bytes(), args.url,
             attempts=args.attempts, delay=args.delay, timeout=args.timeout,
+        )
+        verify_private_paths_hidden(
+            args.url, attempts=args.attempts, delay=args.delay, timeout=args.timeout,
         )
     except (OSError, ValueError, MetadataVerificationError) as exc:
         print(f"Deployment verification failed: {exc}", file=sys.stderr)

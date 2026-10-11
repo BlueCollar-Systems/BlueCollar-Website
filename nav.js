@@ -8,12 +8,14 @@
     btn.setAttribute('aria-expanded', String(isNowOpen));
     if (isNowOpen) { var first = menu.querySelector('a'); if (first) first.focus(); }
   });
+  // On a phone, tapping a menu link closes the menu so it does not cover
+  // the section it jumps to. Computers keep the menu on screen: the hidden
+  // class is still present there, and the wide-screen rule shows it anyway.
   menu.addEventListener('click', function(e) {
     var link = e.target.closest && e.target.closest('a');
-    if (link && menu.contains(link)) {
-      menu.classList.add('hidden');
-      btn.setAttribute('aria-expanded', 'false');
-    }
+    if (!link || !menu.contains(link) || menu.classList.contains('hidden')) return;
+    menu.classList.add('hidden');
+    btn.setAttribute('aria-expanded', 'false');
   });
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && !menu.classList.contains('hidden')) {
@@ -96,6 +98,40 @@ document.addEventListener('DOMContentLoaded', function() {
     return null;
   }
 
+  function isWindowsPackage(name) {
+    return /-Setup_v\d+(?:\.\d+){2}\.exe$/i.test(name) ||
+      /-Windows-Portable_v\d+(?:\.\d+){2}\.zip$/i.test(name) ||
+      /^Blender-PDF-Importer_v\d+(?:\.\d+){2}\.zip$/i.test(name) ||
+      /^SketchUp-PDF-Importer_v\d+(?:\.\d+){2}\.rbz$/i.test(name);
+  }
+
+  // Under an importer's Download Latest button: file type, size, and
+  // "Windows" for Windows-only packages, e.g. ".zip · 254 MB · Windows".
+  // The static caption stays when the size is unknown.
+  function showAssetInfo(repoKey, asset) {
+    var size = Number(asset.size);
+    if (!asset.name || !(size > 0)) return;
+    var dot = asset.name.lastIndexOf('.');
+    if (dot < 0) return;
+    var text = asset.name.slice(dot).toLowerCase() + ' · ' +
+      Math.max(1, Math.round(size / 1048576)) + ' MB';
+    if (isWindowsPackage(asset.name)) text += ' · Windows';
+    document.querySelectorAll('[data-repo-asset-info]').forEach(function(info) {
+      if (info.getAttribute('data-repo-asset-info') === repoKey) info.textContent = text;
+    });
+  }
+
+  // Under a shape pack's Download button: the SHA-256 to check the download.
+  function showAssetDigest(asset) {
+    var digest = typeof asset.digest === 'string' ? asset.digest : '';
+    if (!asset.name || !/^sha256:[0-9a-f]{64}$/i.test(digest)) return;
+    document.querySelectorAll('[data-asset-digest-for]').forEach(function(el) {
+      if (el.getAttribute('data-asset-digest-for') === asset.name) {
+        el.textContent = 'SHA-256: ' + digest.slice(7).toLowerCase();
+      }
+    });
+  }
+
   fetch('/repo-metadata.json', { cache: 'no-store' })
     .then(function(res) {
       if (!res.ok) throw new Error('metadata fetch failed');
@@ -144,6 +180,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var asset = findDownloadAsset(release.assets, preferredName);
         if (asset && asset.url) {
           el.href = asset.url;
+          if (!preferredName) showAssetInfo(repoKey, asset);
+          if (preferredName) showAssetDigest(asset);
         } else if (!preferredName && release.url) {
           el.href = release.url;
         }

@@ -65,8 +65,16 @@ const anchorTags = html.match(/<a\b[^>]*>/gi) || [];
 const elementTags = html.match(/<[A-Za-z][^>]*>/g) || [];
 
 assert(
-  html.includes("The Windows RBZ includes the PDF tools needed for rendering and font repair."),
-  "SketchUp install copy must state that the Windows RBZ includes rendering and font repair tools"
+  html.includes("The Windows RBZ includes Poppler for rendering and text helpers."),
+  "SketchUp install copy must state that the Windows RBZ includes Poppler"
+);
+assert(
+  html.includes("MuPDF and Ghostscript are optional and are not inside the RBZ."),
+  "SketchUp install copy must say MuPDF and Ghostscript are not inside the RBZ"
+);
+assert(
+  !html.includes("The Windows RBZ includes the PDF tools needed for rendering and font repair."),
+  "site must not claim font-repair tools are bundled in the Windows RBZ"
 );
 assert(
   html.includes("No separate helper download is required for normal imports."),
@@ -100,6 +108,14 @@ assert(
 assert(
   html.includes("Tag QC Builder is not available for download from this website yet"),
   "Tag QC section must say it is not available for download yet"
+);
+assert(
+  html.includes("BCS1:") && html.includes("CS1:"),
+  "Tag QC copy must name the BCS1: prefix and say older CS1: tags still scan"
+);
+assert(
+  html.includes("Coming soon"),
+  "App Store button must say Coming soon where people can see it"
 );
 assert(
   !/v10\.37/.test(html),
@@ -179,5 +195,66 @@ assert(
   !html.includes(publicDetailsBaseUrl),
   "site must not contain the unavailable public Google Play listing URL"
 );
+
+// Downloads: say the importers are free, say they are Windows packages,
+// keep the SketchUp 2017 floor current, and caption every Download Latest
+// button so nav.js can show the file type and size.
+assert(
+  html.includes("free and open source"),
+  "Toolkit copy must say the PDF importers are free and open source"
+);
+assert(
+  !html.includes("Works on any PC"),
+  "site must not claim the Windows packages work on any PC"
+);
+assert(
+  html.includes("64-bit Windows packages"),
+  "install copy must say the downloads are Windows packages"
+);
+assert(
+  html.includes("v3.7.90 or newer") && !html.includes("3.7.67"),
+  "SketchUp Make 2017 floor must match COMPATIBILITY.md (v3.7.90 or newer)"
+);
+for (const repo of [
+  "BlueCollar-Systems/PDF-Importer-SketchUp",
+  "BlueCollar-Systems/PDF-Importer-FreeCAD",
+  "BlueCollar-Systems/PDF-Importer-Blender",
+  "BlueCollar-Systems/PDF-Importer-LibreCAD",
+]) {
+  const infoTags = elementTags.filter(
+    (tag) => attributeValue(tag, "data-repo-asset-info") === repo
+  );
+  assert.strictEqual(
+    infoTags.length,
+    1,
+    repo + " Download Latest card must have one data-repo-asset-info caption"
+  );
+}
+for (const host of ["After upgrading FreeCAD", "after upgrading SketchUp", "after upgrading Blender"]) {
+  assert(html.includes(host), "install steps must tell people what to do " + host.toLowerCase());
+}
+assert(html.includes("Tools → Addon Manager"), "FreeCAD install copy must name the Addon Manager path");
+assert(html.includes("Window → Extension Manager → Install Extension"), "SketchUp install copy must name Extension Manager");
+assert(html.includes("Edit → Preferences → Add-ons → Install"), "Blender install copy must name Preferences → Add-ons");
+assert(html.includes("Plugins → Import PDF (BlueCollar)"), "LibreCAD install copy must name the Plugins menu");
+
+const shapesHtml = fs.readFileSync("shapes.html", "utf8");
+assert(
+  !shapesHtml.includes("listed above"),
+  "shapes.html must not point to a checksum 'listed above' that the page does not show"
+);
+for (const asset of [
+  "Structural-Steel-SU-Shapes-latest.zip",
+  "Structural-Steel-DXF-DWG-Shapes-latest.zip",
+]) {
+  assert(
+    shapesHtml.includes('data-asset-digest-for="' + asset + '"'),
+    "shapes.html must show the SHA-256 under the " + asset + " download"
+  );
+  assert(
+    new RegExp('data-asset-digest-for="' + asset + '"[^>]*>\\s*SHA-256:\\s*[0-9a-f]{64}').test(shapesHtml),
+    "shapes.html must include a static SHA-256 for " + asset + " so it shows before JavaScript runs"
+  );
+}
 
 console.log("site copy contract: PASS");

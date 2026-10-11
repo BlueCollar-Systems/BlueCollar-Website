@@ -1,5 +1,7 @@
 # Cloudflare
 .wrangler/
+# Deploy folder built by tools/build_site.py (only public files)
+_site/
 
 # OS files
 .DS_Store

@@ -165,7 +165,11 @@ class DeployedMetadataTests(unittest.TestCase):
         class Handler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
                 requests.append(self.path)
-                if self.path.startswith("/metadata?"):
+                if self.path.startswith(("/README.md?", "/.github/")):
+                    self.send_response(404)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                elif self.path.startswith("/metadata?"):
                     self.send_response(302)
                     self.send_header("Location", "/published/repo-metadata.json")
                     self.end_headers()
@@ -195,9 +199,51 @@ class DeployedMetadataTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=5)
         self.assertEqual(result, 0)
-        self.assertEqual(len(requests), 2)
+        self.assertEqual(len(requests), 4)
         self.assertIn("publication_check=", requests[0])
         self.assertEqual(requests[1], "/published/repo-metadata.json")
+        self.assertTrue(requests[2].startswith("/README.md?"))
+        self.assertTrue(requests[3].startswith("/.github/workflows/website-ci.yml?"))
+
+    def test_private_repository_files_must_answer_404(self):
+        not_found = urllib.error.HTTPError(VERIFY.DEFAULT_URL, 404, "Not Found", {}, None)
+        opener = Mock(side_effect=[not_found, Response(b"", 404)])
+        VERIFY.verify_private_paths_hidden(opener=opener, sleep=Mock(), attempts=1)
+        urls = [call.args[0].full_url for call in opener.call_args_list]
+        self.assertTrue(urls[0].startswith("https://bluecollar-systems.com/README.md?"))
+        self.assertTrue(urls[1].startswith("https://bluecollar-systems.com/.github/workflows/website-ci.yml?"))
+        self.assertIn("/README.md is not published", self.stdout.getvalue())
+
+    def test_public_readme_fails_after_bounded_retries(self):
+        opener = Mock(side_effect=lambda *_a, **_k: Response(b"# BlueCollar-Systems Website", 200))
+        sleep = Mock()
+        with self.assertRaises(VERIFY.MetadataVerificationError) as ctx:
+            VERIFY.verify_private_paths_hidden(opener=opener, sleep=sleep, attempts=3, delay=1)
+        self.assertIn("/README.md is still public", str(ctx.exception))
+        self.assertIn("HTTP 200", str(ctx.exception))
+        self.assertEqual(opener.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
+
+    def test_private_file_check_recovers_from_stale_edge_or_network_error(self):
+        opener = Mock(side_effect=[
+            Response(b"old copy", 200),
+            urllib.error.URLError("reset"),
+            urllib.error.HTTPError(VERIFY.DEFAULT_URL, 404, "Not Found", {}, None),
+            urllib.error.HTTPError(VERIFY.DEFAULT_URL, 404, "Not Found", {}, None),
+        ])
+        VERIFY.verify_private_paths_hidden(opener=opener, sleep=Mock(), attempts=3)
+        self.assertEqual(opener.call_count, 4)
+
+    def test_cli_fails_when_matching_metadata_but_readme_is_public(self):
+        with tempfile.TemporaryDirectory() as directory:
+            expected = Path(directory) / "repo-metadata.json"
+            expected.write_bytes(EXPECTED)
+            opener = Mock(side_effect=lambda *_a, **_k: Response(EXPECTED))
+            with patch.object(VERIFY.urllib.request, "urlopen", opener), patch.object(VERIFY.time, "sleep"):
+                result = VERIFY.main(["--expected", str(expected), "--attempts", "1"])
+        self.assertEqual(result, 1)
+        self.assertIn("Verified public download metadata", self.stdout.getvalue())
+        self.assertIn("/README.md is still public", self.stderr.getvalue())
 
     def test_workflow_only_commits_badges_after_live_verification(self):
         workflow = (ROOT / ".github" / "workflows" / "website-ci.yml").read_text()

@@ -74,8 +74,9 @@
                     <a href="https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/tree/main/steel_shapes" target="_blank" rel="noopener" class="inline-block bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded font-semibold transition text-sm">Source Folder</a>
                     <a href="https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases?q=steel-v" target="_blank" rel="noopener" class="inline-block bg-blue-700 hover:bg-blue-600 px-5 py-3 rounded font-semibold transition text-sm" data-repo-asset-link="BlueCollar-Systems/PDF-Importer-SketchUp" data-release-channel="steel" data-asset-name="Structural-Steel-SU-Shapes-latest.zip">Download ZIP</a>
                 </div>
+                <p class="text-xs text-gray-400 font-mono break-all mb-3" data-asset-digest-for="Structural-Steel-SU-Shapes-latest.zip">SHA-256: 432b2d03dc91c23c2aa7cdbab7f813eb8bc24dcecca1fd935c038057c054932a</p>
                 <p class="text-xs text-gray-500 mb-3" data-repo-version="BlueCollar-Systems/PDF-Importer-SketchUp" data-release-channel="steel">Latest: steel-v1.0.2</p>
-                <p class="text-xs text-gray-400">Checksum: see <code>SHA256SUMS.txt</code> in the latest release assets.</p>
+                <p class="text-xs text-gray-400">Checksum: see <a href="https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp/releases?q=steel-v" target="_blank" rel="noopener" class="text-blue-400 hover:underline" data-repo-asset-link="BlueCollar-Systems/PDF-Importer-SketchUp" data-release-channel="steel" data-asset-name="SHA256SUMS.txt"><code>SHA256SUMS.txt</code></a> in the latest release assets.</p>
             </div>
 
             <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700 hover:border-blue-400 transition group">
@@ -86,8 +87,9 @@
                     <a href="https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/tree/main/steel_shapes" target="_blank" rel="noopener" class="inline-block bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded font-semibold transition text-sm">Source Folder</a>
                     <a href="https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases?q=steel-v" target="_blank" rel="noopener" class="inline-block bg-blue-700 hover:bg-blue-600 px-5 py-3 rounded font-semibold transition text-sm" data-repo-asset-link="BlueCollar-Systems/PDF-Importer-FreeCAD" data-release-channel="steel" data-asset-name="Structural-Steel-DXF-DWG-Shapes-latest.zip">Download ZIP</a>
                 </div>
+                <p class="text-xs text-gray-400 font-mono break-all mb-3" data-asset-digest-for="Structural-Steel-DXF-DWG-Shapes-latest.zip">SHA-256: 58f11f38559c3bead2eda029083fd847765bf295e4ce6a1ac0776b5013710c11</p>
                 <p class="text-xs text-gray-500 mb-3" data-repo-version="BlueCollar-Systems/PDF-Importer-FreeCAD" data-release-channel="steel">Latest: steel-v1.0.1</p>
-                <p class="text-xs text-gray-400">Checksum: see <code>SHA256SUMS.txt</code> in the latest release assets.</p>
+                <p class="text-xs text-gray-400">Checksum: see <a href="https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases?q=steel-v" target="_blank" rel="noopener" class="text-blue-400 hover:underline" data-repo-asset-link="BlueCollar-Systems/PDF-Importer-FreeCAD" data-release-channel="steel" data-asset-name="SHA256SUMS.txt"><code>SHA256SUMS.txt</code></a> in the latest release assets.</p>
             </div>
         </div>
     </section>
@@ -95,7 +97,7 @@
     <section class="max-w-6xl mx-auto px-6 py-16 border-t border-gray-800">
         <h2 class="text-3xl font-bold mb-6 text-center">Checksum Verification</h2>
         <p class="text-center text-gray-400 mb-10 max-w-3xl mx-auto">
-            Verify your download before use. The hash output should match the SHA-256 value listed above.
+            Verify your download before use. The hash output should match the SHA-256 shown under that Download button (also listed in <code>SHA256SUMS.txt</code>).
         </p>
 
         <div class="grid md:grid-cols-2 gap-8">
@@ -103,14 +105,18 @@
                 <h3 class="text-xl font-bold mb-3">Windows (PowerShell)</h3>
                 <p class="text-gray-400 text-sm mb-4">Run this from the folder containing the ZIP file:</p>
                 <p class="text-sm text-gray-100"><code>Get-FileHash .\Structural-Steel-SU-Shapes-latest.zip -Algorithm SHA256</code></p>
-                <p class="text-sm text-gray-100 mt-6"><code>Get-FileHash .\Structural-Steel-DXF-DWG-Shapes-latest.zip -Algorithm SHA256</code></p>
+                <p class="text-xs text-gray-400 font-mono break-all mt-2 mb-6" data-asset-digest-for="Structural-Steel-SU-Shapes-latest.zip">SHA-256: 432b2d03dc91c23c2aa7cdbab7f813eb8bc24dcecca1fd935c038057c054932a</p>
+                <p class="text-sm text-gray-100"><code>Get-FileHash .\Structural-Steel-DXF-DWG-Shapes-latest.zip -Algorithm SHA256</code></p>
+                <p class="text-xs text-gray-400 font-mono break-all mt-2" data-asset-digest-for="Structural-Steel-DXF-DWG-Shapes-latest.zip">SHA-256: 58f11f38559c3bead2eda029083fd847765bf295e4ce6a1ac0776b5013710c11</p>
             </div>
 
             <div class="bg-gray-800/50 p-8 rounded-xl border border-gray-700">
                 <h3 class="text-xl font-bold mb-3">macOS / Linux</h3>
                 <p class="text-gray-400 text-sm mb-4">Run from the folder containing the ZIP file:</p>
                 <p class="text-sm text-gray-100"><code>shasum -a 256 Structural-Steel-SU-Shapes-latest.zip</code></p>
-                <p class="text-sm text-gray-100 mt-6"><code>shasum -a 256 Structural-Steel-DXF-DWG-Shapes-latest.zip</code></p>
+                <p class="text-xs text-gray-400 font-mono break-all mt-2 mb-6" data-asset-digest-for="Structural-Steel-SU-Shapes-latest.zip">SHA-256: 432b2d03dc91c23c2aa7cdbab7f813eb8bc24dcecca1fd935c038057c054932a</p>
+                <p class="text-sm text-gray-100"><code>shasum -a 256 Structural-Steel-DXF-DWG-Shapes-latest.zip</code></p>
+                <p class="text-xs text-gray-400 font-mono break-all mt-2" data-asset-digest-for="Structural-Steel-DXF-DWG-Shapes-latest.zip">SHA-256: 58f11f38559c3bead2eda029083fd847765bf295e4ce6a1ac0776b5013710c11</p>
             </div>
         </div>
     </section>
@@ -129,6 +135,7 @@
 
     <footer class="text-center py-12 border-t border-gray-800 text-gray-400 text-sm px-6">
         <p class="mb-4">&copy; <span id="copyright-year"></span> BlueCollar-Systems. Built for the shop floor.</p>
+        <p class="mb-4"><a href="/privacy" class="hover:text-white underline">Privacy Policy</a></p>
         <p class="max-w-2xl mx-auto text-xs uppercase tracking-tighter text-gray-400">
             Disclaimer: All structural data provided by BlueCollar-Systems tools is for reference only.
             All output should be verified by a licensed professional engineer before fabrication or construction.
