@@ -17,6 +17,8 @@
   var bootstrapJsonInput = document.getElementById('bootstrap-json');
   var tagsSection = document.getElementById('doctor-tags-section');
   var tagsTable = document.getElementById('doctor-tags-table');
+  var reportReadVersion = 0;
+  var bootstrapReadVersion = 0;
 
   if (!jsonInput || !analyzeButton) return;
 
@@ -34,6 +36,10 @@
   // report-doctor.js must contain no innerHTML sinks fed by report/sidecar
   // data (regression test: tests/report_doctor_xss_test.js).
   var TAG_ORIGIN = 'https://bluecollar-systems.com';
+  if (document.documentElement && document.documentElement.getAttribute('data-local-test-build') === 'true' &&
+      typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+    TAG_ORIGIN = location.origin;
+  }
 
   function isValidPartId(value) {
     // part_id is an opaque UUID minted by the Steel Logic app (R21-13,
@@ -82,7 +88,7 @@
       tr.className = 'border-t border-gray-700';
       tr.appendChild(tableCell('p-3 font-mono', safeText(row.piece_mark || row.mark || '—')));
       tr.appendChild(tableCell('p-3', safeText(row.profile_hint || row.designation || '—')));
-      tr.appendChild(tableCell('p-3', safeText(row.quantity || 1)));
+      tr.appendChild(tableCell('p-3', safeText(row.quantity == null ? 1 : row.quantity)));
       if (isValidPartId(partId)) {
         var tagUrl = TAG_ORIGIN + '/p/' + encodeURIComponent(partId);
         tr.appendChild(tableCell('p-3 font-mono text-xs', tagUrl));
@@ -92,6 +98,7 @@
         copyBtn.type = 'button';
         copyBtn.className = 'copy-tag bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs';
         copyBtn.setAttribute('data-url', tagUrl);
+        copyBtn.setAttribute('aria-label', 'Copy tag URL for ' + safeText(row.piece_mark || row.mark || partId));
         copyBtn.textContent = 'Copy';
         buttonCell.appendChild(copyBtn);
         tr.appendChild(buttonCell);
@@ -110,7 +117,7 @@
     for (var j = 0; j < copyButtons.length; j++) {
       copyButtons[j].addEventListener('click', function() {
         var url = this.getAttribute('data-url');
-        if (navigator.clipboard && url) navigator.clipboard.writeText(url);
+        if (url) copyText(url, this, 'Copy');
       });
     }
   }
@@ -120,9 +127,17 @@
     if (!text) return [];
     try {
       var data = JSON.parse(text);
-      if (data.schema && data.schema !== 'bcs.parts_bootstrap/1.0') return [];
+      if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        setError('The parts sidecar must be a JSON object containing rows, parts, or candidates.');
+        return [];
+      }
+      if (data.schema && data.schema !== 'bcs.parts_bootstrap/1.0') {
+        setError('Unsupported parts sidecar schema: ' + safeText(data.schema));
+        return [];
+      }
       return bootstrapRows(data);
     } catch (err) {
+      setError('Could not parse parts sidecar JSON: ' + err.message);
       return [];
     }
   }
@@ -134,6 +149,41 @@
   function setError(message) {
     if (!errorBox) return;
     errorBox.textContent = message || '';
+  }
+
+  function copyText(text, button, label) {
+    function copied() {
+      button.textContent = 'Copied';
+      setTimeout(function() { button.textContent = label; }, 1600);
+    }
+    function fallback() {
+      var input = document.createElement('textarea');
+      input.value = text;
+      input.setAttribute('readonly', '');
+      input.setAttribute('aria-label', 'Text to copy');
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      try {
+        input.select();
+        if (!document.execCommand || !document.execCommand('copy')) throw new Error('Copy unavailable');
+        copied();
+      } catch (_) {
+        setError('Copy failed. Select the displayed text and copy it manually.');
+      } finally {
+        document.body.removeChild(input);
+        button.focus();
+      }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        navigator.clipboard.writeText(text).then(copied).catch(fallback);
+      } catch (_) {
+        fallback();
+      }
+    } else {
+      fallback();
+    }
   }
 
   function resetResult() {
@@ -953,14 +1003,17 @@
     fileInput.addEventListener('change', function() {
       var file = fileInput.files && fileInput.files[0];
       if (!file) return;
+      var version = ++reportReadVersion;
       resetResult();
       setError('');
       var reader = new FileReader();
       reader.onload = function() {
+        if (version !== reportReadVersion) return;
         jsonInput.value = String(reader.result || '');
         parseAndAnalyze();
       };
       reader.onerror = function() {
+        if (version !== reportReadVersion) return;
         setError('Could not read the selected file.');
       };
       reader.readAsText(file);
@@ -971,6 +1024,8 @@
 
   if (clearButton) {
     clearButton.addEventListener('click', function() {
+      reportReadVersion += 1;
+      bootstrapReadVersion += 1;
       jsonInput.value = '';
       if (fileInput) fileInput.value = '';
       if (bootstrapJsonInput) bootstrapJsonInput.value = '';
@@ -984,11 +1039,18 @@
     bootstrapFileInput.addEventListener('change', function() {
       var file = bootstrapFileInput.files && bootstrapFileInput.files[0];
       if (!file) return;
+      var version = ++bootstrapReadVersion;
+      setError('');
       var reader = new FileReader();
       reader.onload = function() {
+        if (version !== bootstrapReadVersion) return;
         if (bootstrapJsonInput) bootstrapJsonInput.value = String(reader.result || '');
         if (jsonInput.value.trim()) parseAndAnalyze();
         else renderTagsTable(parseBootstrapInput());
+      };
+      reader.onerror = function() {
+        if (version !== bootstrapReadVersion) return;
+        setError('Could not read the selected parts sidecar file.');
       };
       reader.readAsText(file);
     });
@@ -996,6 +1058,7 @@
 
   if (bootstrapJsonInput) {
     bootstrapJsonInput.addEventListener('blur', function() {
+      setError('');
       renderTagsTable(parseBootstrapInput());
     });
   }
@@ -1004,16 +1067,7 @@
     copyButton.addEventListener('click', function() {
       var text = support ? support.textContent : '';
       if (!text) return;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(function() {
-          copyButton.textContent = 'Copied';
-          setTimeout(function() { copyButton.textContent = 'Copy Summary'; }, 1600);
-        }).catch(function() {
-          setError('Copy failed. Select the support summary text and copy it manually.');
-        });
-      } else {
-        setError('Clipboard API unavailable. Select the support summary text and copy it manually.');
-      }
+      copyText(text, copyButton, 'Copy Summary');
     });
   }
 })();

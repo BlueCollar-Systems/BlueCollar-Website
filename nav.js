@@ -12,7 +12,7 @@
   // the section it jumps to. (On computers the menu always shows.)
   menu.addEventListener('click', function(e) {
     var link = e.target.closest && e.target.closest('a');
-    if (!link || menu.classList.contains('hidden')) return;
+    if (!link || !menu.contains(link) || menu.classList.contains('hidden')) return;
     menu.classList.add('hidden');
     btn.setAttribute('aria-expanded', 'false');
   });

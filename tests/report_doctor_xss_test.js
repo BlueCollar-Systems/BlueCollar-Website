@@ -225,7 +225,7 @@ everything.forEach(function (node) {
 everything.forEach(function (node) {
   Object.keys(node.attributes).forEach(function (name) {
     assert.ok(!/^on/i.test(name), 'event-handler attribute injected: ' + name);
-    assert.strictEqual(name, 'data-url', 'unexpected attribute: ' + name);
+    assert.ok(name === 'data-url' || name === 'aria-label', 'unexpected attribute: ' + name);
   });
 });
 

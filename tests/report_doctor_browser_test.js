@@ -18,10 +18,10 @@ function findBrowser() {
 
   if (process.platform === 'win32') {
     candidates.push(
-      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
       'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
     );
   } else if (process.platform === 'darwin') {
     candidates.push(
@@ -218,6 +218,38 @@ var FEEDBACK_TEST = String.raw`
 `;
 
 var browser = findBrowser();
+var NAV_TEST = String.raw`
+(function() {
+  var result = document.createElement('pre');
+  result.id = 'browser-test-result';
+  document.body.appendChild(result);
+  document.addEventListener('DOMContentLoaded', function() {
+    try {
+      var button = document.getElementById('nav-toggle');
+      var menu = document.getElementById('nav-menu');
+      function check(condition, message) { if (!condition) throw new Error(message); }
+      button.click();
+      check(button.getAttribute('aria-expanded') === 'true', 'menu must open');
+      check(!menu.classList.contains('hidden'), 'open menu must be visible');
+      menu.querySelector('a[href="#toolkit"]').click();
+      check(button.getAttribute('aria-expanded') === 'false', 'selecting a link must close the mobile menu');
+      check(menu.classList.contains('hidden'), 'selected menu must be hidden');
+      button.click();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      check(menu.classList.contains('hidden'), 'Escape must close the menu');
+      check(document.activeElement === button, 'Escape must return focus to the menu button');
+      button.click();
+      document.body.click();
+      check(menu.classList.contains('hidden'), 'clicking outside must close the menu');
+      result.dataset.status = 'pass';
+      result.textContent = 'PASS mobile menu open, link selection, Escape and outside click';
+    } catch (error) {
+      result.dataset.status = 'fail';
+      result.textContent = error.stack || error.message;
+    }
+  });
+})();
+`;
 var tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'bcs-website-browser-test-'));
 
 try {
@@ -230,8 +262,10 @@ try {
     fs.readFileSync(path.join(ROOT, 'feedback.html'), 'utf8')
   );
   runBrowserPage(browser, tempRoot, 'feedback', injectTest(feedbackHtml, FEEDBACK_TEST));
+  var indexHtml = localizeAssets(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
+  runBrowserPage(browser, tempRoot, 'navigation', injectTest(indexHtml, NAV_TEST));
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true });
 }
 
-console.log('PASS report_doctor_browser_test: native browser DOM and file-input behavior');
+console.log('PASS report_doctor_browser_test: native browser DOM, file-input behavior and mobile navigation');
