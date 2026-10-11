@@ -166,6 +166,55 @@ class BuildSiteTests(unittest.TestCase):
             BUILD.build_site(source, source / "inner")
         self.assertTrue((source / "index.html").is_file())
 
+    def test_refuses_a_mistyped_out_folder_inside_the_source(self):
+        # A throwaway source copy with tracked-looking folders next to the pages.
+        source = self.build_real_site()
+        tracked = {
+            "docs": "CLOUDFLARE_PAGES.md",
+            "tools": "sync_repo_metadata.py",
+            ".github/workflows": "website-ci.yml",
+            "notes": "plan.txt",
+        }
+        for folder, name in tracked.items():
+            (source / folder).mkdir(parents=True)
+            (source / folder / name).write_text("keep me", encoding="utf-8")
+        for folder, name in tracked.items():
+            top = folder.split("/")[0]
+            with self.subTest(out=top):
+                self.assertEqual(BUILD.main(["--source", str(source), "--out", str(source / top)]), 1)
+                self.assertIn("did not make", self.stderr.getvalue())
+                self.assertEqual((source / folder / name).read_text(encoding="utf-8"), "keep me")
+
+    def test_refuses_a_non_empty_folder_that_is_not_a_build(self):
+        source = self.build_real_site()
+        other = self.temp / "my-files"
+        other.mkdir()
+        (other / "index.html").write_text("mine", encoding="utf-8")
+        (other / "photo.png").write_bytes(b"png")
+        with self.assertRaises(BUILD.BuildError):
+            BUILD.build_site(source, other)
+        self.assertTrue((other / "photo.png").is_file())
+        a_file = self.temp / "a-file.txt"
+        a_file.write_text("x", encoding="utf-8")
+        with self.assertRaises(BUILD.BuildError):
+            BUILD.build_site(source, a_file)
+        self.assertTrue(a_file.is_file())
+
+    def test_builds_into_new_empty_default_or_earlier_build_folders(self):
+        source = self.build_real_site()
+        empty = self.temp / "empty"
+        empty.mkdir()
+        BUILD.build_site(source, empty)
+        self.assertTrue((empty / "index.html").is_file())
+        BUILD.build_site(source, empty)  # now an earlier build: rebuilt
+        BUILD.build_site(source, self.temp / "brand-new" / "site")
+        default = source / "_site"
+        default.mkdir()
+        (default / "leftover.md").write_text("old", encoding="utf-8")
+        BUILD.build_site(source, default)  # the git-ignored default is always rebuilt
+        self.assertFalse((default / "leftover.md").exists())
+        self.assertTrue((default / "index.html").is_file())
+
     def test_new_root_stylesheet_ships_without_a_list_edit(self):
         source = self.build_real_site()
         (source / "part-page.css").write_text("main{margin:0}", encoding="utf-8")

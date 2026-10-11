@@ -179,7 +179,11 @@ jobs:
         run: python tools/sync_repo_metadata.py
 
       # Every link and download button, checked the way a stranger sees it:
-      # no token, no login. A download in a private repo fails here.
+      # no token, no login. A dead link (404/410) or a download that needs a
+      # login fails here, so a download in a private repo blocks the deploy.
+      # A busy site (5xx, 429, network error) is asked again over about a
+      # minute and then only warned about, so brief github.com throttling
+      # cannot hold back a release deploy.
       - name: Check links the way a visitor sees them
         run: python tools/check_public_links.py
 
@@ -281,8 +285,9 @@ jobs:
       - name: Verify public download metadata
         run: python tools/verify_deployed_metadata.py
 
-      # Same visitor's-eye link check, now against the live site: every page,
-      # on-site link, external link and download button.
+      # Same visitor's-eye check, now against the live site: every page and
+      # on-site link. Outside links and download buttons were checked in
+      # static-checks a few minutes earlier and are not requested again.
       - name: Check live links the way a visitor sees them
         run: python tools/check_public_links.py --base https://bluecollar-systems.com
 

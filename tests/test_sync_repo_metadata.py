@@ -357,6 +357,21 @@ class IdempotenceTests(unittest.TestCase):
         self.github.pushed_at["BlueCollar-Systems/PDF-Importer-FreeCAD"] = "2026-10-09T12:00:00Z"
         self.assertNotEqual(first, self.run_sync())
 
+    def test_push_date_shown_by_a_steel_badge_added_to_a_page_rewrites(self) -> None:
+        # LibreCAD has an importer release and is not in STEEL_RELEASE_REPOS,
+        # so its push date is hidden until a page shows it on a steel badge.
+        repo = "BlueCollar-Systems/PDF-Importer-LibreCAD"
+        self.assertNotIn(repo, SYNC.STEEL_RELEASE_REPOS)
+        (self.cwd / "shapes.html").write_text(
+            f'<!DOCTYPE html><p data-release-channel="steel" data-repo-version="{repo}">Updated: 2026-10-01</p>',
+            encoding="utf-8",
+        )
+        first = self.run_sync()
+        self.github.pushed_at[repo] = "2026-10-09T12:00:00Z"
+        second = self.run_sync()
+        self.assertNotEqual(first, second)
+        self.assertIn(b"2026-10-09T12:00:00Z", second)
+
     def test_unreadable_previous_file_is_replaced(self) -> None:
         (self.cwd / "repo-metadata.json").write_text("{not json", encoding="utf-8")
         written = self.run_sync()
@@ -368,6 +383,29 @@ class IdempotenceTests(unittest.TestCase):
             self.run_sync()
         self.assertIn("BlueCollar-Systems/PDF-Importer-Blender", str(ctx.exception))
         self.assertFalse((self.cwd / "repo-metadata.json").exists())
+
+
+
+class SteelBadgeTests(unittest.TestCase):
+    """The steel badges on the pages and STEEL_RELEASE_REPOS must agree."""
+
+    def test_every_steel_badge_on_the_site_is_a_steel_release_repo(self) -> None:
+        # build_metadata only fetches steel releases for STEEL_RELEASE_REPOS; a
+        # steel badge for any other repo would never show a steel version.
+        badges = SYNC.steel_badge_repos(ROOT)
+        self.assertTrue(badges, "no steel badges found; did the badge markup change?")
+        self.assertLessEqual(badges, set(SYNC.STEEL_RELEASE_REPOS),
+                             "add the repo to STEEL_RELEASE_REPOS in tools/sync_repo_metadata.py")
+
+    def test_steel_badges_are_read_in_either_attribute_order(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            Path(temp, "a.html").write_text(
+                '<p data-release-channel="steel" data-repo-version="Org/One">x</p>'
+                '<span data-repo-version="Org/Two" data-release-channel="steel">y</span>'
+                '<p data-repo-version="Org/Three">importer channel</p>',
+                encoding="utf-8",
+            )
+            self.assertEqual(SYNC.steel_badge_repos(Path(temp)), {"Org/One", "Org/Two"})
 
 
 if __name__ == "__main__":
