@@ -10,7 +10,7 @@ Static marketing site for **BlueCollar-Systems** — precision software for fabr
 | Product | Description | Link |
 |---------|-------------|------|
 | **Steel Logic** | Job Clock for fitter and welder time, plus AISC v16.0 shapes, calculators, converters, and inventory. The Android beta is free with ads. A free version and a paid Pro version are the plan; iOS is in development. | [Google Play beta](https://play.google.com/apps/testing/com.bluecollarsystems.steellogic) |
-| **Tag QC Builder** | Hang tags with a QR code that opens the piece in Steel Logic. New tags start with an editable BCS1: prefix; older CS1: tags still scan. Latest published build v10.40; not a download from this website yet. | [bluecollar-systems.com/#tag-qc](https://bluecollar-systems.com/#tag-qc) |
+| **Tag QC Builder** | Hang tags with a QR code that opens the piece in Steel Logic. New tags start with an editable BCS1: prefix; older CS1: tags still scan. Latest published build v10.42; not a download from this website yet. | [bluecollar-systems.com/#tag-qc](https://bluecollar-systems.com/#tag-qc) |
 | **Free Shape Packs** | Public-domain SketchUp + DXF/DWG shape packs | [Shapes Hub](https://bluecollar-systems.com/shapes) |
 | **SketchUp PDF Importer** | Vector-accurate PDF geometry import for SketchUp | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp) |
 | **FreeCAD PDF Importer** | PDF vector import workbench for FreeCAD | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD) |
@@ -42,10 +42,10 @@ To check every link and download button the way a visitor sees them (no login, n
 Deployed to **Cloudflare Pages** (project `bluecollar-website`) via GitHub Actions workflow [`.github/workflows/website-ci.yml`](.github/workflows/website-ci.yml).
 
 - Pushes to `main` run `website-ci`.
-- `static-checks` must pass before `deploy-pages` runs.
+- `static-checks` must pass before `deploy-pages` runs. Production deployment requires a manual `website-ci` run on `main` with `deploy_production=true`; its default is validation only.
 - `deploy-pages` syncs and validates release metadata, builds `_site/` with `tools/build_site.py` (public files only), publishes that folder with Wrangler, then verifies that the public domain serves the exact new metadata bytes and that repository files such as `/README.md` answer 404, then requests every live page and on-site link, before committing stamped badges back to `main`.
-- Pushes to `main`/`master` also run `auto-release` to bump `VERSION` and publish a GitHub Release snapshot zip.
-- A **cron** (`17 */6 * * *`) re-syncs release metadata even if no product repo fired a dispatch.
+- A manual `auto-release` run with `publish_release=true` bumps `VERSION` and publishes a GitHub Release snapshot zip. Its default builds an inspection artifact without publishing.
+- Pushes, product dispatches and the six-hour schedule run validation. They do not deploy or publish releases.
 
 See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for app launch/update steps (Google Play + iOS).
 
@@ -66,7 +66,7 @@ Tracked repos: `PDF-Importer-SketchUp`, `PDF-Importer-FreeCAD`, `PDF-Importer-Bl
 
 1. Importer repo `auto-release` (or manual `release: published`) creates/updates a GitHub Release.
 2. Same pipeline dispatches `repository_dispatch` to `BlueCollar-Systems/BlueCollar-Website` with event type `product-release` (or `product-update`).
-3. `website-ci` `deploy-pages` re-runs `sync_repo_metadata.py` and deploys to Cloudflare Pages.
+3. The dispatch runs validation. After product releases finish, manually run `website-ci` on `main` with `deploy_production=true`; `deploy-pages` re-runs `sync_repo_metadata.py` and deploys to Cloudflare Pages.
 4. `tools/verify_deployed_metadata.py` requests the public metadata with cache bypass headers and a unique query, allowing up to 12 attempts with 10 seconds between attempts and a 15-second request timeout. It requires exact bytes, so stale tags, download URLs, source revisions, asset digests, or an older snapshot fail the job. Only a verified deployment commits the stamped badges back to `main`.
 
 To check a prepared snapshot manually, run `python tools/verify_deployed_metadata.py --expected repo-metadata.json`. This reads the public metadata; it does not deploy or change any content.
@@ -91,7 +91,7 @@ Do **not** put GitHub or Cloudflare tokens in HTML, `nav.js`, or committed confi
 |--------|----------|---------|
 | `WEBSITE_DISPATCH_TOKEN` | Recommended | PAT or fine-grained token allowed to trigger `repository_dispatch` on `BlueCollar-Systems/BlueCollar-Website`. Classic PAT: `repo` scope (or fine-grained: **Actions: Read and write** on `BlueCollar-Website`). Aliases accepted in workflows: `BLUECOLLAR_WEBSITE_DISPATCH_TOKEN`, `REPO_DISPATCH_TOKEN`. |
 
-If `WEBSITE_DISPATCH_TOKEN` is unset, releases still publish on GitHub but the website only updates on the 6-hour cron, the next `main` push, or manual `workflow_dispatch`.
+If `WEBSITE_DISPATCH_TOKEN` is unset, releases still publish on GitHub. Production website updates always require the manual deployment described above.
 
 **Dispatch payload** (informational; website workflow re-syncs all repos, it does not merge this JSON into the site):
 
