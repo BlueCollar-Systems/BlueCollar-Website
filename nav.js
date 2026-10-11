@@ -9,10 +9,11 @@
     if (isNowOpen) { var first = menu.querySelector('a'); if (first) first.focus(); }
   });
   // On a phone, tapping a menu link closes the menu so it does not cover
-  // the section it jumps to. (On computers the menu always shows.)
+  // the section it jumps to. Computers keep the menu on screen: the hidden
+  // class is still present there, and the wide-screen rule shows it anyway.
   menu.addEventListener('click', function(e) {
     var link = e.target.closest && e.target.closest('a');
-    if (!link || menu.classList.contains('hidden')) return;
+    if (!link || !menu.contains(link) || menu.classList.contains('hidden')) return;
     menu.classList.add('hidden');
     btn.setAttribute('aria-expanded', 'false');
   });

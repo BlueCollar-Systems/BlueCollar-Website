@@ -29,6 +29,12 @@ Open `index.html` in a browser. No build step required.
 
 To see exactly what gets published, run `python tools/build_site.py`. It copies only the public site files into `_site/` (ignored by git) and fails if a repository-only file would be published or an on-site link points at a missing file.
 
+For a working local preview with the same page and part-tag routes as the hosted
+site, run `python tools/preview_site.py` and open
+`http://127.0.0.1:8082/`. Stop it with Ctrl+C. The preview uses only public site
+files; it does not publish anything. This also lets Report Doctor copy buttons
+use a secure localhost clipboard instead of a `file:` page.
+
 ## Deployment
 
 Deployed to **Cloudflare Pages** (project `bluecollar-website`) via GitHub Actions workflow [`.github/workflows/website-ci.yml`](.github/workflows/website-ci.yml).
