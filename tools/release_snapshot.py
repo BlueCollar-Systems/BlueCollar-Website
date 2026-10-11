@@ -9,7 +9,9 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+import time
 from urllib.error import HTTPError
+from urllib.parse import quote
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,11 +53,13 @@ def prepare(version, repository, directory):
 
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, *_args, **_kwargs):
-        raise ValueError("Unexpected GitHub JSON API redirect")
+        raise ValueError("Unexpected GitHub API redirect")
 
 
 class GitHub:
     def __init__(self, repository):
+        require(re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository) and
+                all(part not in (".", "..") for part in repository.split("/")), "Invalid GitHub repository")
         self.repository = repository
         self.token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
         require(self.token, "GitHub token required for explicitly approved publication")
@@ -67,6 +71,7 @@ class GitHub:
         request = Request(url, data=data, method=method, headers={
             "Authorization": "Bearer " + self.token, "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "BlueCollar-Website-Snapshot",
+            "Cache-Control": "no-cache", "Pragma": "no-cache",
             "Content-Type": "application/json"})
         try:
             with self.opener.open(request, timeout=60) as response:
@@ -103,14 +108,43 @@ class GitHub:
         raise ValueError("Annotated tag nesting exceeded bound")
 
     def create_draft(self, proof, files):
-        command = ["gh", "release", "create", proof["tag"], "--repo", self.repository,
-                   "--target", proof["source_commit"], "--draft", "--latest=false",
-                   "--title", proof["tag"] + " — BlueCollar Systems Website Snapshot",
-                   "--notes", "Exact source snapshot: " + proof["source_commit"] +
-                   ". Archive SHA256 and source identity are in the provenance sidecar.",
-                   *[str(path) for path in files]]
-        result = subprocess.run(command, capture_output=True)
-        require(result.returncode == 0, "Draft create/upload failed; inspect without clobbering")
+        draft = self.api("releases", method="POST", body={
+            "tag_name": proof["tag"], "target_commitish": proof["source_commit"],
+            "name": proof["tag"] + " — BlueCollar Systems Website Snapshot",
+            "body": "Exact source snapshot: " + proof["source_commit"] +
+                    ". Archive SHA256 and source identity are in the provenance sidecar.",
+            "draft": True, "prerelease": False, "make_latest": "false"})
+        require(type(draft["id"]) is int and draft["id"] > 0, "Invalid created draft id")
+        require(draft["tag_name"] == proof["tag"] and draft["target_commitish"] == proof["source_commit"] and
+                draft["draft"] is True and draft["prerelease"] is False, "Created draft source/state mismatch")
+        require(draft["assets"] == [], "New draft has unexpected assets")
+        release_id = draft["id"]
+        for path in files:
+            self.upload(release_id, path)
+        return release_id
+
+    def upload(self, release_id, path):
+        require(type(release_id) is int and release_id > 0, "Invalid upload release id")
+        # Never follow the response's upload_url. Keep credentials on this fixed host/id.
+        url = "https://uploads.github.com/repos/" + self.repository + "/releases/" + str(release_id) + "/assets?name=" + quote(path.name, safe="")
+        request = Request(url, data=path.read_bytes(), method="POST", headers={
+            "Authorization": "Bearer " + self.token, "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "BlueCollar-Website-Snapshot",
+            "Content-Type": "application/zip" if path.suffix == ".zip" else "application/json"})
+        try:
+            with self.opener.open(request, timeout=60) as response:
+                asset = json.load(response)
+        except HTTPError as error:
+            raise ValueError(f"GitHub asset upload failed (HTTP {error.code}); draft retained") from None
+        require(type(asset["id"]) is int and asset["id"] > 0 and asset["name"] == path.name and
+                asset["state"] == "uploaded" and asset["size"] == path.stat().st_size and
+                asset.get("digest") == "sha256:" + digest(path), "Uploaded asset response differs from local bytes")
+
+    def read_release(self, release_id):
+        require(type(release_id) is int and release_id > 0, "Invalid release read id")
+        result = self.api("releases/" + str(release_id) + "?bcs_snapshot_read=" + str(time.time_ns()))
+        require(type(result["id"]) is int and result["id"] == release_id, "Release response id mismatch")
+        return result
 
     def download(self, asset_id, destination):
         require(type(asset_id) is int and asset_id > 0, "Invalid release asset id")
@@ -172,15 +206,13 @@ def publish(sidecar, client=None):
         require(existing["draft"] is False, "Existing draft requires explicit inspection; no automatic mutation")
         verify_release(client, existing, proof, files, draft=False)
         return {"status": "VERIFIED_EXISTING_RELEASE", "source_commit": proof["source_commit"]}
-    client.create_draft(proof, files)
-    minted = client.find_release(proof["tag"])
-    require(minted is not None and type(minted["id"]) is int and minted["id"] > 0, "Minted draft missing")
-    release_id = minted["id"]
+    release_id = client.create_draft(proof, files)
+    require(type(release_id) is int and release_id > 0, "Invalid returned draft id")
     # Read exact numeric draft id; never confuse a published /tags response.
-    minted = client.api("releases/" + str(release_id))
+    minted = client.read_release(release_id)
     verify_release(client, minted, proof, files, draft=True)
     client.api("releases/" + str(release_id), method="PATCH", body={"draft": False, "make_latest": "true"})
-    published = client.api("releases/" + str(release_id))
+    published = client.read_release(release_id)
     verify_release(client, published, proof, files, draft=False)
     return {"status": "VERIFIED_NEW_RELEASE", "source_commit": proof["source_commit"], "release_id": release_id}
 
