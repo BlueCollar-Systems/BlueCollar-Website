@@ -70,7 +70,7 @@ function browserTestResult(output) {
   return { status: match[1], text: match[2] };
 }
 
-function runBrowserPage(browser, tempRoot, name, html) {
+function runBrowserPage(browser, tempRoot, name, html, windowSize) {
   var pagePath = path.join(tempRoot, name + '.html');
   var profilePath = path.join(tempRoot, name + '-profile');
   fs.writeFileSync(pagePath, html, 'utf8');
@@ -88,6 +88,7 @@ function runBrowserPage(browser, tempRoot, name, html) {
     '--safebrowsing-disable-auto-update',
     '--allow-file-access-from-files',
     '--virtual-time-budget=3000',
+    '--window-size=' + (windowSize || '1280,900'),
     '--user-data-dir=' + profilePath,
     '--dump-dom',
     pathToFileURL(pagePath).href
@@ -263,7 +264,9 @@ try {
   );
   runBrowserPage(browser, tempRoot, 'feedback', injectTest(feedbackHtml, FEEDBACK_TEST));
   var indexHtml = localizeAssets(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
-  runBrowserPage(browser, tempRoot, 'navigation', injectTest(indexHtml, NAV_TEST));
+  // This check is the phone menu. At 768 px and wider the menu button is
+  // hidden, so Escape cannot move focus back to it.
+  runBrowserPage(browser, tempRoot, 'navigation', injectTest(indexHtml, NAV_TEST), '390,844');
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true });
 }
