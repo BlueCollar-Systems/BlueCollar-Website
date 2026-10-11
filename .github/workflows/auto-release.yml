@@ -6,13 +6,18 @@ on:
       - main
       - master
     # Docs/CI-only pushes should not mint a public release (board Q-08-a /
-    # ANS-09-1). Shipped content (*.html, assets) still releases normally.
+    # ANS-09-1). Shipped content is validated on push; publication is manual.
     paths-ignore:
       - "**/*.md"
       - "docs/**"
       - ".github/**"
       - "_archived/**"
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish validated assets after all current work and native checks are complete; false builds only.'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -22,8 +27,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build-only:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Validate and build allowlisted site without version changes
+        run: |
+          python tools/validate_private_artifacts.py
+          python tools/validate_static_metadata.py
+          python tools/build_site.py
+          python tests/test_build_site.py -v
+          git archive --format=zip --output "$RUNNER_TEMP/BlueCollar-Website-build-only.zip" HEAD
+      - name: Upload source and public-site build for inspection
+        uses: actions/upload-artifact@v7
+        with:
+          name: website-build-only-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/BlueCollar-Website-build-only.zip
+            _site/
+
   release:
-    if: "!startsWith(github.event.head_commit.message, 'chore: bump version to') && !contains(github.event.head_commit.message, '[skip release]')"
+    if: "github.event_name == 'workflow_dispatch' && inputs.publish_release == true && !startsWith(github.event.head_commit.message, 'chore: bump version to') && !contains(github.event.head_commit.message, '[skip release]')"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -111,10 +144,10 @@ jobs:
 
           # RB-21 / Round 21 corrective: existing releases are immutable. Site
           # snapshots are versioned per release — never re-upload/clobber assets
-          # under an existing tag; the next push mints the next snapshot version.
+          # under an existing tag; a later approved manual publication mints the next snapshot version.
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release ${TAG} already exists — immutable; skipping asset upload."
-            echo "::warning::Release ${TAG} already exists; its assets are immutable. Snapshot NOT uploaded — the next push mints the next snapshot version."
+            echo "::warning::Release ${TAG} already exists; its assets are immutable. Snapshot NOT uploaded — a later approved manual publication mints the next snapshot version."
             exit 0
           else
             gh release create "$TAG" --title "$TITLE" --notes "$NOTES" --latest "$ZIP"

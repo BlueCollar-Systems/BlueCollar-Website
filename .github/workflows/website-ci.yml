@@ -15,9 +15,14 @@ on:
       - steel-shapes-release
   pull_request:
   workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: 'Publish to production Pages after all release checks; false runs validation/build only.'
+        type: boolean
+        default: false
 
 concurrency:
-  group: website-ci-${{ github.ref }}
+  group: website-ci-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.deploy_production == true && 'production' || 'validation' }}
   cancel-in-progress: true
 
 jobs:
@@ -171,6 +176,9 @@ jobs:
       - name: Release metadata digest regression
         run: python tests/test_sync_repo_metadata.py -v
 
+      - name: Manual publication workflow contract
+        run: python tests/test_manual_publication_workflow.py -v
+
       - name: Public deployment metadata regression
         run: python tests/test_verify_deployed_metadata.py -v
 
@@ -205,11 +213,7 @@ jobs:
 
   deploy-pages:
     needs: static-checks
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      github.event_name == 'schedule' ||
-      github.event_name == 'repository_dispatch' ||
-      github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy_production == true && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
