@@ -1,115 +1,19 @@
-// Standards-browser regression for Report Doctor file pickers and adjacent
-// feedback privacy guidance. This launches an already-installed Chromium
-// browser; it does not emulate DOM, File, DataTransfer, or FileReader APIs.
+// Standards-browser regression for Report Doctor file pickers, adjacent
+// feedback privacy guidance and the phone menu. This launches an
+// already-installed Chromium browser; it does not emulate DOM, File,
+// DataTransfer, or FileReader APIs. Browser lookup (Chrome first on Windows),
+// page loading and temp-folder cleanup are shared with the other
+// real-browser tests through tests/browser_harness.js.
 'use strict';
 
-var assert = require('assert');
-var childProcess = require('child_process');
 var fs = require('fs');
-var os = require('os');
 var path = require('path');
-var pathToFileURL = require('url').pathToFileURL;
+var harness = require('./browser_harness');
 
-var ROOT = path.resolve(__dirname, '..');
-
-function findBrowser() {
-  var candidates = [];
-  if (process.env.BCS_TEST_BROWSER) candidates.push(process.env.BCS_TEST_BROWSER);
-
-  if (process.platform === 'win32') {
-    candidates.push(
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
-    );
-  } else if (process.platform === 'darwin') {
-    candidates.push(
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'
-    );
-  } else {
-    candidates.push(
-      '/usr/bin/google-chrome',
-      '/usr/bin/google-chrome-stable',
-      '/usr/bin/chromium',
-      '/usr/bin/chromium-browser'
-    );
-  }
-
-  for (var i = 0; i < candidates.length; i++) {
-    if (candidates[i] && fs.existsSync(candidates[i])) return candidates[i];
-  }
-
-  throw new Error(
-    'No supported Chromium browser found. Set BCS_TEST_BROWSER to an existing Chrome, Chromium, or Edge executable.'
-  );
-}
-
-function localFileUrl(name) {
-  return pathToFileURL(path.join(ROOT, name)).href;
-}
-
-function localizeAssets(html) {
-  return html
-    .replace('href="/styles.css"', 'href="' + localFileUrl('styles.css') + '"')
-    .replace('src="/nav.js"', 'src="' + localFileUrl('nav.js') + '"')
-    .replace('src="/report-doctor.js"', 'src="' + localFileUrl('report-doctor.js') + '"');
-}
-
-function injectTest(html, testSource) {
-  assert.ok(html.includes('</body>'), 'test page must contain a closing body tag');
-  return html.replace('</body>', '<script>' + testSource + '</script></body>');
-}
-
-function browserTestResult(output) {
-  var match = output.match(
-    /<pre id="browser-test-result" data-status="([^"]+)">([\s\S]*?)<\/pre>/
-  );
-  if (!match) return { status: 'missing', text: 'browser result element was not dumped' };
-  return { status: match[1], text: match[2] };
-}
-
-function runBrowserPage(browser, tempRoot, name, html) {
-  var pagePath = path.join(tempRoot, name + '.html');
-  var profilePath = path.join(tempRoot, name + '-profile');
-  fs.writeFileSync(pagePath, html, 'utf8');
-
-  var result = childProcess.spawnSync(browser, [
-    '--headless=new',
-    '--disable-gpu',
-    '--no-sandbox',
-    '--disable-background-networking',
-    '--disable-component-update',
-    '--disable-default-apps',
-    '--disable-sync',
-    '--metrics-recording-only',
-    '--no-first-run',
-    '--safebrowsing-disable-auto-update',
-    '--allow-file-access-from-files',
-    '--virtual-time-budget=3000',
-    '--user-data-dir=' + profilePath,
-    '--dump-dom',
-    pathToFileURL(pagePath).href
-  ], {
-    encoding: 'utf8',
-    timeout: 30000,
-    windowsHide: true
-  });
-
-  assert.ifError(result.error);
-  assert.strictEqual(
-    result.status,
-    0,
-    name + ' browser process failed:\n' + String(result.stderr || result.stdout)
-  );
-  var browserResult = browserTestResult(result.stdout);
-  assert.strictEqual(
-    browserResult.status,
-    'pass',
-    name + ' browser assertions failed:\n' + browserResult.text
-  );
-}
+var ROOT = harness.ROOT;
+var localizeAssets = harness.localizeAssets;
+var injectTest = harness.injectTest;
+var runBrowserPage = harness.runBrowserPage;
 
 var REPORT_TEST = String.raw`
 (function() {
@@ -217,7 +121,7 @@ var FEEDBACK_TEST = String.raw`
 })();
 `;
 
-var browser = findBrowser();
+var browser = harness.findBrowser();
 var NAV_TEST = String.raw`
 (function() {
   var result = document.createElement('pre');
@@ -247,10 +151,13 @@ var NAV_TEST = String.raw`
       result.dataset.status = 'fail';
       result.textContent = error.stack || error.message;
     }
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ bcsTest: true, status: result.dataset.status, text: result.textContent }, '*');
+    }
   });
 })();
 `;
-var tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'bcs-website-browser-test-'));
+var tempRoot = harness.makeTempRoot('bcs-website-browser-test-');
 
 try {
   var reportHtml = localizeAssets(
@@ -263,9 +170,13 @@ try {
   );
   runBrowserPage(browser, tempRoot, 'feedback', injectTest(feedbackHtml, FEEDBACK_TEST));
   var indexHtml = localizeAssets(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
-  runBrowserPage(browser, tempRoot, 'navigation', injectTest(indexHtml, NAV_TEST));
+  // The menu button is a phone control (md:hidden): from 768 px up it is not
+  // shown and cannot take focus back on Escape. Run the phone-menu checks in
+  // a 375 x 812 viewport so they do not depend on the browser's default
+  // window (800 px wide on the Linux CI runner, narrower on Windows).
+  runBrowserPage(browser, tempRoot, 'navigation', injectTest(indexHtml, NAV_TEST), { width: 375, height: 812 });
 } finally {
-  fs.rmSync(tempRoot, { recursive: true, force: true });
+  harness.removeTempRoot(tempRoot);
 }
 
 console.log('PASS report_doctor_browser_test: native browser DOM, file-input behavior and mobile navigation');

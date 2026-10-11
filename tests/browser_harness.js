@@ -19,11 +19,12 @@ function findBrowser() {
   if (process.env.BCS_TEST_BROWSER) candidates.push(process.env.BCS_TEST_BROWSER);
 
   if (process.platform === 'win32') {
+    // Chrome first, then Edge (the order main chose on 2026-10-10).
     candidates.push(
-      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
       'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
     );
   } else if (process.platform === 'darwin') {
     candidates.push(
