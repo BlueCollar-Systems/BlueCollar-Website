@@ -63,5 +63,15 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
         self.assertNotIn('inputs.deploy_production',block(text,'static-checks'))
         self.assertIn("'production' || 'validation'",text)
         for event in ['push:','pull_request:','schedule:','repository_dispatch:']:self.assertIn(event,text)
+    def test_snapshot_helper_is_validated_and_draft_publication_is_guarded(self):
+        text=(ROOT/'.github/workflows/auto-release.yml').read_text(encoding='utf-8')
+        release=block(text,'release')
+        self.assertIn('tools/release_snapshot.py prepare',release)
+        self.assertIn('tools/release_snapshot.py publish --provenance',release)
+        self.assertIn('python tests/test_release_snapshot.py -v',release)
+        self.assertNotIn('gh release view',release)
+        self.assertNotIn('exit 0',block(text,'Verify source and uploaded draft bytes before publication','step'))
+        ci=(ROOT/'.github/workflows/website-ci.yml').read_text(encoding='utf-8')
+        self.assertIn('python tests/test_release_snapshot.py -v',block(ci,'static-checks'))
 
 if __name__=='__main__':unittest.main()

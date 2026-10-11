@@ -45,14 +45,15 @@ jobs:
           python tools/validate_static_metadata.py
           python tools/build_site.py
           python tests/test_build_site.py -v
-          git archive --format=zip --output "$RUNNER_TEMP/BlueCollar-Website-build-only.zip" HEAD
+          python tests/test_release_snapshot.py -v
+          python tools/release_snapshot.py prepare --version "$(cat VERSION)" --repository "$GITHUB_REPOSITORY" --output-dir "$RUNNER_TEMP/website-build-only"
       - name: Upload source and public-site build for inspection
         uses: actions/upload-artifact@v7
         with:
           name: website-build-only-${{ github.sha }}
           if-no-files-found: error
           path: |
-            ${{ runner.temp }}/BlueCollar-Website-build-only.zip
+            ${{ runner.temp }}/website-build-only/
             _site/
 
   release:
@@ -124,31 +125,13 @@ jobs:
           git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
           git push
 
-      - name: Build release archive
+      - name: Build source-pinned release archive and provenance
         run: |
-          set -e
-          ZIP="BlueCollar-Website_v${{ steps.version.outputs.version }}.zip"
-          git archive --format=zip --output "$ZIP" HEAD
-          ls -lh "$ZIP"
+          python tests/test_release_snapshot.py -v
+          python tools/release_snapshot.py prepare --version "${{ steps.version.outputs.version }}" --repository "$GITHUB_REPOSITORY" --output-dir "$RUNNER_TEMP/website-release"
 
-      - name: Create or update release
+      - name: Verify source and uploaded draft bytes before publication
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="v${{ steps.version.outputs.version }}"
-          ZIP="BlueCollar-Website_v${{ steps.version.outputs.version }}.zip"
-          TITLE="$TAG — BlueCollar-Systems Website Snapshot"
-          NOTES="Automated release snapshot from latest \`main\` commit.
-
-          This release includes the static site source used for deployment."
-
-          # RB-21 / Round 21 corrective: existing releases are immutable. Site
-          # snapshots are versioned per release — never re-upload/clobber assets
-          # under an existing tag; a later approved manual publication mints the next snapshot version.
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release ${TAG} already exists — immutable; skipping asset upload."
-            echo "::warning::Release ${TAG} already exists; its assets are immutable. Snapshot NOT uploaded — a later approved manual publication mints the next snapshot version."
-            exit 0
-          else
-            gh release create "$TAG" --title "$TITLE" --notes "$NOTES" --latest "$ZIP"
-          fi
+          python tools/release_snapshot.py publish --provenance "$RUNNER_TEMP/website-release/BlueCollar-Website_v${{ steps.version.outputs.version }}.provenance.json"

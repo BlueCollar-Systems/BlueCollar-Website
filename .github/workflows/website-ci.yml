@@ -179,6 +179,9 @@ jobs:
       - name: Manual publication workflow contract
         run: python tests/test_manual_publication_workflow.py -v
 
+      - name: Source-pinned release snapshot regression
+        run: python tests/test_release_snapshot.py -v
+
       - name: Public deployment metadata regression
         run: python tests/test_verify_deployed_metadata.py -v
 
