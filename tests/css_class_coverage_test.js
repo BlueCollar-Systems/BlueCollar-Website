@@ -1,4 +1,5 @@
-// Every class the pages and scripts use must have a rule in styles.css.
+// Every class the pages and scripts use must have a rule in styles.css or in
+// a page stylesheet beside it (part-page.css for the Part Tracking page).
 // The site has no Tailwind build: a class with no rule silently does
 // nothing (that is how the Part Tracking page ended up white on white).
 // Also: the Content-Security-Policy in _headers blocks inline <style>, so
@@ -10,7 +11,10 @@ var fs = require('fs');
 var path = require('path');
 
 var ROOT = path.resolve(__dirname, '..');
-var css = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
+var STYLESHEETS = fs.readdirSync(ROOT).filter(function(name) { return /\.css$/i.test(name); }).sort();
+var css = STYLESHEETS.map(function(name) {
+  return fs.readFileSync(path.join(ROOT, name), 'utf8');
+}).join('\n');
 
 // Classes used only as hooks, never styled on their own (footer-version
 // marks the version that .github/workflows/auto-release.yml stamps).
@@ -78,7 +82,7 @@ var missing = Object.keys(used).filter(function(cls) {
 
 var problems = [];
 if (missing.length) {
-  problems.push('Classes with no rule in styles.css:\n' + missing.map(function(cls) {
+  problems.push('Classes with no rule in ' + STYLESHEETS.join(' or ') + ':\n' + missing.map(function(cls) {
     return '  ' + cls + '  (' + Array.from(used[cls]).sort().join(', ') + ')';
   }).join('\n'));
 }
@@ -91,7 +95,7 @@ if (styleSrc.indexOf("'unsafe-inline'") === -1) {
   htmlFiles().forEach(function(file) {
     var text = fs.readFileSync(path.join(ROOT, file), 'utf8');
     if (/<style[\s>]/i.test(text)) {
-      problems.push(file + ' has an inline <style> block, which the site CSP (style-src' + styleSrc + ') blocks; move it into styles.css');
+      problems.push(file + ' has an inline <style> block, which the site CSP (style-src' + styleSrc + ') blocks; move it into styles.css or a page stylesheet');
     }
   });
 }

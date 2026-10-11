@@ -1,3 +1,12 @@
-.part-dl { display: grid; grid-template-columns: 8rem 1fr; gap: 0.5rem 1rem; margin: 0; }
+/* Part Tracking page (/p/<id>) only, linked from p/index.html after styles.css.
+   Kept out of an inline <style>, which the site's Content-Security-Policy
+   (style-src 'self') blocks. Labels sit beside values on wider screens and
+   above them on phones; long tag URLs wrap instead of pushing the page
+   sideways. */
+.part-dl { display: grid; grid-template-columns: minmax(0, 8rem) minmax(0, 1fr); gap: 0.5rem 1rem; margin: 0; }
 .part-dl dt { color: #9ca3af; font-size: 0.875rem; }
-.part-dl dd { margin: 0; color: #e5e7eb; font-weight: 500; }
+.part-dl dd { margin: 0; color: #e5e7eb; font-weight: 500; overflow-wrap: anywhere; }
+@media (max-width: 479px) {
+  .part-dl { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
+  .part-dl dd + dt { margin-top: 0.5rem; }
+}
