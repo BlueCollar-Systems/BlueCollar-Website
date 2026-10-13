@@ -12,8 +12,8 @@ p/index.html through _redirects, trailing / -> index.html).
 
 ADDING A PUBLIC FILE: anything new the site must serve has to be added to
 ALLOWED_FILES or ALLOWED_DIRS below, or it will 404 in production. That
-includes a future app-ads.txt (root file) or .well-known/assetlinks.json
-(already covered by the .well-known/ directory entry, but keep it in mind).
+includes root text files or .well-known/assetlinks.json (already covered by
+the .well-known/ directory entry, but keep it in mind).
 
 Standard library only. Usage:
     python tools/build_site.py [--source .] [--out _site]
@@ -48,11 +48,12 @@ ALLOWED_FILES: tuple[str, ...] = (
     "favicon.svg",
     "og-image.png",
     "robots.txt",
+    "app-ads.txt",
     "sitemap.xml",
     "repo-metadata.json",
     "_headers",
     "_redirects",
-    # Add future root files here, for example "app-ads.txt".
+    # Add future root public files here.
 )
 
 # Public directories, copied whole. A future .well-known/assetlinks.json is

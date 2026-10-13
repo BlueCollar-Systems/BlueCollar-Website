@@ -27,6 +27,7 @@ class PreviewRouteTests(unittest.TestCase):
             "nav.js",
             "report-doctor.js",
             "repo-metadata.json",
+            "app-ads.txt",
             "favicon.svg",
         ]:
             self.assertEqual(preview.preview_route("/" + name), name)
