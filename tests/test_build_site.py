@@ -32,6 +32,7 @@ REQUIRED = PAGES + (
     "favicon.svg",
     "og-image.png",
     "robots.txt",
+    "app-ads.txt",
     "sitemap.xml",
     "repo-metadata.json",
 )
@@ -78,6 +79,18 @@ class BuildSiteTests(unittest.TestCase):
             self.assertTrue((out / page.name).is_file(), f"{page.name} missing from the deploy folder")
         self.assertEqual((out / "repo-metadata.json").read_bytes(), (ROOT / "repo-metadata.json").read_bytes())
 
+    def test_google_authorized_seller_is_published_as_plain_text(self):
+        out = self.build_real_site()
+        self.assertEqual(
+            (out / "app-ads.txt").read_bytes(),
+            b"google.com, pub-2053420996629428, DIRECT, f08c47fec0942fa0\n",
+        )
+        self.assertIn(
+            "/app-ads.txt\n  Content-Type: text/plain; charset=utf-8\n"
+            "  Cache-Control: public, max-age=300, must-revalidate\n",
+            (out / "_headers").read_text(encoding="utf-8"),
+        )
+
     def test_repository_only_files_are_not_published(self):
         out = self.build_real_site()
         for rel in NEVER_PUBLISHED:
@@ -106,6 +119,7 @@ class BuildSiteTests(unittest.TestCase):
             "/p/": "p/index.html",
             "/p-records/demo-part.json": "p-records/demo-part.json",
             "/repo-metadata.json": "repo-metadata.json",
+            "/app-ads.txt": "app-ads.txt",
             "/.well-known/security.txt": ".well-known/security.txt",
             "/security.txt": ".well-known/security.txt",
             "/og-image.png": "og-image.png",
