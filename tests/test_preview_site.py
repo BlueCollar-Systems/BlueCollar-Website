@@ -25,6 +25,8 @@ class PreviewRouteTests(unittest.TestCase):
         for name in [
             "styles.css",
             "nav.js",
+            "support-links.js",
+            "support-config.json",
             "report-doctor.js",
             "repo-metadata.json",
             "app-ads.txt",

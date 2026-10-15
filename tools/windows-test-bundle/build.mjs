@@ -10,7 +10,7 @@ mkdirSync(join(destination, "runtime"), { recursive: true });
 mkdirSync(join(destination, "public", "p"), { recursive: true });
 mkdirSync(join(destination, "public", "p-records"), { recursive: true });
 mkdirSync(join(destination, "public", ".well-known"), { recursive: true });
-for (const name of ["index.html", "404.html", "feedback.html", "privacy.html", "report-doctor.html", "shapes.html", "nav.js", "part-resolver.js", "report-doctor.js", "styles.css", "part-page.css", "favicon.ico", "favicon.svg", "og-image.png", "robots.txt", "app-ads.txt", "sitemap.xml", "repo-metadata.json"])
+for (const name of ["index.html", "404.html", "feedback.html", "privacy.html", "report-doctor.html", "shapes.html", "nav.js", "support-links.js", "support-config.json", "part-resolver.js", "report-doctor.js", "styles.css", "part-page.css", "favicon.ico", "favicon.svg", "og-image.png", "robots.txt", "app-ads.txt", "sitemap.xml", "repo-metadata.json"])
   copyFileSync(join(source, name), join(destination, "public", name));
 copyFileSync(join(source, "p", "index.html"), join(destination, "public", "p", "index.html"));
 const partPage = join(destination, "public", "p", "index.html");

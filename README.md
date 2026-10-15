@@ -37,6 +37,23 @@ use a secure localhost clipboard instead of a `file:` page.
 
 To check every link and download button the way a visitor sees them (no login, no token), run `python tools/check_public_links.py`. A dead link (404 or 410) or a download that needs a login fails the check. A site that stays busy or unreachable (5xx, 429, network errors) after about a minute of retries is reported as a warning naming the page and URL, so brief GitHub throttling cannot block a deploy. `--offline` checks on-site links with no network; `--base https://bluecollar-systems.com` checks the live pages after a deploy.
 
+## Optional support links
+
+Set `ko_fi_url` and/or `github_sponsors_url` in [`support-config.json`](support-config.json)
+to the owner's confirmed public profile URLs. Both can be enabled together.
+Use `https://ko-fi.com/<profile>` and `https://github.com/sponsors/<account>`;
+leave a field empty to hide that channel. The homepage hides the entire support
+section until at least one valid URL is configured, and also hides it if the
+configuration cannot be loaded. There are no placeholder donation buttons.
+
+These are public URLs, never API tokens or account credentials. Confirm each
+profile belongs to the intended recipient and accepts contributions before
+deployment. The default configuration is blank pending the owner's URLs.
+Use the localhost preview above to test the configuration; browsers can block
+JSON fetches when opening `index.html` directly with `file:`.
+
+Run `node tests/support_links_test.js` to check both channels and rejected URLs.
+
 ## Deployment
 
 Deployed to **Cloudflare Pages** (project `bluecollar-website`) via GitHub Actions workflow [`.github/workflows/website-ci.yml`](.github/workflows/website-ci.yml).
