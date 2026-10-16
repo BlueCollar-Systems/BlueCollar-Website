@@ -58,7 +58,7 @@ htmlFiles().forEach(function(file) {
   }
 });
 
-['nav.js', 'report-doctor.js', 'part-resolver.js'].forEach(function(file) {
+['nav.js', 'report-doctor.js', 'part-resolver.js', 'support-links.js'].forEach(function(file) {
   var text = fs.readFileSync(path.join(ROOT, file), 'utf8');
   var patterns = [
     /className\s*=\s*'([^']*)'/g,

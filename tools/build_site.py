@@ -42,6 +42,8 @@ ALLOWED_GLOBS: tuple[str, ...] = ("*.html", "*.css")
 ALLOWED_FILES: tuple[str, ...] = (
     "styles.css",
     "nav.js",
+    "support-links.js",
+    "support-config.json",
     "part-resolver.js",
     "report-doctor.js",
     "favicon.ico",

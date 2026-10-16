@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
+import json
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -26,6 +29,8 @@ REQUIRED = PAGES + (
     "_redirects",
     "styles.css",
     "nav.js",
+    "support-links.js",
+    "support-config.json",
     "part-resolver.js",
     "report-doctor.js",
     "favicon.ico",
@@ -78,6 +83,7 @@ class BuildSiteTests(unittest.TestCase):
         for page in ROOT.glob("*.html"):
             self.assertTrue((out / page.name).is_file(), f"{page.name} missing from the deploy folder")
         self.assertEqual((out / "repo-metadata.json").read_bytes(), (ROOT / "repo-metadata.json").read_bytes())
+        self.assertEqual((out / "support-config.json").read_bytes(), (ROOT / "support-config.json").read_bytes())
 
     def test_google_authorized_seller_is_published_as_plain_text(self):
         out = self.build_real_site()
@@ -105,6 +111,41 @@ class BuildSiteTests(unittest.TestCase):
         out = self.build_real_site()
         self.assertEqual(BUILD.check_references(out), [])
         self.assertIn("every on-site link resolves", self.stdout.getvalue())
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required to test the Windows bundle builder")
+    def test_windows_bundle_ships_its_support_assets_and_all_public_references(self):
+        # Exercise the real file-copy builder without shipping a runtime in a
+        # unit-test temp folder. The actual distributable is built separately
+        # with its real Windows Node executable and license.
+        runtime = self.temp / "placeholder-runtime"
+        runtime.mkdir()
+        executable = runtime / "node.exe"
+        executable.write_bytes(b"File-copy test placeholder; never execute.\n")
+        (runtime / "LICENSE").write_text("File-copy test license placeholder.\n", encoding="utf-8")
+        output = self.temp / "windows-bundle"
+        builder = ROOT / "tools" / "windows-test-bundle" / "build.mjs"
+        bootstrap = """
+import { pathToFileURL } from 'node:url';
+const [builder, runtime, destination] = process.argv.slice(1);
+process.execPath = runtime;
+process.argv = [runtime, builder, destination];
+await import(pathToFileURL(builder).href);
+"""
+        result = subprocess.run(
+            [shutil.which("node"), "--input-type=module", "-e", bootstrap,
+             str(builder), str(executable), str(output)],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        public = output / "public"
+        self.assertEqual(BUILD.check_references(public), [])
+        inventory = {entry["path"]: entry["sha256"] for entry in
+                     json.loads((output / "PACKAGE_SHA256.json").read_text(encoding="utf-8"))}
+        for name in ("support-links.js", "support-config.json"):
+            with self.subTest(file=name):
+                data = (public / name).read_bytes()
+                self.assertEqual(data, (ROOT / name).read_bytes())
+                self.assertEqual(inventory["public/" + name], hashlib.sha256(data).hexdigest())
 
     def test_pages_rules_match_cloudflare(self):
         out = self.build_real_site()
