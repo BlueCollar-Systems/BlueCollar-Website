@@ -11,7 +11,7 @@ Use this checklist whenever you publish a new app build or update store links.
 ## 2) Update website content
 
 - Edit `index.html`:
-  - Replace the disabled Google Play button with a live `<a href="...">` link.
+  - After the public listing is confirmed, replace conditional Android testing instructions with the verified public Google Play link.
   - Replace the disabled App Store button with a live `<a href="...">` link.
   - Remove "coming soon" wording once both stores are live.
 - Optional: update product links in `README.md` if needed.
@@ -24,15 +24,30 @@ git commit -m "website: update app store release links"
 git push origin main
 ```
 
-## 4) Verify CI + deploy
+## 4) Validate, then explicitly deploy when authorized
+
+A push runs static checks only; production deployment is skipped. Product
+release dispatches and the six-hour schedule also validate without publishing.
+
+When production publication is authorized, run **website-ci** manually from
+**main** with **deploy_production=true**. The default is validation only.
+The deployment job re-syncs release metadata, publishes the allowlisted site,
+verifies exact public metadata and routes, then commits stamped badges.
 
 ```bash
 gh run list -R BlueCollar-Systems/BlueCollar-Website --workflow website-ci.yml --limit 3
 ```
 
-Expected:
-- `static-checks` = success
-- `deploy-pages` = success
+Expected for validation-only runs:
+- static-checks = success
+- deploy-pages = skipped
+
+Expected for the explicitly requested production run:
+- static-checks = success
+- deploy-pages = success, including public metadata and route verification
+
+The separate auto-release workflow publishes a GitHub snapshot; it does not
+deploy the live Pages site.
 
 ## 5) Verify production site
 
@@ -56,7 +71,7 @@ Expected:
 gh run list -R BlueCollar-Systems/BlueCollar-Website --workflow website-ci.yml --limit 1
 gh run view <RUN_ID> -R BlueCollar-Systems/BlueCollar-Website --log
 ```
-- Fix, commit, and push again.
+- Fix, commit, and push for validation. When checks pass and production publication is authorized, repeat the manual production run.
 
 ## Notes
 
@@ -70,7 +85,7 @@ gh run view <RUN_ID> -R BlueCollar-Systems/BlueCollar-Website --log
 ### Product repo secrets (SU / FC / BL / LC PDF importers)
 
 - **`WEBSITE_DISPATCH_TOKEN`** — triggers `repository_dispatch` on `BlueCollar-Website` after `auto-release` or `release: published`
-- Without it, the live site still updates on cron (every 6h), website `main` pushes, or manual `website-ci` dispatch
+- Without it, no product dispatch is sent. Cron and pushes still validate, but live publication requires the explicit manual website-ci production run; its fresh metadata sync does not depend on receiving a product dispatch.
 
 ### Verify download metadata after a product release
 

@@ -9,7 +9,7 @@ Static marketing site for **BlueCollar-Systems** — precision software for fabr
 
 | Product | Description | Link |
 |---------|-------------|------|
-| **Steel Logic** | Job Clock for fitter and welder time, plus AISC v16.0 shapes, calculators, converters, and inventory. The Android beta is free with ads. A free version and a paid Pro version are the plan; iOS is in development. | [Google Play beta](https://play.google.com/apps/testing/com.bluecollarsystems.steellogic) |
+| **Steel Logic** | Job Clock for fitter and welder time, plus AISC v16.0 shapes, calculators, converters, and inventory. The Android beta is free with ads. A free version and a paid Pro version are the plan; iOS is in development. | [Check Android test access (Google sign-in)](https://play.google.com/apps/testing/com.bluecollarsystems.steellogic) |
 | **Tag QC Builder** | Hang tags with a QR code that opens the piece in Steel Logic. New tags start with an editable BCS1: prefix; older CS1: tags still scan. Latest published build v10.43; not a download from this website yet. | [bluecollar-systems.com/#tag-qc](https://bluecollar-systems.com/#tag-qc) |
 | **Free Shape Packs** | Public-domain SketchUp + DXF/DWG shape packs | [Shapes Hub](https://bluecollar-systems.com/shapes) |
 | **SketchUp PDF Importer** | Vector-accurate PDF geometry import for SketchUp | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp) |
@@ -66,6 +66,15 @@ Deployed to **Cloudflare Pages** (project `bluecollar-website`) via GitHub Actio
 
 See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for app launch/update steps (Google Play + iOS).
 
+## Android test-access status
+
+The Google Group is an access/coordination route, not an app download. The
+existing Google Play testing URL requires sign-in; eligibility depends on the
+account and test track. The site therefore says **Check Test Access** rather
+than promising enrollment or a download. Contact support if access is unavailable.
+A public Google Play release has not been announced. This copy does not publish
+or configure an app, and does not offer a public APK from this website.
+
 ## Release metadata and download links
 
 Product versions and ZIP download URLs are **not** hardcoded in HTML for versioned `/releases/download/v…` paths. Instead:
@@ -85,6 +94,11 @@ Tracked repos: `PDF-Importer-SketchUp`, `PDF-Importer-FreeCAD`, `PDF-Importer-Bl
 2. Same pipeline dispatches `repository_dispatch` to `BlueCollar-Systems/BlueCollar-Website` with event type `product-release` (or `product-update`).
 3. The dispatch runs validation. After product releases finish, manually run `website-ci` on `main` with `deploy_production=true`; `deploy-pages` re-runs `sync_repo_metadata.py` and deploys to Cloudflare Pages.
 4. `tools/verify_deployed_metadata.py` requests the public metadata with cache bypass headers and a unique query, allowing up to 12 attempts with 10 seconds between attempts and a 15-second request timeout. It requires exact bytes, so stale tags, download URLs, source revisions, asset digests, or an older snapshot fail the job. Only a verified deployment commits the stamped badges back to `main`.
+
+A product dispatch refreshes only its validation runner's working copy; it does
+not persist badges or deploy Pages. A local metadata-sync PR is optional: the
+manual production job always fetches fresh metadata itself. The separate
+website auto-release publishes a GitHub site snapshot and does not deploy Pages.
 
 To check a prepared snapshot manually, run `python tools/verify_deployed_metadata.py --expected repo-metadata.json`. This reads the public metadata; it does not deploy or change any content.
 
