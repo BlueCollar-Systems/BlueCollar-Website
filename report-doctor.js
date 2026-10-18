@@ -579,6 +579,51 @@
     return value !== null && typeof value === 'object' && !Array.isArray(value);
   }
 
+  // What a LibreCAD report says about its native Text attempts, read from
+  // extra.text_representation_delivery.items[].attempts[]. Every native Text
+  // attempt carries evidence.librecad_lff_asset_verified (LibreCAD importer
+  // main e4f089b, dxf_text_builder.py). With no LibreCAD found it is false,
+  // evidence.librecad_parent_installation_verified is false and the reason
+  // reads "no resolved LibreCAD executable is available to bind the
+  // unicode.lff asset". With LibreCAD found it is true and the reason names
+  // the check the word failed.
+  var LIBRECAD_NOT_FOUND_REASON = 'no resolved LibreCAD executable';
+  function libreCADNativeTextEvidence(report) {
+    var out = { notFound: false, fontFound: false, fontUnusable: false, reasons: [], moreReasons: 0 };
+    var items = getPath(report, ['extra', 'text_representation_delivery', 'items']);
+    if (!Array.isArray(items)) return out;
+    items.forEach(function(item) {
+      if (!isRecord(item) || !Array.isArray(item.attempts)) return;
+      item.attempts.forEach(function(attempt) {
+        if (!isRecord(attempt) || attempt.attempted_representation !== 'text') return;
+        var evidence = isRecord(attempt.evidence) ? attempt.evidence : {};
+        var reason = typeof attempt.reason === 'string'
+          ? attempt.reason.replace(/^_?[A-Za-z]*(?:Impossible|Error|Exception):\s*/, '').trim() : '';
+        var resolution = typeof evidence.librecad_lff_resolution_reason === 'string' ? evidence.librecad_lff_resolution_reason : '';
+        var asset = model3dTriState(evidence.librecad_lff_asset_verified);
+        if (asset === true) {
+          out.fontFound = true;
+        } else if (asset === false) {
+          if (model3dTriState(evidence.librecad_parent_installation_verified) === false ||
+              (reason + ' ' + resolution).indexOf(LIBRECAD_NOT_FOUND_REASON) >= 0) {
+            out.notFound = true;
+          } else {
+            out.fontUnusable = true;
+          }
+        }
+        if (!reason || attempt.outcome === 'verified') return;
+        if (reason.length > 160) reason = reason.slice(0, 157) + '...';
+        if (out.reasons.indexOf(reason) >= 0) return;
+        if (out.reasons.length < 3) out.reasons.push(reason);
+        else out.moreReasons += 1;
+      });
+    });
+    // One verified font anywhere means LibreCAD and its font were found.
+    if (out.fontFound) { out.notFound = false; out.fontUnusable = false; }
+    if (out.notFound) out.fontUnusable = false;
+    return out;
+  }
+
   function importOutcome(report) {
     // The shared bcs.import_report writers use extra.result_status/result.status.
     // FreeCAD failures carry a message; Blender can carry delivery-detail maps.
@@ -850,12 +895,37 @@
     if (editableTextChosen) {
       var editableCount = toNumber(editableTextBlock.item_count);
       if (editableCount === 0) {
-        // No word came in as editable text. The font comes from the LibreCAD
-        // installation; when no LibreCAD is found, every word comes in as
-        // outlines and the report says why (LibreCAD README). The importer
-        // window then shows "Locate LibreCAD...", which is remembered.
-        addListItem(findings, '"Editable text (LibreCAD font)" was chosen, but no text came in as editable text. The likely reason is that LibreCAD\'s font was not found: that font comes from your LibreCAD installation, and when no LibreCAD is found every word comes in as exact outlines. The import report says why.');
-        addListItem(actions, 'Install LibreCAD, or if it is already installed, press "Locate LibreCAD..." in the importer window and pick LibreCAD.exe once (it is remembered; on the command line, --librecad-exe). Then import the PDF again with "Editable text (LibreCAD font)" chosen. If LibreCAD was found and words still came in as outlines, the import report lists why for each one.');
+        // No word came in as editable text. The per-item records say whether
+        // LibreCAD (and so its font) was found; install/locate advice is given
+        // only when it was not. "Locate LibreCAD..." is shown only after the
+        // lookup failed (gui.py). pdf2dxf.py, the command line with
+        // --editable-text, has no --librecad-exe and never reads the
+        // remembered choice: it reads BCS_LIBRECAD_EXECUTABLE, then PATH and
+        // Program Files (LibreCAD INSTALL.md, librecad_runtime.py). With
+        // LibreCAD found, the README lists ordinary TrueType, CID-keyed CFF,
+        // symbol fonts and R12 as reasons words stay outlines.
+        var lff = libreCADNativeTextEvidence(report);
+        var noneEditable = '"Editable text (LibreCAD font)" was chosen, but no text came in as editable text';
+        var reasonsText = lff.reasons.length
+          ? ' Reasons in the import report: "' + lff.reasons.join('"; "') + '"' +
+            (lff.moreReasons ? ' (and ' + lff.moreReasons + ' more)' : '') + '.'
+          : '';
+        var locateText = 'press "Locate LibreCAD..." in the importer window (it appears after the lookup fails) and pick LibreCAD.exe once; the choice is remembered. With pdf2dxf.py on the command line, set the BCS_LIBRECAD_EXECUTABLE environment variable to the full path of LibreCAD.exe instead';
+        var againText = 'import the PDF again with "Editable text (LibreCAD font)" chosen';
+        var causesText = 'The LibreCAD README lists the usual reasons a word stays as outlines with Editable text chosen: the PDF uses an ordinary TrueType font, or a CID-keyed CFF font whose stem metrics the importer cannot use yet (the pen width comes from them), or a symbol font, or the DXF version is R12.';
+        if (lff.notFound) {
+          addListItem(findings, noneEditable + '. The import report says LibreCAD was not found, so LibreCAD\'s font was not found either: that font comes from your LibreCAD installation, and without it every word comes in as exact outlines.');
+          addListItem(actions, 'Install LibreCAD, or if it is already installed, ' + locateText + '. Then ' + againText + '.');
+        } else if (lff.fontFound) {
+          addListItem(findings, noneEditable + '. LibreCAD\'s font was found, so that was not the cause: each word failed another check and came in as exact outlines.' + reasonsText);
+          addListItem(actions, causesText + ' Those words keep the PDF\'s exact look; installing or locating LibreCAD will not change that. For an R12 file, choose R2000 or later and import again. The import report gives the reason for each word.');
+        } else if (lff.fontUnusable) {
+          addListItem(findings, noneEditable + '. LibreCAD was found, but its font could not be used, so every word came in as exact outlines.' + reasonsText);
+          addListItem(actions, 'LibreCAD was found, so locating it again will not help: its font file did not pass the check the report gives. Repair or reinstall LibreCAD, then ' + againText + '.');
+        } else {
+          addListItem(findings, noneEditable + '.' + (reasonsText || ' This report does not record why for each word.'));
+          addListItem(actions, 'If the importer said LibreCAD was not found, install LibreCAD or ' + locateText + ', then ' + againText + '. ' + causesText + ' Those words keep the PDF\'s exact look.');
+        }
       } else {
         addListItem(findings, '"Editable text (LibreCAD font)" was chosen' +
           (editableCount !== null ? ': ' + editableCount + ' text item(s) came in as editable text' : '') +

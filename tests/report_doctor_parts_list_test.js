@@ -321,11 +321,50 @@ function report(host, textMode, result, extra) {
 var EDITABLE = 'Editable text (LibreCAD font)';
 // Advice that is wrong for LibreCAD, where Labels and 3D Text come in as the
 // same outlines as Exact look and the window has no Raster/Hybrid choice.
+// --librecad-exe exists only on lcpdf-import, which has no Editable text
+// option; pdf2dxf.py (the command line with --editable-text) rejects it.
 var LIBRECAD_NEVER = [
   'Use Labels', 'Try Labels', 'compare against Labels mode', 'Labels for editable',
   'once your LibreCAD importer has it', 'Until that release', 'Raster/Hybrid',
-  'editable labels where the host can support it'
+  'editable labels where the host can support it', '--librecad-exe'
 ];
+
+// Per-word delivery records shaped like the ones LibreCAD importer main
+// e4f089b wrote for pdf2dxf.py --editable-text on a fictional 2-line PDF with
+// embedded Arial (TrueType): the native Text attempt is refused and the word
+// comes in as Glyphs. Evidence values and reasons are the measured ones.
+var NOT_FOUND = 'no resolved LibreCAD executable is available to bind the unicode.lff asset';
+var NO_CFF_PEN = 'native text has no source-bound positive CFF pen: source has no usable CFF dominant-stem metric';
+var NO_ROMANS = 'native Romans has no safe linear layout';
+function nativeTextRecords(evidence, reasons) {
+  return {
+    text_representation_delivery: {
+      requested_representation: 'text',
+      items: reasons.map(function(reason, i) {
+        return {
+          source_id: 'text_span:1:' + (i + 1), requested_representation: 'text', final_representation: 'glyphs',
+          attempts: [
+            { attempted_representation: 'text', strategy: 'native_dxf_text', outcome: 'impossible',
+              reason: '_RepresentationImpossible: ' + reason, evidence: evidence },
+            { attempted_representation: 'glyphs', strategy: 'entity_text2path', outcome: 'verified', reason: '', evidence: {} }
+          ]
+        };
+      })
+    }
+  };
+}
+function zeroEditable(records, count) {
+  return Object.assign({ editable_text: { chosen: true, item_count: count === undefined ? 0 : count } }, records || {});
+}
+var FONT_FOUND = nativeTextRecords({
+  librecad_lff_asset_verified: true, librecad_parent_installation_verified: true,
+  librecad_lff_resolution_reason: 'verified LibreCAD Font 1 romans.lff asset'
+}, [NO_CFF_PEN, NO_ROMANS, NO_CFF_PEN]);
+var FONT_NOT_FOUND = nativeTextRecords({
+  librecad_lff_asset_verified: false, librecad_parent_installation_verified: false,
+  librecad_lff_resolution_reason: NOT_FOUND
+}, [NOT_FOUND, NOT_FOUND]);
+var INSTALL_ADVICE = ['Install LibreCAD', 'Locate LibreCAD...'];
 
 var CASES = [
   { name: 'LibreCAD Exact look (main: glyphs)', report: report('librecad', 'glyphs'), actions: [EDITABLE, 'Exact look'] },
@@ -341,20 +380,72 @@ var CASES = [
     actionsNot: [EDITABLE]
   },
   {
-    // No LibreCAD install found: every word comes in as outlines, so the
-    // count is 0 and gets its own reason and fix (LibreCAD README).
-    name: 'LibreCAD Editable text chosen, 0 items',
-    report: report('librecad', 'text', null, { editable_text: { chosen: true, item_count: 0 } }),
-    findings: ['"Editable text (LibreCAD font)" was chosen, but no text came in as editable text', "LibreCAD's font was not found"],
+    // 0 editable words gets its own message. Install/locate is the advice
+    // only when the per-item records say LibreCAD was not found; pdf2dxf.py
+    // users set BCS_LIBRECAD_EXECUTABLE (LibreCAD INSTALL.md).
+    name: 'LibreCAD Editable text chosen, 0 items, LibreCAD not found',
+    report: report('librecad', 'text', null, zeroEditable(FONT_NOT_FOUND)),
+    findings: ['"Editable text (LibreCAD font)" was chosen, but no text came in as editable text', 'LibreCAD was not found', "LibreCAD's font was not found"],
     findingsNot: ['0 text item(s)', 'letter shapes differ from the PDF'],
-    actions: ['Install LibreCAD', 'Locate LibreCAD...', '--librecad-exe', 'import the PDF again']
+    actions: INSTALL_ADVICE.concat(['pdf2dxf.py', 'BCS_LIBRECAD_EXECUTABLE', 'full path of LibreCAD.exe', 'import the PDF again'])
   },
   {
-    name: 'LibreCAD Editable text chosen, 0 items as a string',
-    report: report('librecad', 'text', null, { editable_text: { chosen: true, item_count: '0' } }),
-    findings: ['was chosen, but no text came in as editable text'],
+    name: 'LibreCAD Editable text chosen, 0 items as a string, not-found reason only',
+    report: report('librecad', 'text', null, zeroEditable(nativeTextRecords({ librecad_lff_asset_verified: 'false' }, [NOT_FOUND]), '0')),
+    findings: ['was chosen, but no text came in as editable text', 'LibreCAD was not found'],
     findingsNot: ['0 text item(s)'],
-    actions: ['Locate LibreCAD...']
+    actions: INSTALL_ADVICE.concat(['BCS_LIBRECAD_EXECUTABLE'])
+  },
+  {
+    // Measured: LibreCAD found, embedded Arial, 0 of 2 words. Repeated
+    // reasons are listed once, without the Python exception name.
+    name: 'LibreCAD Editable text chosen, 0 items, LibreCAD found',
+    report: report('librecad', 'text', null, zeroEditable(FONT_FOUND)),
+    findings: ["LibreCAD's font was found", 'Reasons in the import report: "' + NO_CFF_PEN + '"; "' + NO_ROMANS + '".'],
+    findingsNot: ['0 text item(s)', 'letter shapes differ from the PDF', 'not found', 'likely reason', '_RepresentationImpossible'],
+    actions: ['ordinary TrueType', 'CID-keyed CFF', 'symbol font', 'R12', 'reason for each word'],
+    actionsNot: INSTALL_ADVICE.concat(['BCS_LIBRECAD_EXECUTABLE'])
+  },
+  {
+    // A found font wins over a not-found attempt elsewhere in the report.
+    name: 'LibreCAD Editable text chosen, 0 items, found and not-found attempts',
+    report: report('librecad', 'text', null, zeroEditable({
+      text_representation_delivery: {
+        items: FONT_NOT_FOUND.text_representation_delivery.items.concat(FONT_FOUND.text_representation_delivery.items)
+      }
+    })),
+    findings: ["LibreCAD's font was found"],
+    findingsNot: ['not found'],
+    actionsNot: INSTALL_ADVICE
+  },
+  {
+    name: 'LibreCAD Editable text chosen, 0 items, LibreCAD found but its font unusable',
+    report: report('librecad', 'text', null, zeroEditable(nativeTextRecords({
+      librecad_lff_asset_verified: false, librecad_parent_installation_verified: true
+    }, ['file is not a parseable LibreCAD Font 1 asset']))),
+    findings: ['LibreCAD was found, but its font could not be used', '"file is not a parseable LibreCAD Font 1 asset"'],
+    findingsNot: ['not found'],
+    actions: ['Repair or reinstall LibreCAD', 'import the PDF again'],
+    actionsNot: INSTALL_ADVICE
+  },
+  {
+    name: 'LibreCAD Editable text chosen, 0 items, no per-item records',
+    report: report('librecad', 'text', null, zeroEditable()),
+    findings: ['was chosen, but no text came in as editable text', 'does not record why'],
+    findingsNot: ['0 text item(s)', 'not found', 'likely reason'],
+    actions: ['If the importer said LibreCAD was not found', 'Locate LibreCAD...', 'BCS_LIBRECAD_EXECUTABLE', 'ordinary TrueType']
+  },
+  {
+    // Hostile or odd records: never thrown on, reasons capped at three.
+    name: 'LibreCAD Editable text chosen, 0 items, malformed records',
+    report: report('librecad', 'text', null, zeroEditable({
+      text_representation_delivery: {
+        items: [null, 7, { attempts: 'x' }, { attempts: [null, { attempted_representation: 'text', reason: 42 }] }]
+          .concat(nativeTextRecords({ librecad_lff_asset_verified: true }, ['r1', 'r2', 'r3', 'r4', 'r5']).text_representation_delivery.items)
+      }
+    })),
+    findings: ['"r1"; "r2"; "r3" (and 2 more).'],
+    findingsNot: ['r4']
   },
   {
     name: 'LibreCAD Raster result',
