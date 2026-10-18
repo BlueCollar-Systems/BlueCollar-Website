@@ -2,7 +2,7 @@
 
 Account ID (reference): `df143f08ce8d490ebf620fe776fbd375`  
 Project: `bluecollar-website`  
-Production deploy: GitHub Actions [`.github/workflows/website-ci.yml`](../.github/workflows/website-ci.yml) (`python tools/build_site.py`, then `wrangler pages deploy _site`, branch `main`).
+Production deploy: manual only. Run GitHub Actions [`.github/workflows/website-ci.yml`](../.github/workflows/website-ci.yml) from `main` with `deploy_production=true` (`python tools/build_site.py`, then `wrangler pages deploy _site`, branch `main`). Every other run validates and builds without publishing.
 
 ## Verified from the public edge (no API token)
 
@@ -11,7 +11,7 @@ Production deploy: GitHub Actions [`.github/workflows/website-ci.yml`](../.githu
 | Apex `https://bluecollar-systems.com/` | HTTP 200, served via Cloudflare (CF-RAY present) |
 | Pages hostname `https://bluecollar-website.pages.dev/` | HTTP 200, same security headers as apex |
 | `/repo-metadata.json` | `Cache-Control: no-store, max-age=0, must-revalidate` (matches [`_headers`](../_headers)) |
-| Last successful metadata snapshot on production | `generated_at` from scheduled deploy (~6h cadence in workflow) |
+| Last successful metadata snapshot on production | `generated_at` from the last manual production run (the six-hour schedule does not deploy) |
 
 Custom domain **bluecollar-systems.com** is active on the apex; confirm in dashboard: **Workers & Pages → bluecollar-website → Custom domains**.
 
@@ -40,15 +40,16 @@ Do **not** store API tokens in this repo. Configure in the Cloudflare dashboard 
 
 ### Build hooks / deploy triggers
 
-- **Primary trigger:** push to `main`, `repository_dispatch` (`product-release`, `product-update`, steel-shapes events), 6-hour schedule, `workflow_dispatch`.
+- **The only production deploy:** open **Actions → website-ci → Run workflow**, pick branch `main`, and set `deploy_production=true`. `static-checks` must pass first; `deploy-pages` then re-syncs release metadata, publishes `_site/`, verifies the live metadata and routes, and commits stamped badges back to `main`. The input defaults to `false`, and a run from any other branch never deploys.
+- **Never deploy:** pushes to `main`, pull requests, `repository_dispatch` (`product-release`, `product-update`, steel-shapes events), the six-hour schedule, and a manual run left at `deploy_production=false`. On these runs `deploy-pages` shows as skipped.
+- **After an importer release:** the product repo's `repository_dispatch` (sent with `WEBSITE_DISPATCH_TOKEN` or an alias) does not publish the live site. For automatic metadata refresh, see the [README](../README.md#release-metadata-and-download-links). To put the new release on the live site, run the manual production deploy above.
 - **No separate Pages “build hook” required** unless you want a manual dashboard redeploy; CI is the source of truth.
-- After publishing a new GitHub **release** on an importer repo, ensure `WEBSITE_DISPATCH_TOKEN` (or equivalent) can fire `repository_dispatch` so metadata and deploy refresh without waiting for cron.
 
 ## Deploy status
 
-**Resolved (2026-10-10):** the Cloudflare auth 10000 failure noted on 2026-09-15 no longer happens. `deploy-pages` succeeds on every run, for example run `38052687522` on 2026-10-10 ("Deployment complete!"). If it ever returns, rotate the token in [API Tokens](https://dash.cloudflare.com/profile/api-tokens) with **Account → Cloudflare Pages: Edit** and **Account Settings: Read**, then update the deploy token secret on `BlueCollar-Systems/BlueCollar-Website` (the workflow uses `CLOUDFLARE_PAGES_API_TOKEN`, then `CLOUDFLARE_API_TOKEN`, then `CF_API_TOKEN`, whichever is set first).
+**Resolved (2026-10-10):** the Cloudflare auth 10000 failure noted on 2026-09-15 no longer happens. `deploy-pages` has succeeded since then, for example run `38052687522` on 2026-10-10 ("Deployment complete!") and the manual production run `39149634087` on 2026-10-18. Under the manual model it runs only on a production run; on every other run it shows as skipped, which is not a failure. If the auth failure ever returns, rotate the token in [API Tokens](https://dash.cloudflare.com/profile/api-tokens) with **Account → Cloudflare Pages: Edit** and **Account Settings: Read**, then update the deploy token secret on `BlueCollar-Systems/BlueCollar-Website` (the workflow uses `CLOUDFLARE_PAGES_API_TOKEN`, then `CLOUDFLARE_API_TOKEN`, then `CF_API_TOKEN`, whichever is set first).
 
-Manual deploy (only if CI cannot run), after `wrangler login` against the account below:
+Local deploy (only if CI cannot run, and only when a production publication is authorized), after `wrangler login` against the account below:
 
 ```
 python tools/build_site.py && wrangler pages deploy _site --project-name bluecollar-website --branch main
