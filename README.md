@@ -72,8 +72,10 @@ See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for app launch/update steps (Go
 
 ## What is live vs on main
 
-Merging to `main` does not change the live site. Only the manual production
-run above publishes, so `main` can be ahead of what visitors see. To check:
+Merging to `main` alone does not deploy. A manual production run publishes
+approved site changes; an importer `product-release` dispatch can publish only
+metadata and stamped badges after the guard above proves that no other public
+changes would ship. `main` can therefore be ahead of what visitors see. To check:
 
 1. **Footer version.** Compare the footer version on
    https://bluecollar-systems.com/ (for example `v1.0.109`) with
@@ -89,19 +91,25 @@ run above publishes, so `main` can be ahead of what visitors see. To check:
    production run published, then list what `main` has added since:
 
    ```bash
-   gh run list -R BlueCollar-Systems/BlueCollar-Website --workflow website-ci.yml --event workflow_dispatch --limit 5 --json databaseId,headSha,createdAt
+   gh run list -R BlueCollar-Systems/BlueCollar-Website --workflow website-ci.yml --limit 100 --json databaseId,headSha,createdAt,event
    gh run view <RUN_ID> -R BlueCollar-Systems/BlueCollar-Website   # deploy-pages must show success, not skipped
    git log --oneline <headSha>..origin/main
    ```
 
-   The bot's `chore: stamp release badges` commit right after that SHA belongs
-   to the same deploy. `tools/build_site.py` publishes only its allowlist, so
-   commits that touch only `.md` files, `docs/`, `tests/`, `tools/` or
-   `.github/` never reach the live site. Anything else listed is on `main` but
-   not live.
+   Select the newest run whose **Deploy to Cloudflare Pages** step succeeded,
+   whether it was manual or a `product-release` dispatch. Validation-only runs
+   do not count; extend the history if none appears in these 100 runs. The
+   bot's `chore: stamp release badges` commit belongs to that same deploy.
+   `tools/build_site.py` publishes only its allowlist. README, docs and tests
+   are not public files, but build or badge-stamping tool changes can alter
+   the public output, and workflow changes affect subsequent runs. The log
+   identifies commits to review; it does not by itself prove which public
+   bytes differ.
 
-A product release made after the last production run reaches the live site
-only with the next production run.
+A product release reaches the live site only after a successful production
+run. An importer release normally triggers that run automatically; the guard
+can hold it when undeployed site changes need an approved manual deployment.
+Shape-pack releases follow the manual-deploy route described below.
 
 ## Android test-access status
 
