@@ -29,7 +29,7 @@ concurrency:
 jobs:
   build-only:
     if: github.event_name == 'workflow_dispatch' && inputs.publish_release != true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -58,7 +58,7 @@ jobs:
 
   release:
     if: "github.event_name == 'workflow_dispatch' && inputs.publish_release == true && !startsWith(github.event.head_commit.message, 'chore: bump version to') && !contains(github.event.head_commit.message, '[skip release]')"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout
         uses: actions/checkout@v7
