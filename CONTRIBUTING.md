@@ -1,8 +1,8 @@
 # Contributing — BlueCollar-Systems website
 
-Static marketing site for **BlueCollar Systems** products: Steel Logic (Job Clock first), Tag QC Builder, and four PDF importers. Live: [https://bluecollar-systems.com/](https://bluecollar-systems.com/). Do not merge the seven products into this repo or advertise feature-branch importer builds as releases.
+Static marketing site for **BlueCollar Systems** products: Steel Logic (Job Clock first), BlueCollar Tag Logic, and four PDF importers. Live: [https://bluecollar-systems.com/](https://bluecollar-systems.com/). Do not merge the seven products into this repo or advertise feature-branch importer builds as releases.
 
-This repository is [BlueCollar-Systems/BlueCollar-Website](https://github.com/BlueCollar-Systems/BlueCollar-Website). Local folder: `C:\1BlueCollar-Website`. Org access: **BlueCollar-Systems**. Tag QC’s private repo is under **BlueCollarSys-0628**.
+This repository is [BlueCollar-Systems/BlueCollar-Website](https://github.com/BlueCollar-Systems/BlueCollar-Website). Local folder: `C:\1BlueCollar-Website`. Org access: **BlueCollar-Systems**. The BlueCollar Tag Logic private repo is under **BlueCollarSys-0628**.
 
 ## Full private pack (not in git)
 

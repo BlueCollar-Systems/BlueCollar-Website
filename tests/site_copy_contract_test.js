@@ -104,7 +104,8 @@ assert(
   /<h2\b[^>]*>\s*BlueCollar Tag Logic\s*<\/h2>/.test(html),
   "site must advertise the exact BlueCollar Tag Logic product heading"
 );
-// Owner decision 2026-10-05: no direct download of Tag QC Builder from the website yet.
+// Owner decision 2026-10-05: no direct download of the tag tool (BlueCollar
+// Tag Logic, formerly Tag QC Builder) from the website yet.
 assert(
   html.includes("BlueCollar Tag Logic is not available for download from this website yet"),
   "BlueCollar Tag Logic section must say it is not available for download yet"
@@ -119,10 +120,10 @@ assert(
 );
 assert(
   !/v10\.37/.test(html),
-  "site must not advertise the unpublished Tag QC v10.37"
+  "site must not advertise the unpublished BlueCollar Tag Logic v10.37 build"
 );
 assert(
-  !/1Tag-QC-Builder|Download Tag QC|Download BlueCollar Tag Logic|OPEN_BlueCollar_Systems_Tag_QC_Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/.test(html),
+  !/1Tag-QC-Builder|Download Tag QC|Download (BlueCollar )?Tag Logic|OPEN_BlueCollar_Systems_Tag_QC_Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/.test(html),
   "site must not offer a BlueCollar Tag Logic download until the owner releases it"
 );
 assert(
@@ -133,6 +134,37 @@ assert(
   !html.includes("1Tag-QC-Builder/releases"),
   "site must not expose direct download access to the Tag tool yet"
 );
+
+// Owner decision 2026-10-18: the tag tool is named "BlueCollar Tag Logic"
+// ("Tag Logic" where space is tight), always two words. Current pages,
+// shipped scripts and docs must not show the old name or the one-word
+// spelling, and no page may offer a download under either name. The
+// #tag-qc anchor stays because outside links use it. Dated records under
+// docs/validation/ keep the name they were written with and are not checked.
+const currentCopyFiles = [
+  ...fs.readdirSync(".").filter((name) => /\.(html|js|md)$/i.test(name)),
+  "p/index.html",
+  ...fs.readdirSync("docs")
+    .filter((name) => /\.md$/i.test(name))
+    .map((name) => "docs/" + name),
+];
+for (const name of currentCopyFiles) {
+  const text = fs.readFileSync(name, "latin1");
+  assert(
+    !/taglogic/i.test(text),
+    name + " must write the tag tool's name as two words: Tag Logic"
+  );
+  assert(
+    !/\bTag QC\b|QC Builder/i.test(text),
+    name + " must call the tag tool BlueCollar Tag Logic, not Tag QC Builder"
+  );
+  if (/\.html$/i.test(name)) {
+    assert(
+      !/Download (Tag QC|(BlueCollar )?Tag Logic)|1Tag-QC-Builder|OPEN_BlueCollar_Systems_Tag_QC_Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/i.test(text),
+      name + " must not offer a BlueCollar Tag Logic download until the owner releases it"
+    );
+  }
+}
 
 const primaryCtas = anchorTags.filter((tag) => {
   const classes = attributeValue(tag, "class");
