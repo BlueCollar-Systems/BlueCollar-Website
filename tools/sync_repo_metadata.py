@@ -72,6 +72,21 @@ STEEL_RELEASE_REPOS: frozenset[str] = frozenset(
     }
 )
 
+IMPORTER_TAG_PREFIX = "v"
+STEEL_TAG_PREFIX = "steel-v"
+
+
+def importer_tag_prefix(repo: str) -> str | None:
+    """The tag prefix of the release the site offers as repo's importer download.
+
+    A PDF importer repo offers its newest published, final ``v*`` release
+    (its /releases listing also carries ``steel-v*`` shape packs). Any other
+    tracked repo offers GitHub's /releases/latest; None means that rule.
+    build_metadata() and tools/check_release_drift.py both read this, so the
+    deploy and the drift check pick the same release.
+    """
+    return IMPORTER_TAG_PREFIX if repo in PDF_IMPORTER_RELEASE_REPOS else None
+
 
 def _json_get(url: str, token: str | None = None) -> Any:
     headers = {
@@ -115,8 +130,13 @@ def _release_summary(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def latest_release_url(repo: str) -> str:
+    """GitHub's own "latest release" of repo (no drafts or prereleases)."""
+    return f"https://api.github.com/repos/{repo}/releases/latest"
+
+
 def _safe_latest_release(repo: str, token: str | None) -> dict[str, Any] | None:
-    url = f"https://api.github.com/repos/{repo}/releases/latest"
+    url = latest_release_url(repo)
     try:
         data = _json_get(url, token)
     except urllib.error.HTTPError as exc:
@@ -293,8 +313,9 @@ def build_metadata(token: str | None, previous_repos: dict[str, Any] | None = No
                 continue
             raise
 
-        if repo in PDF_IMPORTER_RELEASE_REPOS:
-            latest_release = _safe_latest_tagged_release(repo, token, "v")
+        importer_prefix = importer_tag_prefix(repo)
+        if importer_prefix is not None:
+            latest_release = _safe_latest_tagged_release(repo, token, importer_prefix)
         else:
             latest_release = _safe_latest_release(repo, token)
         if latest_release is None and previous.get("latest_release"):
@@ -303,7 +324,7 @@ def build_metadata(token: str | None, previous_repos: dict[str, Any] | None = No
 
         steel_release = None
         if repo in STEEL_RELEASE_REPOS:
-            steel_release = _safe_latest_tagged_release(repo, token, "steel-v")
+            steel_release = _safe_latest_tagged_release(repo, token, STEEL_TAG_PREFIX)
             if steel_release is None and previous.get("steel_release"):
                 steel_release = previous["steel_release"]
                 print(f"  using previous steel release snapshot for {repo}")

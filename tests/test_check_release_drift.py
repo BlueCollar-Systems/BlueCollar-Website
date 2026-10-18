@@ -181,6 +181,29 @@ class CompareTests(unittest.TestCase):
         self.assertTrue(_result(results, SKETCHUP).in_sync)
         self.assertIn("| PDF-Importer-SketchUp | shape pack | steel-v1.0.2 | steel-v1.0.3 |", report)
 
+    def test_shape_pack_drift_asks_for_the_manual_deploy(self) -> None:
+        # A steel pack release is published with GITHUB_TOKEN, so no dispatch
+        # deploys the site; the report must not promise a release deploy.
+        world = World()
+        world.publish(FREECAD, "steel-v1.0.2", hours_ago=3)
+        _, report, _ = world.evaluate()
+        self.assertIn("A shape pack (`steel-v*`) release needs the manual deploy", report)
+        self.assertIn("`GITHUB_TOKEN`", report)
+        self.assertIn("`deploy_production` set to true", report)
+        importer_only = World()
+        importer_only.publish(BLENDER, "v1.0.112", hours_ago=3)
+        self.assertNotIn("needs the manual deploy", importer_only.evaluate()[1])
+
+    def test_stale_marker_is_only_in_a_report_that_found_stale_downloads(self) -> None:
+        world = World()
+        self.assertNotIn(DRIFT.STALE_MARKER, world.evaluate()[1])
+        world.publish(BLENDER, "v1.0.112", hours_ago=3)
+        self.assertNotIn(DRIFT.STALE_MARKER, world.evaluate()[1])  # within grace
+        world.publish(BLENDER, "v1.0.113", hours_ago=30)
+        code, report, _ = world.evaluate()
+        self.assertEqual(code, DRIFT.EXIT_STALE)
+        self.assertEqual(report.splitlines()[:2], [DRIFT.ISSUE_MARKER, DRIFT.STALE_MARKER])
+
     def test_deleted_live_release_fails_at_once(self) -> None:
         world = World()
         world.publish(SKETCHUP, "v3.7.167", hours_ago=1)
@@ -294,6 +317,89 @@ class CompareTests(unittest.TestCase):
         self.assertEqual(report.count("STALE"), 4)
 
 
+OTHER = "BlueCollar-Systems/Other-Tool"
+
+
+class SharedSelectionRuleTests(unittest.TestCase):
+    """The drift check and the deploy's sync pick a release by one rule."""
+
+    def test_drift_reads_the_channel_rule_from_the_sync_tool(self) -> None:
+        self.assertEqual(DRIFT.channels(SKETCHUP), [
+            ("latest_release", SYNC.IMPORTER_TAG_PREFIX, "importer"),
+            ("steel_release", SYNC.STEEL_TAG_PREFIX, "shape pack"),
+        ])
+        self.assertEqual(DRIFT.channels(BLENDER), [("latest_release", "v", "importer")])
+        self.assertIsNone(SYNC.importer_tag_prefix(OTHER))
+        with patch.object(SYNC, "importer_tag_prefix", lambda repo: "x-"):
+            self.assertEqual(DRIFT.channels(BLENDER)[0][1], "x-")
+
+    def world_with_other_repo(self) -> tuple[World, dict]:
+        world = World()
+        world.releases[OTHER] = [
+            _gh_release(OTHER, "2.1.0", NOW - dt.timedelta(days=5)),
+            _gh_release(OTHER, "v1.0.0", NOW - dt.timedelta(days=60)),
+        ]
+        return world, {OTHER: world.releases[OTHER][0]}
+
+    def fake_github(self, world: World, latest: dict):
+        def fake_get(url, token=None):
+            repo = url.split("/repos/", 1)[1]
+            if url == SYNC.releases_url(repo.split("/releases", 1)[0]):
+                return world.releases[repo.split("/releases", 1)[0]]
+            if url.endswith("/releases/latest"):
+                repo = repo[: -len("/releases/latest")]
+                if latest.get(repo) is None:
+                    raise urllib.error.HTTPError(url, 404, "not found", {}, None)
+                return latest[repo]
+            return {"default_branch": "main", "pushed_at": _iso(NOW), "html_url": f"https://github.com/{repo}",
+                    "private": False}
+        return fake_get
+
+    def test_repo_outside_the_importers_follows_releases_latest_in_both_tools(self) -> None:
+        # The sync publishes GitHub's /releases/latest for a repo outside
+        # PDF_IMPORTER_RELEASE_REPOS, whatever its tag looks like. The drift
+        # check used to apply the importers' "v" rule to every repo and would
+        # call this live 2.1.0 "no longer a published GitHub release".
+        world, latest = self.world_with_other_repo()
+        fake_get = self.fake_github(world, latest)
+        with patch.object(SYNC, "REPOS", (*SYNC.REPOS, OTHER)), patch.object(SYNC, "_json_get", fake_get):
+            live = SYNC.build_metadata(None)
+            self.assertEqual(live["repos"][OTHER]["latest_release"]["tag"], "2.1.0")
+            fetched_latest = DRIFT.fetch_latest_releases(None)
+            self.assertEqual(set(fetched_latest), {OTHER})
+            code, _, results = DRIFT.evaluate(live, world.releases, NOW, 24, latest_by_repo=fetched_latest)
+            self.assertEqual(code, DRIFT.EXIT_IN_SYNC, results)
+            self.assertTrue(_result(results, OTHER).in_sync)
+
+            # A newer release 30 hours old: stale, and dated from it.
+            world.releases[OTHER].insert(0, _gh_release(OTHER, "2.2.0", NOW - dt.timedelta(hours=30)))
+            latest[OTHER] = world.releases[OTHER][0]
+            code, _, results = DRIFT.evaluate(live, world.releases, NOW, 24,
+                                              latest_by_repo=DRIFT.fetch_latest_releases(None))
+        other = _result(results, OTHER)
+        self.assertEqual(code, DRIFT.EXIT_STALE)
+        self.assertEqual((other.live_tag, other.github_tag), ("2.1.0", "2.2.0"))
+        self.assertEqual(other.behind_since, NOW - dt.timedelta(hours=30))
+
+    def test_repo_without_a_latest_release_is_not_drift(self) -> None:
+        world, _ = self.world_with_other_repo()
+        with patch.object(SYNC, "REPOS", (*SYNC.REPOS, OTHER)), \
+                patch.object(SYNC, "_json_get", self.fake_github(world, {OTHER: None})):
+            latest = DRIFT.fetch_latest_releases(None)
+            self.assertEqual(latest, {OTHER: None})
+            live = world.live
+            live["repos"][OTHER] = {"latest_release": None}
+            _, _, results = DRIFT.evaluate(live, world.releases, NOW, 24, latest_by_repo=latest)
+        self.assertTrue(_result(results, OTHER).in_sync)
+
+    def test_importer_repos_never_ask_for_releases_latest(self) -> None:
+        def fake_get(url, token=None):
+            raise AssertionError(f"unexpected call {url}")
+
+        with patch.object(SYNC, "_json_get", fake_get):
+            self.assertEqual(DRIFT.fetch_latest_releases(None), {})
+
+
 class _Response:
     def __init__(self, body: bytes, status: int = 200) -> None:
         self.body, self.status = body, status
@@ -397,6 +503,37 @@ class MainTests(unittest.TestCase):
         self.assertEqual(code, DRIFT.EXIT_UNCHECKED)
         self.assertIn("could not run", report)
         self.assertIn("site down", out)
+        self.assertNotIn(DRIFT.STALE_MARKER, report)
+
+    def test_unexpected_error_is_status_2_never_stale(self) -> None:
+        # An uncaught exception used to exit 1, which the workflow reads as
+        # stale downloads. Now it is "could not check", with the error shown.
+        world = World()
+        world.publish(BLENDER, "v1.0.112", hours_ago=30)  # really stale, too
+        with tempfile.TemporaryDirectory() as temp:
+            report = Path(temp) / "drift.md"
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with patch.object(DRIFT, "fetch_live_metadata", return_value=world.live), \
+                    patch.object(DRIFT, "fetch_releases", return_value=copy.deepcopy(world.releases)), \
+                    patch.object(DRIFT, "evaluate", side_effect=KeyError("tag")), \
+                    contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                code = DRIFT.main(["--report", str(report), "--now", _iso(NOW)])
+            text = report.read_text(encoding="utf-8")
+        self.assertEqual(code, DRIFT.EXIT_UNCHECKED)
+        self.assertIn("unexpected error in check_release_drift.py: KeyError", stdout.getvalue())
+        self.assertIn("Traceback", stderr.getvalue())
+        self.assertTrue(text.startswith(DRIFT.ISSUE_MARKER))
+        self.assertIn("This is not a drift finding", text)
+        self.assertNotIn(DRIFT.STALE_MARKER, text)
+
+    def test_shape_pack_annotation_names_the_manual_deploy(self) -> None:
+        world = World()
+        world.publish(SKETCHUP, "steel-v1.0.3", hours_ago=30)
+        code, report, out = self.run_main(world)
+        self.assertEqual(code, DRIFT.EXIT_STALE)
+        self.assertIn("::error::PDF-Importer-SketchUp shape pack downloads are stale", out)
+        self.assertIn("shape pack releases need the manual deploy (deploy_production=true)", out)
+        self.assertIn(DRIFT.STALE_MARKER, report)
 
 
 if __name__ == "__main__":

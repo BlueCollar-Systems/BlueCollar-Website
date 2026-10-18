@@ -265,10 +265,13 @@ jobs:
         run: python tools/build_site.py
 
       # A product-release dispatch is not a GO for other website changes.
-      # Rebuild the commit that is live now with the same fresh metadata and
-      # require the identical public folder, so only repo-metadata.json and
-      # the badges stamped from it can change. Otherwise stop before upload;
-      # the manual deploy_production run publishes approved changes.
+      # Build this commit and the live commit, each in a clean worktree with
+      # its own build_site.py and badge stamping and both fed this fresh
+      # metadata; require _site to equal the first build and the first to
+      # equal the second, so only repo-metadata.json and the badges stamped
+      # from it can change. Otherwise, or when the live commit cannot be
+      # found or rebuilt, stop before upload; the manual deploy_production
+      # run publishes approved changes.
       - name: Confirm a release deploy changes only download metadata
         if: github.event_name == 'repository_dispatch'
         env:

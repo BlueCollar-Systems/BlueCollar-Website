@@ -1,5 +1,5 @@
 from pathlib import Path
-import ast, re, unittest
+import ast, os, re, shutil, subprocess, tempfile, textwrap, unittest
 ROOT=Path(__file__).resolve().parents[1]
 def block(text,name,kind='job'):
     if kind=='job': pattern=r'(?ms)^  '+re.escape(name)+r':\n(.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)'
@@ -148,6 +148,38 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
             self.assertIn("github.event_name != 'pull_request'",guard(block(text,name,'step')))
         self.assertEqual(guard(block(text,'Fail when a download is stale or the check could not run','step')),
                          "steps.drift.outputs.status != '0'")
+    def test_release_drift_crash_never_opens_the_issue(self):
+        # Only status 1 opens the issue, and status 1 needs the tool's stale
+        # marker in a finished report: a Python crash (exit 1) or any other
+        # code is status 2, red but with no drift claim.
+        text=(ROOT/'.github/workflows/release-drift.yml').read_text(encoding='utf-8')
+        self.assertEqual(guard(block(text,'Open or update the drift issue','step')),
+                         "steps.drift.outputs.status == '1' && github.event_name != 'pull_request'")
+        self.assertEqual(guard(block(text,'Close the drift issue when no download is stale','step')),
+                         "steps.drift.outputs.status == '0' && github.event_name != 'pull_request'")
+        tool=(ROOT/'tools/check_release_drift.py').read_text(encoding='utf-8')
+        marker=re.search(r'(?m)^STALE_MARKER = "([^"]+)"$',tool).group(1)
+        step=block(text,'Compare live download metadata with GitHub releases','step')
+        self.assertIn("grep -qF '"+marker+"'",step)
+        call='python tools/check_release_drift.py --report "$RUNNER_TEMP/release-drift.md"'
+        self.assertIn(call,step)
+        bash=shutil.which('bash')
+        if not bash: self.skipTest('bash is not available')
+        script=textwrap.dedent(step.split('run: |\n',1)[1])
+        cases=[(0,'in sync','0'),(1,marker+'\nstale','1'),(1,'no marker','2'),(1,None,'2'),
+               (2,'could not run','2'),(120,None,'2')]
+        for code,report,expected in cases:
+            with self.subTest(code=code,report=report), tempfile.TemporaryDirectory() as temp:
+                folder=Path(temp)
+                if report is not None:(folder/'release-drift.md').write_text(report+'\n',encoding='utf-8')
+                (folder/'step.sh').write_text(script.replace(call,'(exit %d)'%code),encoding='utf-8',newline='\n')
+                env=dict(os.environ,RUNNER_TEMP=folder.as_posix(),GITHUB_OUTPUT=(folder/'out').as_posix(),
+                         GITHUB_STEP_SUMMARY=(folder/'summary').as_posix())
+                # GitHub's default bash for run steps.
+                result=subprocess.run([bash,'--noprofile','--norc','-eo','pipefail',(folder/'step.sh').as_posix()],
+                                      env=env,capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stderr)
+                self.assertEqual((folder/'out').read_text(encoding='utf-8').strip(),'status='+expected)
     def test_snapshot_helper_is_validated_and_draft_publication_is_guarded(self):
         text=(ROOT/'.github/workflows/auto-release.yml').read_text(encoding='utf-8')
         release=block(text,'release')

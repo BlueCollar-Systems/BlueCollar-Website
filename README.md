@@ -65,6 +65,7 @@ Deployed to **Cloudflare Pages** (project `bluecollar-website`) via GitHub Actio
 - `deploy-pages` syncs and validates release metadata, builds `_site/` with `tools/build_site.py` (public files only), publishes that folder with Wrangler, then verifies that the public domain serves the exact new metadata bytes and that repository files such as `/README.md` answer 404, then requests every live page and on-site link, before committing stamped badges back to `main`. Both ways in use these same steps and secrets.
 - A manual `auto-release` run with `publish_release=true` bumps `VERSION` and publishes a GitHub Release snapshot zip. Its default builds an inspection artifact without publishing. Dispatches never start it.
 - Pushes, pull requests, the six-hour schedule and the `product-update`, `steel-shapes-release` and `steel-shapes-update` dispatches run validation only. They do not deploy or publish releases.
+- A shape pack (`steel-v*`) release never deploys the site by itself; run the manual deploy after each one. See [Shape pack releases need a manual deploy](#shape-pack-releases-need-a-manual-deploy).
 - The daily [`release-drift`](.github/workflows/release-drift.yml) workflow turns red when the live downloads have lagged GitHub releases for more than 24 hours; see [Release drift check](#release-drift-check).
 
 See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for app launch/update steps (Google Play + iOS).
@@ -99,6 +100,9 @@ Tracked repos: `PDF-Importer-SketchUp`, `PDF-Importer-FreeCAD`, `PDF-Importer-Bl
 4. `tools/verify_deployed_metadata.py` requests the public metadata with cache bypass headers and a unique query, allowing up to 12 attempts with 10 seconds between attempts and a 15-second request timeout. It requires exact bytes, so stale tags, download URLs, source revisions, asset digests, or an older snapshot fail the job. Only a verified deployment commits the stamped badges back to `main`.
 5. The daily drift check reports any release the site still lacks after 24 hours.
 
+Shape pack (`steel-v*`) releases do not take this path; see
+[Shape pack releases need a manual deploy](#shape-pack-releases-need-a-manual-deploy).
+
 Release and manual deploys share one concurrency group, so two deploys never
 overlap. A release deploy waits for a running deploy instead of cancelling it,
 and when several importers release at once, the newest waiting run replaces
@@ -116,28 +120,64 @@ changes that were merged to `main` but never deployed. Before upload, the
 release deploy runs [`tools/check_metadata_only_deploy.py`](tools/check_metadata_only_deploy.py):
 
 1. It finds the commit that is live now: the head commit of the newest
-   `website-ci` run whose **Deploy to Cloudflare Pages** step succeeded (read
-   from the Actions API with the run's own read-only token).
-2. It checks that commit out in a temporary worktree, gives it the same freshly
-   synced `repo-metadata.json`, stamps its version badges and builds its public
-   folder with `tools/build_site.py`.
-3. It requires that folder to be byte-for-byte identical to the `_site/` about
-   to be deployed.
+   `website-ci` run whose **Deploy to Cloudflare Pages** step succeeded. It
+   reads the Actions API with the run's own read-only token, back through the
+   newest 1,000 manual and 1,000 dispatch runs (the most the API lists), and
+   reads the jobs only of runs that could have deployed: manual runs and
+   `product-release` dispatches.
+2. It builds two public folders the same clean way, each in its own new
+   temporary worktree and its own new output folder: one from the commit about
+   to be deployed, one from the live commit. Both get the same freshly synced
+   `repo-metadata.json`, and each commit's **own** tools do the work, run with
+   that worktree as the working folder and only its own `tools/` importable:
+   its `tools/sync_repo_metadata.py` (`stamp_html_versions`) stamps the version
+   badges, and its `tools/build_site.py --source . --out <folder>` builds the
+   folder.
+3. It requires the `_site/` about to be uploaded to be byte-for-byte the clean
+   build of its own commit (so no uncommitted or leftover file rides along),
+   and that build to be byte-for-byte the live commit's build.
 
 So only `repo-metadata.json` and the badges stamped from it can differ from
-production. Changes to README, tests, tools or workflows are not published
-and do not matter. If `main` holds any public change that is not live yet (a
-page, a style, a script, a new or removed file), the release deploy stops
-before upload, names the files and deploys nothing. Run `website-ci` manually
-on `main` with `deploy_production=true` once those changes are approved; it
-publishes them and the new downloads together. The guard also refuses when it
-cannot tell which commit is live (no earlier deploy run found, or the commit
-cannot be fetched or built). Manual deploys skip this step.
+production. `repo-metadata.json` itself is written by `main`'s
+`sync_repo_metadata.py`, so a change to what the sync records ships with the
+next release deploy. Files that are never published (README, tests, most of
+`tools/`) can change freely. A change to how the public folder is made counts like a
+page change: if `main`'s `tools/build_site.py` publishes a different set of
+files, or `main`'s badge stamping writes different HTML, the two builds differ
+and the release deploy refuses. If `main` holds any public change that is not
+live yet (a page, a style, a script, a new or removed file, or such a tool
+change), the release deploy stops before upload, names the files and deploys
+nothing. Run `website-ci` manually on `main` with `deploy_production=true` once
+those changes are approved; it publishes them and the new downloads together.
 
-To see what a release deploy would decide, after `python tools/sync_repo_metadata.py`
-and `python tools/build_site.py`, run `python tools/check_metadata_only_deploy.py`
-(add `--deployed-sha <commit>` to skip the Actions API lookup). It only reads;
-it never deploys.
+The guard also refuses, deploying nothing, whenever it cannot prove the
+result: the live commit is not found in that run history (the message says how
+many runs it read and why it stopped), cannot be fetched, or cannot be rebuilt
+with its own tools. A live commit older than `tools/build_site.py`, or one
+whose tools lack `stamp_html_versions()` or the `--source` and `--out` options,
+is refused with the note that a manual deploy is needed. Manual deploys skip
+this step. The guard compares built files only; a change to a workflow takes
+effect on its next run, deployed or not.
+
+To see what a release deploy would decide, commit your changes, then run
+`python tools/sync_repo_metadata.py`, `python tools/build_site.py` and
+`python tools/check_metadata_only_deploy.py` (add `--deployed-sha <commit>` to
+skip the Actions API lookup). It only reads; it never deploys. An uncommitted
+change to a public file makes `_site/` differ from the clean build of `HEAD`,
+and the guard refuses.
+
+### Shape pack releases need a manual deploy
+
+A shape pack (`steel-v*`) release never deploys the site by itself. The
+`steel-shapes-release.yml` workflow in the SketchUp and FreeCAD repos publishes
+the release with `GITHUB_TOKEN`, and GitHub starts no other workflow from an
+event made with that token, so `notify-website-deploy` does not run and no
+`product-release` dispatch reaches the website. (A `steel-shapes-release`
+dispatch only validates.) After every shape pack release, run `website-ci`
+manually on `main` with `deploy_production=true`. The next importer release
+deploy also picks the pack up, because every deploy reads all channels. If
+neither happens, the daily drift check turns red after 24 hours, and its issue
+says the shape pack needs the manual deploy.
 
 ### Release drift check
 
@@ -147,12 +187,14 @@ runs once a day (13:41 UTC), and on demand from the Actions tab. It runs
 live `https://bluecollar-systems.com/repo-metadata.json` (cache bypassed) and
 compares each importer with the release a deploy would publish now: the newest
 published, final `v*` release, and the newest `steel-v*` shape-pack release in
-the SketchUp and FreeCAD repos. That is the same selection rule as
-`sync_repo_metadata.py`, so a deploy always clears what it reports. Drafts and
-prereleases never count.
+the SketchUp and FreeCAD repos. The check reads that rule from
+`sync_repo_metadata.py` (`importer_tag_prefix()`; a tracked repo outside the
+PDF importers would follow GitHub's `/releases/latest` in both), so a deploy
+always clears what it reports. Drafts and prereleases never count.
 
 - **Behind for less than 24 hours:** a warning only; the job stays green. The
-  release deploy normally closes this within minutes.
+  release deploy normally closes this within minutes. A shape pack waits for
+  the manual deploy (see above), and the report says so.
 - **Behind for more than 24 hours:** the job turns red and opens one issue,
   *Live site downloads are behind GitHub releases*, or updates it if it is
   already open. The age counts from the publish time of the first release the
@@ -160,7 +202,11 @@ prereleases never count.
 - **A live release that GitHub no longer lists** (deleted, back to draft or
   prerelease) turns red at once, because its Download link may be dead.
 - **In sync again:** the next run comments with the result and closes the issue.
-- **Site or GitHub API unreachable:** red, no issue change.
+- **The check could not run** (site or GitHub API unreachable, or an error in
+  the tool itself): red with status 2, and the issue is not opened, edited or
+  closed. Only a finished check that found stale downloads (exit 1, with the
+  stale marker in its report) can open the issue, so a crash never reads as
+  drift.
 
 The fix for a red run is the manual `website-ci` run with
 `deploy_production=true`. The workflow never builds, deploys or pushes. Pull

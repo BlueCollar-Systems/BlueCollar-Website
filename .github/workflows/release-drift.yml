@@ -5,7 +5,9 @@ name: release-drift
 # red, and opens or updates one issue, when a download has been behind for
 # more than 24 hours (or the live release was deleted). It closes that issue
 # on the first run that finds no stale download. The fix is the manual
-# website-ci run with deploy_production=true.
+# website-ci run with deploy_production=true. A shape pack (steel-v*) release
+# always needs that manual run: it is published with GITHUB_TOKEN, so it
+# sends no dispatch, and the report says so.
 on:
   schedule:
     - cron: "41 13 * * *"
@@ -39,7 +41,11 @@ jobs:
 
       # Same token chain as the deploy's metadata sync, so both see the same
       # releases. Exit 0 = in sync or behind for less than 24 h, 1 = stale,
-      # 2 = the site or the GitHub API could not be read.
+      # 2 = the check could not run (site or GitHub API unreachable, or an
+      # error in the tool). Only a finished report that found stale downloads
+      # carries the stale marker; any other non-zero exit, including a Python
+      # crash before the tool could catch it (which exits 1), is status 2, so
+      # it turns the job red without opening an issue that claims drift.
       - name: Compare live download metadata with GitHub releases
         id: drift
         env:
@@ -49,6 +55,12 @@ jobs:
           python tools/check_release_drift.py --report "$RUNNER_TEMP/release-drift.md"
           status=$?
           set -e
+          if [ "$status" = 1 ] && ! grep -qF '<!-- release-drift-stale -->' "$RUNNER_TEMP/release-drift.md" 2>/dev/null; then
+            echo "::error::check_release_drift.py exited 1 without a stale-downloads report, so it failed before finishing. Treated as status 2 (could not check), not as drift."
+            status=2
+          elif [ "$status" != 0 ] && [ "$status" != 1 ]; then
+            status=2
+          fi
           echo "status=$status" >> "$GITHUB_OUTPUT"
           if [ -f "$RUNNER_TEMP/release-drift.md" ]; then cat "$RUNNER_TEMP/release-drift.md" >> "$GITHUB_STEP_SUMMARY"; fi
 
@@ -87,5 +99,9 @@ jobs:
         env:
           STATUS: ${{ steps.drift.outputs.status }}
         run: |
-          echo "::error::Release drift check finished with status $STATUS (1 = stale downloads, 2 = could not check). See the job summary."
+          if [ "$STATUS" = 1 ]; then
+            echo "::error::Live downloads are stale (status 1). See the job summary and the drift issue. Fix: run website-ci on main with deploy_production=true."
+          else
+            echo "::error::The release drift check could not run (status $STATUS: tool, site or GitHub API failure). This is not a drift finding; the drift issue was not opened, edited or closed. See the step log."
+          fi
           exit 1

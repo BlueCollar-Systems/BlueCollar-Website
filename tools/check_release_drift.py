@@ -4,9 +4,15 @@
 Reads the public https://bluecollar-systems.com/repo-metadata.json (the file
 every Download button on the site uses) and, for each importer repository the
 site tracks, the release a deploy would publish now: the newest published,
-final ``v*`` release, plus the newest ``steel-v*`` shape-pack release in the
-repositories that host one. That is the selection rule of
-tools/sync_repo_metadata.py, so a deploy always clears what this reports.
+final ``v*`` release (sync_repo_metadata.importer_tag_prefix(); a tracked repo
+outside the PDF importers uses GitHub's /releases/latest instead), plus the
+newest ``steel-v*`` shape-pack release in the repositories that host one. That
+is the selection rule of tools/sync_repo_metadata.py, read from it, so a
+deploy always clears what this reports.
+
+Shape-pack releases never deploy the site by themselves (the
+steel-shapes-release workflow publishes them with GITHUB_TOKEN, which starts
+no notify-website-deploy run), so the report asks for the manual deploy.
 
 A difference younger than the grace period (24 hours) is only a warning: the
 release deploy normally closes it within minutes. An older one fails the
@@ -19,7 +25,10 @@ Read-only: it never deploys, builds or changes anything. Usage:
     python tools/check_release_drift.py [--report drift.md] [--grace-hours 24]
 
 Exit codes: 0 in sync or within the grace period, 1 stale beyond it,
-2 the check could not run (site or GitHub API unreachable).
+2 the check could not run (site or GitHub API unreachable, or any unexpected
+error in this tool). Only a report that found stale downloads carries
+STALE_MARKER; the drift workflow opens its issue only on exit 1 with that
+marker, so a crash can never read as drift.
 """
 
 from __future__ import annotations
@@ -31,6 +40,7 @@ import json
 import os
 import sys
 import time
+import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -45,12 +55,11 @@ DEFAULT_URL = "https://bluecollar-systems.com/repo-metadata.json"
 DEFAULT_GRACE_HOURS = 24.0
 # The drift workflow finds its one open issue by this marker.
 ISSUE_MARKER = "<!-- release-drift-check -->"
+# Written only into a finished report that found stale downloads.
+STALE_MARKER = "<!-- release-drift-stale -->"
 
-# (metadata field, tag prefix, label) for each release channel the site shows.
-CHANNELS: tuple[tuple[str, str, str], ...] = (
-    ("latest_release", "v", "importer"),
-    ("steel_release", "steel-v", "shape pack"),
-)
+IMPORTER = "importer"
+SHAPE_PACK = "shape pack"
 
 EXIT_IN_SYNC = 0
 EXIT_STALE = 1
@@ -59,6 +68,19 @@ EXIT_UNCHECKED = 2
 
 class CheckError(RuntimeError):
     """The live metadata or the GitHub releases could not be read."""
+
+
+def channels(repo: str) -> list[tuple[str, str | None, str]]:
+    """(metadata field, tag prefix or None for /releases/latest, label) per channel.
+
+    The same rule tools/sync_repo_metadata.py publishes with.
+    """
+    found: list[tuple[str, str | None, str]] = [
+        ("latest_release", sync.importer_tag_prefix(repo), IMPORTER),
+    ]
+    if repo in sync.STEEL_RELEASE_REPOS:
+        found.append(("steel_release", sync.STEEL_TAG_PREFIX, SHAPE_PACK))
+    return found
 
 
 class ChannelResult(NamedTuple):
@@ -106,20 +128,38 @@ def _download_view(release: dict[str, Any] | None) -> tuple:
     return (release.get("tag"), assets)
 
 
+def _candidates(
+    releases: list[dict[str, Any]],
+    tag_prefix: str | None,
+    latest: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """The channel's published, final releases, the one a deploy picks first."""
+    if tag_prefix is not None:
+        return sync.final_tagged_releases(releases, tag_prefix)
+    # GitHub's /releases/latest: the sync publishes exactly that release. The
+    # rest of the listing only dates how far behind the site is.
+    if not isinstance(latest, dict) or not latest.get("tag_name") or latest.get("draft") or latest.get("prerelease"):
+        return []
+    rest = [r for r in sync.final_tagged_releases(releases, "") if r.get("tag_name") != latest.get("tag_name")]
+    return [latest, *rest]
+
+
 def compare_channel(
     repo: str,
     channel: str,
     live_release: dict[str, Any] | None,
     releases: list[dict[str, Any]],
-    tag_prefix: str,
+    tag_prefix: str | None,
     live_generated_at: dt.datetime | None,
+    latest: dict[str, Any] | None = None,
 ) -> ChannelResult:
     """Compare one release channel of one repo with what GitHub publishes.
 
     ``releases`` is the raw /releases listing (newest first). The expected
-    release is its first published, final entry with the channel prefix.
+    release is its first published, final entry with the channel prefix, or,
+    when tag_prefix is None, ``latest`` (GitHub's /releases/latest answer).
     """
-    candidates = sync.final_tagged_releases(releases, tag_prefix)
+    candidates = _candidates(releases, tag_prefix, latest)
     live_tag = live_release.get("tag") if isinstance(live_release, dict) else None
     if not candidates:
         # The deploy keeps the previous snapshot when GitHub lists nothing,
@@ -180,16 +220,16 @@ def compare_channel(
 def compare(
     live: dict[str, Any],
     releases_by_repo: dict[str, list[dict[str, Any]]],
+    latest_by_repo: dict[str, dict[str, Any] | None] | None = None,
 ) -> list[ChannelResult]:
     """Every tracked repo and channel, in a stable order."""
     live_repos = live.get("repos") if isinstance(live.get("repos"), dict) else {}
     generated_at = parse_time(live.get("generated_at"))
+    latest_by_repo = latest_by_repo or {}
     results: list[ChannelResult] = []
     for repo in sync.REPOS:
         entry = live_repos.get(repo)
-        for field, prefix, label in CHANNELS:
-            if field == "steel_release" and repo not in sync.STEEL_RELEASE_REPOS:
-                continue
+        for field, prefix, label in channels(repo):
             if not isinstance(entry, dict):
                 results.append(ChannelResult(
                     repo, label, None, None, None, False,
@@ -198,6 +238,7 @@ def compare(
                 continue
             results.append(compare_channel(
                 repo, label, entry.get(field), releases_by_repo.get(repo, []), prefix, generated_at,
+                latest_by_repo.get(repo),
             ))
     return results
 
@@ -264,6 +305,27 @@ def fetch_releases(token: str | None) -> dict[str, list[dict[str, Any]]]:
     return releases
 
 
+def fetch_latest_releases(token: str | None) -> dict[str, dict[str, Any] | None]:
+    """GitHub's /releases/latest for each repo whose importer channel uses it."""
+    latest: dict[str, dict[str, Any] | None] = {}
+    for repo in sync.REPOS:
+        if sync.importer_tag_prefix(repo) is not None:
+            continue
+        try:
+            answer = sync._json_get(sync.latest_release_url(repo), token)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                latest[repo] = None  # no release yet; the sync keeps its last snapshot
+                continue
+            raise CheckError(f"GitHub API answered HTTP {exc.code} for {repo} latest release") from exc
+        except (OSError, http.client.HTTPException, ValueError) as exc:
+            raise CheckError(f"could not read {repo} latest release: {exc}") from exc
+        if not isinstance(answer, dict):
+            raise CheckError(f"unexpected GitHub API answer for {repo} latest release")
+        latest[repo] = answer
+    return latest
+
+
 # ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
@@ -303,8 +365,10 @@ def render_report(
     else:
         headline = "The live site offers the latest GitHub release of every importer."
 
-    lines = [
-        ISSUE_MARKER,
+    lines = [ISSUE_MARKER]
+    if stale:
+        lines.append(STALE_MARKER)
+    lines += [
         "## Live site downloads compared with GitHub releases",
         "",
         headline,
@@ -343,6 +407,16 @@ def render_report(
             "refused metadata-only deploy because `main` holds website changes that were "
             "never deployed, leaves the old downloads live.",
         ]
+    if any(r.channel == SHAPE_PACK and not r.in_sync for r in results):
+        lines += [
+            "",
+            "**A shape pack (`steel-v*`) release needs the manual deploy.** Shape pack "
+            "releases never deploy the site by themselves: the `steel-shapes-release` "
+            "workflow in the SketchUp and FreeCAD repos publishes them with `GITHUB_TOKEN`, "
+            "which starts no `notify-website-deploy` run, so no `product-release` dispatch "
+            "reaches the website. After every shape pack release, run `website-ci` on `main` "
+            "with `deploy_production` set to true.",
+        ]
     return "\n".join(lines) + "\n"
 
 
@@ -352,8 +426,9 @@ def evaluate(
     now: dt.datetime,
     grace_hours: float,
     url: str = DEFAULT_URL,
+    latest_by_repo: dict[str, dict[str, Any] | None] | None = None,
 ) -> tuple[int, str, list[ChannelResult]]:
-    results = compare(live, releases_by_repo)
+    results = compare(live, releases_by_repo, latest_by_repo)
     report = render_report(results, now, grace_hours, url, live.get("generated_at"))
     code = EXIT_STALE if any(r.is_stale(now, grace_hours) for r in results) else EXIT_IN_SYNC
     return code, report, results
@@ -372,18 +447,38 @@ def main(argv: list[str] | None = None) -> int:
     now = parse_time(args.now) if args.now else dt.datetime.now(dt.UTC)
     if now is None:
         parser.error("--now must be an ISO date and time")
-    token = os.getenv("GH_TOKEN") or os.getenv("GITHUB_TOKEN")
     try:
-        live = fetch_live_metadata(args.url)
-        releases = fetch_releases(token)
+        return _check(args, now)
     except CheckError as exc:
-        message = f"{ISSUE_MARKER}\n## Release drift check could not run\n\n{exc}\n"
-        if args.report:
-            args.report.write_text(message, encoding="utf-8", newline="\n")
-        print(f"::error::Release drift check could not run: {exc}")
-        return EXIT_UNCHECKED
+        return _could_not_run(args.report, str(exc))
+    except Exception as exc:  # noqa: BLE001 - any crash is "could not check", never "stale"
+        traceback.print_exc()
+        return _could_not_run(args.report, f"unexpected error in check_release_drift.py: {type(exc).__name__}: {exc}")
 
-    code, report, results = evaluate(live, releases, now, args.grace_hours, args.url)
+
+def _could_not_run(report: Path | None, reason: str) -> int:
+    """Status 2, with a report that cannot be mistaken for drift."""
+    if report:
+        try:
+            report.write_text(
+                f"{ISSUE_MARKER}\n## Release drift check could not run\n\n{reason}\n\n"
+                "This is not a drift finding: the check did not finish, so it says nothing "
+                "about the live downloads.\n",
+                encoding="utf-8", newline="\n",
+            )
+        except OSError as exc:
+            print(f"Could not write {report}: {exc}", file=sys.stderr)
+    print(f"::error::Release drift check could not run: {reason}")
+    return EXIT_UNCHECKED
+
+
+def _check(args: argparse.Namespace, now: dt.datetime) -> int:
+    token = os.getenv("GH_TOKEN") or os.getenv("GITHUB_TOKEN")
+    live = fetch_live_metadata(args.url)
+    releases = fetch_releases(token)
+    latest = fetch_latest_releases(token)
+
+    code, report, results = evaluate(live, releases, now, args.grace_hours, args.url, latest)
     if args.report:
         args.report.write_text(report, encoding="utf-8", newline="\n")
     print(report)
@@ -394,6 +489,8 @@ def main(argv: list[str] | None = None) -> int:
         detail = f"live {result.live_tag or 'none'}, GitHub {result.github_tag or 'none'}"
         if result.note:
             detail += f"; {result.note}"
+        if result.channel == SHAPE_PACK:
+            detail += "; shape pack releases need the manual deploy (deploy_production=true)"
         if result.is_stale(now, args.grace_hours):
             print(f"::error::{where} downloads are stale ({detail}).")
         else:
