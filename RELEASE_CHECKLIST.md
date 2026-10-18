@@ -104,4 +104,19 @@ curl -sS https://bluecollar-systems.com/repo-metadata.json | python -m json.tool
 
 Confirm `generated_at` is recent and `latest_release.tag` matches the new GitHub release.
 
+### Website snapshot version numbers
+
+- **There is no v1.0.106 release; a failed run used the number up.** The
+  manual `auto-release` run `38169167314` on 2026-10-11 bumped `VERSION` to
+  1.0.106 and pushed that commit (`bf66a72`) to `main`, then failed at
+  "Verify source and uploaded draft bytes before publication"
+  (`Minted draft missing`). No `v1.0.106` tag or GitHub release was made.
+  After the draft-upload fix (`3fb617c`), the next run published `v1.0.107`.
+  The gap is expected; do not create a `v1.0.106` by hand.
+- `auto-release` commits and pushes the version bump before it builds and
+  checks the snapshot, so any failed `publish_release=true` run can use up a
+  number the same way. Check
+  `gh release list -R BlueCollar-Systems/BlueCollar-Website --limit 5` before
+  quoting a website version.
+
 See [README.md](README.md#github-actions-secrets-bluecollar-website-repo) for full secret tables.

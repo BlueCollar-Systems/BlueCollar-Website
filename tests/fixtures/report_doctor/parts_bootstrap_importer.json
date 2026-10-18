@@ -1,0 +1,156 @@
+{
+  "schema": "bcs.parts_bootstrap/1.0",
+  "rows": [
+    {
+      "piece_mark": "EX101",
+      "quantity": 2,
+      "description": "W12X26",
+      "profile_hint": "W12X26",
+      "kind": "member",
+      "length_in": 246.0,
+      "length_text": "20'-6\"",
+      "source": {
+        "page": 1,
+        "line_start": 6,
+        "line_end": 10
+      },
+      "total_weight_lb": 1066.0
+    },
+    {
+      "piece_mark": "EX102",
+      "quantity": 4,
+      "description": "L3X3X1/4",
+      "profile_hint": "L3X3X1/4",
+      "kind": "member",
+      "length_in": 36.0,
+      "length_text": "3'-0\"",
+      "source": {
+        "page": 1,
+        "line_start": 11,
+        "line_end": 15
+      },
+      "total_weight_lb": 59.0
+    },
+    {
+      "piece_mark": "EX103",
+      "quantity": 1,
+      "description": "PL1/2\"X8",
+      "profile_hint": "PL1/2\"X8",
+      "kind": "plate",
+      "length_in": 16.0,
+      "length_text": "1'-4\"",
+      "source": {
+        "page": 1,
+        "line_start": 16,
+        "line_end": 20
+      },
+      "total_weight_lb": 18.0
+    }
+  ],
+  "parts": [
+    {
+      "piece_mark": "EX101",
+      "quantity": 2,
+      "description": "W12X26",
+      "profile_hint": "W12X26",
+      "kind": "member",
+      "length_in": 246.0,
+      "length_text": "20'-6\"",
+      "source": {
+        "page": 1,
+        "line_start": 6,
+        "line_end": 10
+      },
+      "total_weight_lb": 1066.0
+    },
+    {
+      "piece_mark": "EX102",
+      "quantity": 4,
+      "description": "L3X3X1/4",
+      "profile_hint": "L3X3X1/4",
+      "kind": "member",
+      "length_in": 36.0,
+      "length_text": "3'-0\"",
+      "source": {
+        "page": 1,
+        "line_start": 11,
+        "line_end": 15
+      },
+      "total_weight_lb": 59.0
+    },
+    {
+      "piece_mark": "EX103",
+      "quantity": 1,
+      "description": "PL1/2\"X8",
+      "profile_hint": "PL1/2\"X8",
+      "kind": "plate",
+      "length_in": 16.0,
+      "length_text": "1'-4\"",
+      "source": {
+        "page": 1,
+        "line_start": 16,
+        "line_end": 20
+      },
+      "total_weight_lb": 18.0
+    }
+  ],
+  "part_count": 3,
+  "source_pdf": {
+    "file": "D042-fictional-shop-drawing.pdf",
+    "pages": 1
+  },
+  "tables": [
+    {
+      "name": "BILL OF MATERIAL",
+      "row_count": 3,
+      "rows": [
+        {
+          "piece_mark": "EX101",
+          "quantity": 2,
+          "description": "W12X26",
+          "profile_hint": "W12X26",
+          "kind": "member",
+          "length_in": 246.0,
+          "length_text": "20'-6\"",
+          "source": {
+            "page": 1,
+            "line_start": 6,
+            "line_end": 10
+          },
+          "total_weight_lb": 1066.0
+        },
+        {
+          "piece_mark": "EX102",
+          "quantity": 4,
+          "description": "L3X3X1/4",
+          "profile_hint": "L3X3X1/4",
+          "kind": "member",
+          "length_in": 36.0,
+          "length_text": "3'-0\"",
+          "source": {
+            "page": 1,
+            "line_start": 11,
+            "line_end": 15
+          },
+          "total_weight_lb": 59.0
+        },
+        {
+          "piece_mark": "EX103",
+          "quantity": 1,
+          "description": "PL1/2\"X8",
+          "profile_hint": "PL1/2\"X8",
+          "kind": "plate",
+          "length_in": 16.0,
+          "length_text": "1'-4\"",
+          "source": {
+            "page": 1,
+            "line_start": 16,
+            "line_end": 20
+          },
+          "total_weight_lb": 18.0
+        }
+      ]
+    }
+  ],
+  "note": "BOM row extraction from drawing text"
+}

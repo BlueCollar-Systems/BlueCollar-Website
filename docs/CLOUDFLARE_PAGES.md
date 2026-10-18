@@ -2,7 +2,7 @@
 
 Account ID (reference): `df143f08ce8d490ebf620fe776fbd375`  
 Project: `bluecollar-website`  
-Production deploy: GitHub Actions [`.github/workflows/website-ci.yml`](../.github/workflows/website-ci.yml) (`python tools/build_site.py`, then `wrangler pages deploy _site`, branch `main`).
+Production deploy: GitHub Actions [`.github/workflows/website-ci.yml`](../.github/workflows/website-ci.yml) on `main` (`python tools/build_site.py`, then `wrangler pages deploy _site`, branch `main`), from a manual run with `deploy_production=true` or, for download metadata only, an importer's `product-release` dispatch (see [Build hooks / deploy triggers](#build-hooks--deploy-triggers)). Every other run validates and builds without publishing.
 
 ## Verified from the public edge (no API token)
 
@@ -11,7 +11,7 @@ Production deploy: GitHub Actions [`.github/workflows/website-ci.yml`](../.githu
 | Apex `https://bluecollar-systems.com/` | HTTP 200, served via Cloudflare (CF-RAY present) |
 | Pages hostname `https://bluecollar-website.pages.dev/` | HTTP 200, same security headers as apex |
 | `/repo-metadata.json` | `Cache-Control: no-store, max-age=0, must-revalidate` (matches [`_headers`](../_headers)) |
-| Last successful metadata snapshot on production | `generated_at` from scheduled deploy (~6h cadence in workflow) |
+| Last successful metadata snapshot on production | `generated_at` from the last production run: a manual run or an importer release deploy (the six-hour schedule does not deploy) |
 
 Custom domain **bluecollar-systems.com** is active on the apex; confirm in dashboard: **Workers & Pages → bluecollar-website → Custom domains**.
 
@@ -40,17 +40,20 @@ Do **not** store API tokens in this repo. Configure in the Cloudflare dashboard 
 
 ### Build hooks / deploy triggers
 
-- **Validation triggers:** push to `main`, pull requests, the 6-hour schedule, and the `product-update` and steel-shapes dispatches. None of them deploy.
-- **Deploy triggers:** a manual `workflow_dispatch` on `main` with `deploy_production=true` (any approved site change), and an importer's `product-release` `repository_dispatch` (download metadata and badges only; the deploy refuses if `main` holds other undeployed site changes). See the README sections on release deploys and the release drift check.
+- **Two production deploys, both from `main` only.**
+  - **Manual:** open **Actions → website-ci → Run workflow**, pick branch `main`, and set `deploy_production=true`. This is the only way to publish site changes (pages, styles, scripts, files). The input defaults to `false`, and a run from any other branch never deploys.
+  - **Importer release:** an importer's `product-release` `repository_dispatch` deploys the download metadata and version badges only. It refuses, deploying nothing, if `main` holds any other site change that is not live yet, including a change to the file list in `tools/build_site.py` or to the badge stamping. See the README section on release deploys.
+  - Either way, `static-checks` must pass first; `deploy-pages` then re-syncs release metadata, publishes `_site/`, verifies the live metadata and routes, and commits stamped badges back to `main`.
+- **Never deploy:** pushes to `main`, pull requests, the six-hour schedule, the `product-update` and steel-shapes dispatches, and a manual run left at `deploy_production=false`. On these runs `deploy-pages` shows as skipped.
+- **After an importer release:** make sure `WEBSITE_DISPATCH_TOKEN` (or an alias) can fire `repository_dispatch`, so the download metadata deploys right away. If no dispatch arrives or the release deploy is refused, run the manual production deploy above. The daily `release-drift` workflow turns red if the live downloads still lag a release after 24 hours.
+- **After a shape pack (`steel-v*`) release:** it sends no dispatch (it is published with `GITHUB_TOKEN`), so run the manual `deploy_production=true` deploy after each one.
 - **No separate Pages “build hook” required** unless you want a manual dashboard redeploy; CI is the source of truth.
-- After publishing a new GitHub **release** on an importer repo, ensure `WEBSITE_DISPATCH_TOKEN` (or equivalent) can fire `repository_dispatch` so the download metadata deploys right away. The daily `release-drift` workflow turns red if the live downloads still lag a release after 24 hours.
-- A shape pack (`steel-v*`) release sends no dispatch (it is published with `GITHUB_TOKEN`), so run the manual `deploy_production=true` deploy after each one.
 
 ## Deploy status
 
-**Resolved (2026-10-10):** the Cloudflare auth 10000 failure noted on 2026-09-15 no longer happens. `deploy-pages` succeeds on every run, for example run `38052687522` on 2026-10-10 ("Deployment complete!"). If it ever returns, rotate the token in [API Tokens](https://dash.cloudflare.com/profile/api-tokens) with **Account → Cloudflare Pages: Edit** and **Account Settings: Read**, then update the deploy token secret on `BlueCollar-Systems/BlueCollar-Website` (the workflow uses `CLOUDFLARE_PAGES_API_TOKEN`, then `CLOUDFLARE_API_TOKEN`, then `CF_API_TOKEN`, whichever is set first).
+**Resolved (2026-10-10):** the Cloudflare auth 10000 failure noted on 2026-09-15 no longer happens. `deploy-pages` has succeeded since then, for example run `38052687522` on 2026-10-10 ("Deployment complete!") and the manual production run `39149634087` on 2026-10-18. It runs only on a production run (a manual `deploy_production=true` run or an importer's `product-release` dispatch); on every other run it shows as skipped, which is not a failure. If the auth failure ever returns, rotate the token in [API Tokens](https://dash.cloudflare.com/profile/api-tokens) with **Account → Cloudflare Pages: Edit** and **Account Settings: Read**, then update the deploy token secret on `BlueCollar-Systems/BlueCollar-Website` (the workflow uses `CLOUDFLARE_PAGES_API_TOKEN`, then `CLOUDFLARE_API_TOKEN`, then `CF_API_TOKEN`, whichever is set first).
 
-Manual deploy (only if CI cannot run), after `wrangler login` against the account below:
+Local deploy (only if CI cannot run, and only when a production publication is authorized), after `wrangler login` against the account below:
 
 ```
 python tools/build_site.py && wrangler pages deploy _site --project-name bluecollar-website --branch main

@@ -70,6 +70,49 @@ Deployed to **Cloudflare Pages** (project `bluecollar-website`) via GitHub Actio
 
 See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for app launch/update steps (Google Play + iOS).
 
+## What is live vs on main
+
+Merging to `main` does not change the live site. Only a production run
+publishes: the manual run above, or an importer's release deploy, which
+publishes download metadata only. So `main` can be ahead of what visitors
+see. To check:
+
+1. **Footer version.** Compare the footer version on
+   https://bluecollar-systems.com/ (for example `v1.0.109`) with
+   [`VERSION`](VERSION) on `main`. A lower live number means the site is
+   behind. The number changes only when a manual `auto-release` run bumps it,
+   so a match alone does not prove the pages are the same.
+2. **Release metadata.** From an up-to-date checkout of `main`, run
+   `python tools/verify_deployed_metadata.py --expected repo-metadata.json --attempts 1`.
+   It passes only if the live `/repo-metadata.json` has exactly the bytes of
+   the file on `main` (same release tags, download links and `generated_at`)
+   and repository files such as `/README.md` answer 404. It only reads the site.
+3. **Page changes since the last deploy.** Find the commit the last
+   production run published (a manual run or a `product-release` dispatch),
+   then list what `main` has added since:
+
+   ```bash
+   gh run list -R BlueCollar-Systems/BlueCollar-Website --workflow website-ci.yml --event workflow_dispatch --limit 5 --json databaseId,headSha,createdAt
+   gh run list -R BlueCollar-Systems/BlueCollar-Website --workflow website-ci.yml --event repository_dispatch --limit 20 --json databaseId,headSha,createdAt,displayTitle
+   gh run view <RUN_ID> -R BlueCollar-Systems/BlueCollar-Website   # deploy-pages must show success, not skipped
+   git log --oneline <headSha>..origin/main
+   ```
+
+   The bot's `chore: stamp release badges` commit right after that SHA belongs
+   to the same deploy. `tools/build_site.py` publishes only its allowlist, so
+   commits that touch only `.md` files, `docs/`, `tests/`, `tools/` or
+   `.github/` never reach the live site themselves. A change to the file list
+   in `tools/build_site.py` or to the badge stamping in
+   `tools/sync_repo_metadata.py` changes what the next deploy publishes, so
+   count it as a site change. Anything else listed is on `main` but not live.
+   `tools/check_metadata_only_deploy.py` does this comparison by building
+   both commits (see
+   [Release deploys change only download metadata](#release-deploys-change-only-download-metadata)).
+
+A product release made after the last production run reaches the live site
+with its own release deploy, or with the next manual production run if that
+deploy was refused. A shape pack release always needs the manual run.
+
 ## Android test-access status
 
 The Google Group is an access/coordination route, not an app download. The

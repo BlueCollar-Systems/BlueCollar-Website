@@ -1,0 +1,596 @@
+// Report Doctor parts list (T18) and LibreCAD text advice. Runs under plain
+// `node tests/report_doctor_parts_list_test.js` with a small DOM stub built
+// from report-doctor.html, so it also runs where the real-browser tests
+// cannot (the same checks run in Chrome in report_doctor_browser_test.js and
+// report_doctor_librecad_advice_test.js).
+//
+// Contract under test:
+//  1. The parts list section is outside #doctor-output, so a parts file
+//     shows without an import report (file picker, paste + blur, and the
+//     Analyze button with an empty report box). No "Tags tab" wording.
+//  2. A real importer parts file lists every row with no tag link and says
+//     why; a file with no rows says so (with the file's own note).
+//  3. Audit 7b: rows that carry a part_id get exactly the tag URL that the
+//     published part record uses, and the part page accepts every ID that
+//     Report Doctor links.
+//  4. LibreCAD users are never told to use Labels or 3D Text for editable
+//     words; they are told about "Editable text (LibreCAD font)" unless the
+//     report says they already chose it. Other hosts keep their advice.
+//
+// The two fixtures in tests/fixtures/report_doctor were written by the
+// importers' own writer (pdfcadcore/parts_bootstrap.py
+// write_parts_bootstrap_sidecar, FreeCAD main 92ba7b6) from fictional
+// bill-of-material text (job D042, marks EX###).
+'use strict';
+
+var assert = require('assert');
+var fs = require('fs');
+var path = require('path');
+var vm = require('vm');
+
+var ROOT = path.join(__dirname, '..');
+var html = fs.readFileSync(path.join(ROOT, 'report-doctor.html'), 'utf8');
+var script = fs.readFileSync(path.join(ROOT, 'report-doctor.js'), 'utf8');
+
+function fixture(name) {
+  return fs.readFileSync(path.join(__dirname, 'fixtures', 'report_doctor', name), 'utf8');
+}
+
+// ---------------------------------------------------------------------------
+// 1a. Page structure and wording
+// ---------------------------------------------------------------------------
+
+// The end of the element that starts at `start`, counting nested tags of the
+// same name.
+function elementEnd(source, start, tagName) {
+  var pattern = new RegExp('<(/?)' + tagName + '\\b[^>]*>', 'gi');
+  pattern.lastIndex = start;
+  var depth = 0;
+  var match;
+  while ((match = pattern.exec(source))) {
+    depth += match[1] ? -1 : 1;
+    if (depth === 0) return pattern.lastIndex;
+  }
+  throw new Error('unclosed <' + tagName + '> at ' + start);
+}
+
+var outputStart = html.indexOf('<section id="doctor-output"');
+var tagsStart = html.indexOf('id="doctor-tags-section"');
+assert.ok(outputStart >= 0, '#doctor-output section must exist');
+assert.ok(tagsStart >= 0, '#doctor-tags-section must exist');
+var outputEnd = elementEnd(html, outputStart, 'section');
+assert.ok(
+  tagsStart < outputStart || tagsStart > outputEnd,
+  'the parts list must not sit inside #doctor-output, or it stays hidden until a report is analyzed'
+);
+assert.ok(!/Tags tab/i.test(html) && !/Tags tab/i.test(script), 'there is no Tags tab; the wording must not mention one');
+// Screen readers announce the one-line summary, not the whole parts table.
+var tagsOpenTag = html.slice(html.lastIndexOf('<', tagsStart), html.indexOf('>', tagsStart) + 1);
+assert.ok(!/aria-live/.test(tagsOpenTag), '#doctor-tags-section must not be a live region: ' + tagsOpenTag);
+var summaryTag = html.match(/<p id="doctor-tags-summary"[^>]*>/);
+assert.ok(summaryTag && /\saria-live="polite"/.test(summaryTag[0]), '#doctor-tags-summary must carry aria-live="polite"');
+var tagsEnd = elementEnd(html, html.lastIndexOf('<', tagsStart), 'section');
+assert.strictEqual((html.slice(tagsStart, tagsEnd).match(/aria-live/g) || []).length, 1,
+  'only #doctor-tags-summary is live inside the parts list');
+var bootstrapLabel = html.match(/<label for="bootstrap-file"[^>]*>([^<]*)<\/label>/);
+assert.ok(bootstrapLabel && /parts list/i.test(bootstrapLabel[1]) && /parts_bootstrap\.json/.test(bootstrapLabel[1]),
+  'the parts picker label must name the parts list and the file');
+assert.ok(/<label for="bootstrap-json"/.test(html), 'the parts paste box needs its own label');
+
+// ---------------------------------------------------------------------------
+// DOM stub built from the page (ids and their starting classes)
+// ---------------------------------------------------------------------------
+
+var innerHTMLWrites = [];
+
+function StubElement(tagName, className) {
+  this.tagName = String(tagName || 'div').toUpperCase();
+  this.childNodes = [];
+  this.attributes = {};
+  this.listeners = {};
+  this.className = className || '';
+  this._textContent = '';
+  this.value = '';
+  this.href = '';
+  this.files = [];
+  this.style = {};
+  var classes = new Set(String(className || '').split(/\s+/).filter(Boolean));
+  this.classList = {
+    add: classes.add.bind(classes),
+    remove: classes.delete.bind(classes),
+    contains: classes.has.bind(classes)
+  };
+}
+Object.defineProperty(StubElement.prototype, 'innerHTML', {
+  get: function() { return ''; },
+  set: function(v) { innerHTMLWrites.push(String(v)); }
+});
+Object.defineProperty(StubElement.prototype, 'textContent', {
+  get: function() {
+    return this._textContent + this.childNodes.map(function(c) { return c.textContent; }).join(' ');
+  },
+  set: function(v) { this._textContent = String(v); this.childNodes = []; }
+});
+Object.defineProperty(StubElement.prototype, 'firstChild', {
+  get: function() { return this.childNodes.length ? this.childNodes[0] : null; }
+});
+StubElement.prototype.appendChild = function(child) { this.childNodes.push(child); return child; };
+StubElement.prototype.removeChild = function(child) {
+  var i = this.childNodes.indexOf(child);
+  if (i >= 0) this.childNodes.splice(i, 1);
+  return child;
+};
+StubElement.prototype.insertBefore = function(node, ref) {
+  var i = ref ? this.childNodes.indexOf(ref) : -1;
+  if (i >= 0) this.childNodes.splice(i, 0, node); else this.childNodes.unshift(node);
+  return node;
+};
+StubElement.prototype.setAttribute = function(name, value) { this.attributes[name] = String(value); };
+StubElement.prototype.getAttribute = function(name) {
+  return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null;
+};
+StubElement.prototype.addEventListener = function(type, fn) {
+  (this.listeners[type] = this.listeners[type] || []).push(fn);
+};
+StubElement.prototype.dispatch = function(type) {
+  (this.listeners[type] || []).forEach(function(fn) { fn.call(this); }, this);
+};
+StubElement.prototype.querySelectorAll = function(selector) {
+  var cls = selector.slice(1);
+  var out = [];
+  (function walk(node) {
+    node.childNodes.forEach(function(child) {
+      if (String(child.className || '').split(/\s+/).indexOf(cls) >= 0) out.push(child);
+      walk(child);
+    });
+  })(this);
+  return out;
+};
+
+function loadPage() {
+  var elements = {};
+  var tagPattern = /<([A-Za-z][\w-]*)\b([^>]*)>/g;
+  var match;
+  while ((match = tagPattern.exec(html))) {
+    var id = match[2].match(/\bid="([^"]+)"/);
+    if (!id) continue;
+    var cls = match[2].match(/\bclass="([^"]*)"/);
+    elements[id[1]] = new StubElement(match[1], cls ? cls[1] : '');
+  }
+  function FileReader() {}
+  FileReader.prototype.readAsText = function(file) {
+    this.result = file.contents;
+    this.onload();
+  };
+  vm.runInNewContext(script, {
+    document: {
+      getElementById: function(id) { return elements[id] || null; },
+      createElement: function(tag) { return new StubElement(tag); }
+    },
+    navigator: {},
+    FileReader: FileReader,
+    setTimeout: setTimeout,
+    console: console
+  }, { filename: 'report-doctor.js' });
+  return elements;
+}
+
+function visible(el) { return !el.classList.contains('hidden'); }
+
+function tableRows(elements) {
+  var table = elements['doctor-tags-table'].childNodes[0];
+  if (!table) return [];
+  return table.childNodes[1].childNodes.map(function(tr) {
+    return tr.childNodes.map(function(td) { return td.textContent; });
+  });
+}
+
+var IMPORTER_PARTS = fixture('parts_bootstrap_importer.json');
+var IMPORTER_EMPTY = fixture('parts_bootstrap_importer_no_rows.json');
+var EXPECTED_ROWS = [
+  ['EX101', 'W12X26', '2', '— (no part_id in sidecar)', ''],
+  ['EX102', 'L3X3X1/4', '4', '— (no part_id in sidecar)', ''],
+  ['EX103', 'PL1/2"X8', '1', '— (no part_id in sidecar)', '']
+];
+var NO_LINK_SUMMARY = '3 parts listed. No row carries a part_id, so there are no tag links.';
+
+// ---------------------------------------------------------------------------
+// 1b/2. A real importer parts file on its own
+// ---------------------------------------------------------------------------
+
+// File picker, no report.
+var page = loadPage();
+assert.ok(!visible(page['doctor-tags-section']) && !visible(page['doctor-output']), 'both result areas start hidden');
+page['bootstrap-file'].files = [{ contents: IMPORTER_PARTS }];
+page['bootstrap-file'].dispatch('change');
+assert.strictEqual(page['bootstrap-json'].value, IMPORTER_PARTS);
+assert.strictEqual(page['doctor-error'].textContent, '');
+assert.ok(visible(page['doctor-tags-section']), 'a parts file alone must show the parts list');
+assert.ok(!visible(page['doctor-output']), 'a parts file alone has no report diagnosis');
+assert.deepStrictEqual(tableRows(page), EXPECTED_ROWS);
+assert.strictEqual(page['doctor-tags-summary'].textContent, NO_LINK_SUMMARY);
+assert.strictEqual(page['doctor-tags-table'].querySelectorAll('.copy-tag').length, 0);
+
+// Analyze with an empty report box lists the parts again; no error.
+page['analyze-report'].dispatch('click');
+assert.strictEqual(page['doctor-error'].textContent, '');
+assert.ok(visible(page['doctor-tags-section']));
+assert.ok(!visible(page['doctor-output']));
+assert.deepStrictEqual(tableRows(page), EXPECTED_ROWS);
+assert.strictEqual(page['doctor-tags-table'].childNodes.length, 1, 'the table is replaced, not appended');
+
+// Paste + blur, no report.
+page = loadPage();
+page['bootstrap-json'].value = IMPORTER_PARTS;
+page['bootstrap-json'].dispatch('blur');
+assert.ok(visible(page['doctor-tags-section']));
+assert.deepStrictEqual(tableRows(page), EXPECTED_ROWS);
+
+// With a report too: the diagnosis and the parts list both show.
+page['report-json'].value = JSON.stringify({
+  schema: 'bcs.import_report/1.1', host: { app: 'freecad' }, result: { pages: 1, primitives: 7 },
+  extra: { text_mode: 'labels', result_status: 'success' }
+});
+page['analyze-report'].dispatch('click');
+assert.strictEqual(page['doctor-error'].textContent, '');
+assert.ok(visible(page['doctor-output']));
+assert.ok(visible(page['doctor-tags-section']));
+assert.deepStrictEqual(tableRows(page), EXPECTED_ROWS);
+
+// Clear hides everything again.
+page['clear-report'].dispatch('click');
+assert.ok(!visible(page['doctor-tags-section']) && !visible(page['doctor-output']));
+assert.strictEqual(page['doctor-tags-summary'].textContent, '');
+assert.strictEqual(page['doctor-tags-table'].childNodes.length, 0);
+
+// Nothing loaded at all: Analyze explains what to load.
+page['analyze-report'].dispatch('click');
+assert.ok(/parts file/i.test(page['doctor-error'].textContent), 'the empty-request message must mention the parts file option');
+assert.ok(!visible(page['doctor-tags-section']));
+
+// An importer file with no rows says so, with the file's own note.
+page = loadPage();
+page['bootstrap-json'].value = IMPORTER_EMPTY;
+page['analyze-report'].dispatch('click');
+assert.strictEqual(page['doctor-error'].textContent, '');
+assert.ok(visible(page['doctor-tags-section']));
+assert.strictEqual(page['doctor-tags-table'].childNodes.length, 0);
+assert.strictEqual(page['doctor-tags-summary'].textContent,
+  'This parts file lists no parts (note in the file: no BOM rows detected).');
+
+// A JSON object with no rows, parts or candidates is not a parts file.
+page['bootstrap-json'].value = '{"schema":"bcs.parts_bootstrap/1.0","note":"x"}';
+page['analyze-report'].dispatch('click');
+assert.ok(/rows, parts, or candidates/.test(page['doctor-error'].textContent));
+assert.ok(!visible(page['doctor-tags-section']));
+
+// ---------------------------------------------------------------------------
+// 3. Audit 7b: tag links for rows that carry a part_id
+// ---------------------------------------------------------------------------
+
+var demoRecord = JSON.parse(fs.readFileSync(path.join(ROOT, 'p-records', 'demo-part.json'), 'utf8'));
+var withIds = JSON.parse(IMPORTER_PARTS);
+var UUID = '0f8fad5b-d9cb-469f-a165-70867728950e';
+withIds.rows[0].part_id = demoRecord.part_id;
+withIds.rows[1].part_id = UUID;
+page = loadPage();
+page['bootstrap-json'].value = JSON.stringify(withIds);
+page['analyze-report'].dispatch('click');
+var linkedRows = tableRows(page);
+assert.strictEqual(linkedRows[0][3], demoRecord.tag_url,
+  'the tag link must be exactly the URL the published part record uses');
+assert.strictEqual(linkedRows[1][3], 'https://bluecollar-systems.com/p/' + UUID);
+assert.strictEqual(linkedRows[2][3], '— (no part_id in sidecar)');
+var copyButtons = page['doctor-tags-table'].querySelectorAll('.copy-tag');
+assert.deepStrictEqual(copyButtons.map(function(b) { return b.getAttribute('data-url'); }),
+  [demoRecord.tag_url, 'https://bluecollar-systems.com/p/' + UUID]);
+assert.strictEqual(copyButtons[0].getAttribute('aria-label'), 'Copy tag URL for EX101');
+assert.strictEqual(page['doctor-tags-summary'].textContent,
+  '3 parts listed. 2 of 3 have a tag link; the others carry no valid part_id.');
+withIds.rows[2].part_id = 'EX103.rev-2_b';
+page['bootstrap-json'].value = JSON.stringify(withIds);
+page['bootstrap-json'].dispatch('blur');
+assert.strictEqual(page['doctor-tags-summary'].textContent, '3 parts listed. Every part has a tag link.');
+assert.strictEqual(innerHTMLWrites.length, 0, 'the parts list must never use innerHTML');
+
+// Every ID Report Doctor links must be one the part page (/p/<id>) accepts,
+// so a copied tag link never lands on "Invalid or missing Part Tracking ID".
+var resolver = fs.readFileSync(path.join(ROOT, 'part-resolver.js'), 'utf8');
+var resolverPattern = resolver.match(/if \(!id \|\| !(\/\^[^\n]*?\$\/)\.test\(id\)\)/);
+assert.ok(resolverPattern, 'could not find the part page ID check in part-resolver.js');
+var accepts = vm.runInNewContext(resolverPattern[1]);
+[demoRecord.part_id, UUID, 'EX103.rev-2_b', 'A', 'a'.repeat(64)].forEach(function(id) {
+  var url = 'https://bluecollar-systems.com/p/' + encodeURIComponent(id);
+  var decoded = decodeURIComponent(url.split('/p/')[1]);
+  assert.ok(accepts.test(decoded), 'the part page must accept linked ID ' + id);
+});
+
+// ---------------------------------------------------------------------------
+// 4. LibreCAD text advice
+// ---------------------------------------------------------------------------
+
+function report(host, textMode, result, extra) {
+  return {
+    schema: 'bcs.import_report/1.1',
+    host: { app: host, version: '1.0.108' },
+    result: Object.assign({ pages: 1, geometry: 120 }, result || {}),
+    extra: Object.assign({ text_mode: textMode, requested_mode: 'auto', resolved_mode: 'vector' }, extra || {})
+  };
+}
+
+var EDITABLE = 'Editable text (LibreCAD font)';
+// Advice that is wrong for LibreCAD, where Labels and 3D Text come in as the
+// same outlines as Exact look and the window has no Raster/Hybrid choice.
+// --librecad-exe exists only on lcpdf-import, which has no Editable text
+// option; pdf2dxf.py (the command line with --editable-text) rejects it.
+var LIBRECAD_NEVER = [
+  'Use Labels', 'Try Labels', 'compare against Labels mode', 'Labels for editable',
+  'once your LibreCAD importer has it', 'Until that release', 'Raster/Hybrid',
+  'editable labels where the host can support it', '--librecad-exe'
+];
+
+// Per-word delivery records shaped like the ones LibreCAD importer main
+// e4f089b wrote for pdf2dxf.py --editable-text on a fictional 2-line PDF with
+// embedded Arial (TrueType): the native Text attempt is refused and the word
+// comes in as Glyphs. Evidence values and reasons are the measured ones.
+var NOT_FOUND = 'no resolved LibreCAD executable is available to bind the unicode.lff asset';
+var NO_CFF_PEN = 'native text has no source-bound positive CFF pen: source has no usable CFF dominant-stem metric';
+var NO_ROMANS = 'native Romans has no safe linear layout';
+function nativeTextRecords(evidence, reasons) {
+  return {
+    text_representation_delivery: {
+      requested_representation: 'text',
+      items: reasons.map(function(reason, i) {
+        return {
+          source_id: 'text_span:1:' + (i + 1), requested_representation: 'text', final_representation: 'glyphs',
+          verified: true, degraded: false, dropped: false,
+          attempts: [
+            { attempted_representation: 'text', strategy: 'native_dxf_text', outcome: 'impossible',
+              reason: '_RepresentationImpossible: ' + reason, evidence: evidence },
+            { attempted_representation: 'glyphs', strategy: 'entity_text2path', outcome: 'verified', reason: '', evidence: {} }
+          ]
+        };
+      })
+    }
+  };
+}
+function zeroEditable(records, count) {
+  return Object.assign({ editable_text: { chosen: true, item_count: count === undefined ? 0 : count } }, records || {});
+}
+var FONT_FOUND = nativeTextRecords({
+  librecad_lff_asset_verified: true, librecad_parent_installation_verified: true,
+  librecad_lff_resolution_reason: 'verified LibreCAD Font 1 romans.lff asset'
+}, [NO_CFF_PEN, NO_ROMANS, NO_CFF_PEN]);
+var FONT_NOT_FOUND = nativeTextRecords({
+  librecad_lff_asset_verified: false, librecad_parent_installation_verified: false,
+  librecad_lff_resolution_reason: NOT_FOUND
+}, [NOT_FOUND, NOT_FOUND]);
+var INSTALL_ADVICE = ['Install LibreCAD', 'Locate LibreCAD...'];
+
+var CASES = [
+  { name: 'LibreCAD Exact look (main: glyphs)', report: report('librecad', 'glyphs'), actions: [EDITABLE, 'Exact look'] },
+  { name: 'LibreCAD Exact look (v1.0.108: text)', report: report('librecad', 'text'), actions: [EDITABLE], findings: ['Exact look'] },
+  { name: 'LibreCAD raw outlines', report: report('librecad', 'geometry'), actions: [EDITABLE] },
+  { name: 'LibreCAD Labels', report: report('librecad', 'labels', { glyphs: 40 }), actions: [EDITABLE], findings: ['DXF has no label entity'], status: 'Healthy' },
+  { name: 'LibreCAD 3D Text', report: report('librecad', '3d_text'), actions: [EDITABLE], findings: ['LibreCAD is 2D-only'] },
+  { name: 'LibreCAD dense page', report: report('librecad', 'glyphs', { glyphs: 6000 }), actions: [EDITABLE] },
+  {
+    name: 'LibreCAD Editable text chosen',
+    report: report('librecad', 'text', null, { editable_text: { chosen: true, item_count: 12, font: 'LibreCAD unicode' } }),
+    findings: ['"Editable text (LibreCAD font)" was chosen: 12 text item(s) came in as editable text'],
+    actionsNot: [EDITABLE]
+  },
+  {
+    // 0 editable words gets its own message. Install/locate is the advice
+    // only when the per-item records say LibreCAD was not found; pdf2dxf.py
+    // users set BCS_LIBRECAD_EXECUTABLE (LibreCAD INSTALL.md).
+    name: 'LibreCAD Editable text chosen, 0 items, LibreCAD not found',
+    report: report('librecad', 'text', null, zeroEditable(FONT_NOT_FOUND)),
+    findings: ['"Editable text (LibreCAD font)" was chosen, but no text came in as editable text', 'LibreCAD was not found', "LibreCAD's font was not found"],
+    findingsNot: ['0 text item(s)', 'letter shapes differ from the PDF'],
+    actions: INSTALL_ADVICE.concat(['pdf2dxf.py', 'BCS_LIBRECAD_EXECUTABLE', 'full path of LibreCAD.exe', 'import the PDF again'])
+  },
+  {
+    name: 'LibreCAD Editable text chosen, 0 items as a string, not-found reason only',
+    report: report('librecad', 'text', null, zeroEditable(nativeTextRecords({ librecad_lff_asset_verified: 'false' }, [NOT_FOUND]), '0')),
+    findings: ['was chosen, but no text came in as editable text', 'LibreCAD was not found'],
+    findingsNot: ['0 text item(s)'],
+    actions: INSTALL_ADVICE.concat(['BCS_LIBRECAD_EXECUTABLE'])
+  },
+  {
+    // Measured: LibreCAD found, embedded Arial, 0 of 2 words. Repeated
+    // reasons are listed once, without the Python exception name.
+    name: 'LibreCAD Editable text chosen, 0 items, LibreCAD found',
+    report: report('librecad', 'text', null, zeroEditable(FONT_FOUND)),
+    findings: ["LibreCAD's font was found", 'Reasons in the import report: "' + NO_CFF_PEN + '"; "' + NO_ROMANS + '".'],
+    findingsNot: ['0 text item(s)', 'letter shapes differ from the PDF', 'not found', 'likely reason', '_RepresentationImpossible'],
+    actions: ['ordinary TrueType', 'CID-keyed CFF', 'symbol font', 'R12', 'reason for each word'],
+    actionsNot: INSTALL_ADVICE.concat(['BCS_LIBRECAD_EXECUTABLE'])
+  },
+  {
+    // A found font wins over a not-found attempt elsewhere in the report.
+    name: 'LibreCAD Editable text chosen, 0 items, found and not-found attempts',
+    report: report('librecad', 'text', null, zeroEditable({
+      text_representation_delivery: {
+        items: FONT_NOT_FOUND.text_representation_delivery.items.concat(FONT_FOUND.text_representation_delivery.items)
+      }
+    })),
+    findings: ["LibreCAD's font was found"],
+    findingsNot: ['not found'],
+    actionsNot: INSTALL_ADVICE
+  },
+  {
+    name: 'LibreCAD Editable text chosen, 0 items, LibreCAD found but its font unusable',
+    report: report('librecad', 'text', null, zeroEditable(nativeTextRecords({
+      librecad_lff_asset_verified: false, librecad_parent_installation_verified: true
+    }, ['file is not a parseable LibreCAD Font 1 asset']))),
+    findings: ['LibreCAD was found, but its font could not be used', '"file is not a parseable LibreCAD Font 1 asset"'],
+    findingsNot: ['not found'],
+    actions: ['Repair or reinstall LibreCAD', 'import the PDF again'],
+    actionsNot: INSTALL_ADVICE
+  },
+  {
+    name: 'LibreCAD Editable text chosen, 0 items, no per-item records',
+    report: report('librecad', 'text', null, zeroEditable()),
+    findings: ['was chosen, but no text came in as editable text', 'does not record why'],
+    findingsNot: ['0 text item(s)', 'not found', 'likely reason'],
+    actions: ['If the importer said LibreCAD was not found', 'Locate LibreCAD...', 'BCS_LIBRECAD_EXECUTABLE', 'ordinary TrueType']
+  },
+  {
+    // Hostile or odd records: never thrown on, reasons capped at three.
+    name: 'LibreCAD Editable text chosen, 0 items, malformed records',
+    report: report('librecad', 'text', null, zeroEditable({
+      text_representation_delivery: {
+        items: [null, 7, { attempts: 'x' }, { attempts: [null, { attempted_representation: 'text', reason: 42 }] }]
+          .concat(nativeTextRecords({ librecad_lff_asset_verified: true }, ['r1', 'r2', 'r3', 'r4', 'r5']).text_representation_delivery.items)
+      }
+    })),
+    findings: ['"r1"; "r2"; "r3" (and 2 more).'],
+    findingsNot: ['r4']
+  },
+  {
+    name: 'LibreCAD Raster result',
+    report: report('librecad', 'glyphs', null, { resolved_mode: 'raster' }),
+    actions: ['--mode vector', EDITABLE],
+    actionsNot: ['retry with Auto or Vector']
+  },
+  // Other hosts keep their advice.
+  { name: 'SketchUp glyphs', report: report('sketchup', 'glyphs'), actions: ['Use Labels or 3D Text if the downstream workflow needs editable text.'], allNot: ['LibreCAD'] },
+  { name: 'SketchUp 3D Text', report: report('sketchup', '3d_text'), actions: ['compare against Labels mode'], allNot: ['LibreCAD'] },
+  { name: 'FreeCAD dense page', report: report('freecad', 'glyphs', { glyphs: 6000 }), actions: ['Try Labels for editable text'], allNot: ['LibreCAD'] },
+  { name: 'Blender Labels with outlines', report: report('blender', 'labels', { glyphs: 40 }), findings: ['even though Labels mode was requested'], status: 'Review' }
+];
+
+// Final outcomes are independent of a failed native Text attempt. These
+// records exercise the actual e4f089b exporter contract, including its
+// unverified/degraded TEXT and dropped-item terminal paths.
+function finalTextRecords(mode, changes, evidence, reason) {
+  var records = nativeTextRecords(evidence || {
+    librecad_lff_asset_verified: true, librecad_parent_installation_verified: true
+  }, [reason || NO_CFF_PEN]);
+  Object.assign(records.text_representation_delivery.items[0], {
+    final_representation: mode, verified: true, degraded: false, dropped: false
+  }, changes || {});
+  return records;
+}
+var ZERO_FALSE_DELIVERY_CLAIMS = [
+  'every word comes in as exact outlines', 'every word came in as exact outlines',
+  'each word failed another check and came in as exact outlines',
+  "Those words keep the PDF's exact look", 'so that was not the cause',
+  'installing or locating LibreCAD will not change that',
+  'a Labels request comes in as exact outlines', 'is delivered as flat 2D text outlines'
+];
+var ROMANS_UNAVAILABLE = 'native Unicode arcs cannot be stretched safely; executable-bound Romans is unavailable';
+var HOSTILE_REASON = '<img src=x onerror="window.__doctorReasonXss=1">';
+var ZERO_DELIVERY_CASES = [
+  {
+    name: 'LibreCAD zero editable, recorded raw outline geometry',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('geometry'))),
+    findings: ['1 raw outline geometry item(s)', '1 item(s) reported verified']
+  },
+  {
+    name: 'LibreCAD zero editable, recorded verified glyph outlines',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('glyphs'))),
+    findings: ['Recorded final text delivery: 1 glyph outline item(s)', '1 item(s) reported verified', '0 degraded; 0 dropped']
+  },
+  {
+    name: 'LibreCAD zero editable, recorded verified image',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('raster'))),
+    findings: ['Recorded final text delivery: 1 image item(s)', '1 item(s) reported verified'],
+    findingsNot: ['glyph outline item(s)']
+  },
+  {
+    name: 'LibreCAD zero editable, visible degraded text',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('text', {verified: false, degraded: true}))),
+    findings: ['1 native text item(s)', '0 item(s) reported verified', '1 unverified or without usable verification', '1 degraded; 0 dropped'],
+    actions: ['Review the final representation, verification'], status: 'Review'
+  },
+  {
+    name: 'LibreCAD zero editable, dropped item retains incomplete status',
+    report: report('librecad', 'text', null, Object.assign(zeroEditable(finalTextRecords(null, {verified: false, degraded: true, dropped: true})), {result_status: 'incomplete'})),
+    findings: ['1 item(s) with no final representation', '1 degraded; 1 dropped', 'Import result: Incomplete'],
+    actions: ['does not establish a completed import'], status: 'Incomplete'
+  },
+  {
+    name: 'LibreCAD zero editable, unknown final type cannot be counted verified',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('future-representation'))),
+    findings: ['1 item(s) with an unknown final representation', '0 item(s) reported verified', '1 unverified or without usable verification'], status: 'Review'
+  },
+  {
+    name: 'LibreCAD zero editable, mixed outline and image outcomes',
+    report: report('librecad', 'text', null, zeroEditable({text_representation_delivery: {items:
+      finalTextRecords('glyphs').text_representation_delivery.items.concat(finalTextRecords('raster').text_representation_delivery.items)
+    }})),
+    findings: ['1 glyph outline item(s), 1 image item(s)', '2 item(s) reported verified']
+  },
+  {
+    name: 'LibreCAD zero editable Labels cannot later promise outlines for an image',
+    report: report('librecad', 'labels', null, zeroEditable(finalTextRecords('raster'))),
+    findings: ['1 image item(s)', 'DXF has no label entity', 'Check the recorded final delivery']
+  },
+  {
+    name: 'LibreCAD zero editable 3D request cannot later promise exact flat outlines',
+    report: report('librecad', '3d_text', null, zeroEditable(finalTextRecords('raster'))),
+    findings: ['1 image item(s)', 'LibreCAD is 2D-only', 'inspect the recorded final delivery']
+  },
+  {
+    name: 'LibreCAD verified Unicode but executable-bound Romans unavailable',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('glyphs', {}, null, ROMANS_UNAVAILABLE))),
+    findings: ['report says that font is unavailable', 'verified Unicode font does not prove', ROMANS_UNAVAILABLE],
+    actions: ['Repair or reinstall the selected LibreCAD installation', 'executable-bound Romans font is available', 'import the PDF again'],
+    actionsNot: ['installing or locating LibreCAD will not change that'], status: 'Review', title: 'LibreCAD Romans Font Unavailable'
+  },
+  {
+    name: 'LibreCAD font binding override failure gets configuration advice',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('glyphs', {}, {
+      librecad_lff_asset_verified: false, librecad_parent_installation_verified: true
+    }, 'configured LibreCAD unicode.lff is not bound to the resolved LibreCAD executable installation'))),
+    actions: ['correct any BCS_LIBRECAD_UNICODE_LFF override', 'if an installation font is missing or damaged'],
+    actionsNot: ['locating it again will not help']
+  },
+  {
+    name: 'LibreCAD per-item reason remains literal text',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('glyphs', {}, null, HOSTILE_REASON))),
+    findings: [HOSTILE_REASON], reasonSafety: true
+  }
+];
+
+ZERO_DELIVERY_CASES.forEach(function(c) { CASES.push(c); });
+CASES.forEach(function(c) {
+  var chosen=c.report.extra.editable_text;
+  if(chosen && Number(chosen.item_count)===0)c.allNot=(c.allNot || []).concat(ZERO_FALSE_DELIVERY_CLAIMS);
+});
+
+page = loadPage();
+CASES.forEach(function(c) {
+  page['report-json'].value = JSON.stringify(c.report);
+  page['analyze-report'].dispatch('click');
+  assert.strictEqual(page['doctor-error'].textContent, '', c.name + ': report was rejected');
+  var actions = page['doctor-actions'].textContent;
+  var findings = page['doctor-findings'].textContent;
+  var isLibreCAD = c.report.host.app === 'librecad';
+  (c.actions || []).forEach(function(s) {
+    assert.ok(actions.indexOf(s) >= 0, c.name + ': actions must mention "' + s + '"; got: ' + actions);
+  });
+  (c.findings || []).forEach(function(s) {
+    assert.ok(findings.indexOf(s) >= 0, c.name + ': findings must mention "' + s + '"; got: ' + findings);
+  });
+  (c.findingsNot || []).forEach(function(s) {
+    assert.ok(findings.indexOf(s) < 0, c.name + ': findings must not say "' + s + '"; got: ' + findings);
+  });
+  (c.actionsNot || []).forEach(function(s) {
+    assert.ok(actions.indexOf(s) < 0, c.name + ': actions must not say "' + s + '"');
+  });
+  (isLibreCAD ? LIBRECAD_NEVER : []).concat(c.allNot || []).forEach(function(s) {
+    assert.ok((actions + findings).indexOf(s) < 0, c.name + ': must not say "' + s + '"');
+  });
+  if (c.status) assert.strictEqual(page['doctor-status'].textContent, c.status, c.name + ': status');
+  if (c.title) assert.strictEqual(page['doctor-title'].textContent, c.title, c.name + ': actionable headline');
+  var editableMentions = actions.split(EDITABLE).length - 1;
+  assert.ok(editableMentions <= 1, c.name + ': the Editable text advice must be given at most once');
+});
+
+assert.strictEqual(innerHTMLWrites.length, 0, 'parts and per-item advice must remain textContent-only');
+
+console.log('PASS report_doctor_parts_list_test: parts list without a report (picker, paste, Analyze), importer files with and without rows, ' +
+  'part_id tag links match the published record, ' + CASES.length + ' text-advice cases');

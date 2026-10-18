@@ -175,6 +175,7 @@ jobs:
           node tests/report_doctor_controls_test.js
           node tests/report_doctor_browser_test.js
           node tests/report_doctor_librecad_advice_test.js
+          node tests/report_doctor_parts_list_test.js
           node tests/report_doctor_xss_test.js
           node tests/site_copy_contract_test.js
           node tests/privacy_policy_contract_test.js
