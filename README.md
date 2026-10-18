@@ -59,17 +59,23 @@ Run `node tests/support_links_test.js` to check both channels and rejected URLs.
 Deployed to **Cloudflare Pages** (project `bluecollar-website`) via GitHub Actions workflow [`.github/workflows/website-ci.yml`](.github/workflows/website-ci.yml).
 
 - Pushes to `main` run `website-ci`.
-- `static-checks` must pass before `deploy-pages` runs. Production deployment requires a manual `website-ci` run on `main` with `deploy_production=true`; its default is validation only.
-- `deploy-pages` syncs and validates release metadata, builds `_site/` with `tools/build_site.py` (public files only), publishes that folder with Wrangler, then verifies that the public domain serves the exact new metadata bytes and that repository files such as `/README.md` answer 404, then requests every live page and on-site link, before committing stamped badges back to `main`.
-- A manual `auto-release` run with `publish_release=true` bumps `VERSION` and publishes a GitHub Release snapshot zip. Its default builds an inspection artifact without publishing.
-- Pushes, product dispatches and the six-hour schedule run validation. They do not deploy or publish releases.
+- `static-checks` must pass before `deploy-pages` runs. There are two ways to deploy production, both from `main` only:
+  - **Manual:** a `website-ci` run on `main` with `deploy_production=true`. Its default is validation only. This is the only way to publish page, style, script or other site changes.
+  - **Importer release:** an importer's `product-release` dispatch deploys by itself, so the version badges and Download buttons follow each release with no separate GO (owner decision O13). It is deploy-only: no website snapshot release. It may change nothing but the download metadata; see [Release deploys change only download metadata](#release-deploys-change-only-download-metadata).
+- `deploy-pages` syncs and validates release metadata, builds `_site/` with `tools/build_site.py` (public files only), publishes that folder with Wrangler, then verifies that the public domain serves the exact new metadata bytes and that repository files such as `/README.md` answer 404, then requests every live page and on-site link, before committing stamped badges back to `main`. Both ways in use these same steps and secrets.
+- A manual `auto-release` run with `publish_release=true` bumps `VERSION` and publishes a GitHub Release snapshot zip. Its default builds an inspection artifact without publishing. Dispatches never start it.
+- Pushes, pull requests, the six-hour schedule and the `product-update`, `steel-shapes-release` and `steel-shapes-update` dispatches run validation only. They do not deploy or publish releases.
+- A shape pack (`steel-v*`) release never deploys the site by itself; run the manual deploy after each one. See [Shape pack releases need a manual deploy](#shape-pack-releases-need-a-manual-deploy).
+- The daily [`release-drift`](.github/workflows/release-drift.yml) workflow turns red when the live downloads have lagged GitHub releases for more than 24 hours; see [Release drift check](#release-drift-check).
 
 See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for app launch/update steps (Google Play + iOS).
 
 ## What is live vs on main
 
-Merging to `main` does not change the live site. Only the manual production
-run above publishes, so `main` can be ahead of what visitors see. To check:
+Merging to `main` alone does not deploy. A manual production run publishes
+approved site changes; an importer `product-release` dispatch can publish only
+metadata and stamped badges after the guard above proves that no other public
+changes would ship. `main` can therefore be ahead of what visitors see. To check:
 
 1. **Footer version.** Compare the footer version on
    https://bluecollar-systems.com/ (for example `v1.0.109`) with
@@ -85,19 +91,25 @@ run above publishes, so `main` can be ahead of what visitors see. To check:
    production run published, then list what `main` has added since:
 
    ```bash
-   gh run list -R BlueCollar-Systems/BlueCollar-Website --workflow website-ci.yml --event workflow_dispatch --limit 5 --json databaseId,headSha,createdAt
+   gh run list -R BlueCollar-Systems/BlueCollar-Website --workflow website-ci.yml --limit 100 --json databaseId,headSha,createdAt,event
    gh run view <RUN_ID> -R BlueCollar-Systems/BlueCollar-Website   # deploy-pages must show success, not skipped
    git log --oneline <headSha>..origin/main
    ```
 
-   The bot's `chore: stamp release badges` commit right after that SHA belongs
-   to the same deploy. `tools/build_site.py` publishes only its allowlist, so
-   commits that touch only `.md` files, `docs/`, `tests/`, `tools/` or
-   `.github/` never reach the live site. Anything else listed is on `main` but
-   not live.
+   Select the newest run whose **Deploy to Cloudflare Pages** step succeeded,
+   whether it was manual or a `product-release` dispatch. Validation-only runs
+   do not count; extend the history if none appears in these 100 runs. The
+   bot's `chore: stamp release badges` commit belongs to that same deploy.
+   `tools/build_site.py` publishes only its allowlist. README, docs and tests
+   are not public files, but build or badge-stamping tool changes can alter
+   the public output, and workflow changes affect subsequent runs. The log
+   identifies commits to review; it does not by itself prove which public
+   bytes differ.
 
-A product release made after the last production run reaches the live site
-only with the next production run.
+A product release reaches the live site only after a successful production
+run. An importer release normally triggers that run automatically; the guard
+can hold it when undeployed site changes need an approved manual deployment.
+Shape-pack releases follow the manual-deploy route described below.
 
 ## Android test-access status
 
@@ -125,13 +137,134 @@ Tracked repos: `PDF-Importer-SketchUp`, `PDF-Importer-FreeCAD`, `PDF-Importer-Bl
 
 1. Importer repo `auto-release` (or manual `release: published`) creates/updates a GitHub Release.
 2. Same pipeline dispatches `repository_dispatch` to `BlueCollar-Systems/BlueCollar-Website` with event type `product-release` (or `product-update`).
-3. The dispatch runs validation. After product releases finish, manually run `website-ci` on `main` with `deploy_production=true`; `deploy-pages` re-runs `sync_repo_metadata.py` and deploys to Cloudflare Pages.
+3. A `product-release` dispatch runs every static check, then `deploy-pages` on `main`: it re-runs `sync_repo_metadata.py` (all four importers, not only the one that dispatched), validates the metadata, builds `_site/`, confirms the deploy changes only download metadata, and deploys to Cloudflare Pages. A `product-update` dispatch only validates.
 4. `tools/verify_deployed_metadata.py` requests the public metadata with cache bypass headers and a unique query, allowing up to 12 attempts with 10 seconds between attempts and a 15-second request timeout. It requires exact bytes, so stale tags, download URLs, source revisions, asset digests, or an older snapshot fail the job. Only a verified deployment commits the stamped badges back to `main`.
+5. The daily drift check reports any release the site still lacks after 24 hours.
 
-A product dispatch refreshes only its validation runner's working copy; it does
-not persist badges or deploy Pages. A local metadata-sync PR is optional: the
-manual production job always fetches fresh metadata itself. The separate
-website auto-release publishes a GitHub site snapshot and does not deploy Pages.
+Shape pack (`steel-v*`) releases do not take this path; see
+[Shape pack releases need a manual deploy](#shape-pack-releases-need-a-manual-deploy).
+
+Release and manual deploys share one concurrency group, so two deploys never
+overlap. A release deploy waits for a running deploy instead of cancelling it,
+and when several importers release at once, the newest waiting run replaces
+the older waiting ones; it reads every repo's latest release anyway. A manual
+`deploy_production=true` run still cancels a deploy in progress, as before.
+
+A local metadata-sync PR is optional: every production run fetches fresh
+metadata itself. The separate website auto-release publishes a GitHub site
+snapshot and does not deploy Pages; dispatches never start it.
+
+### Release deploys change only download metadata
+
+A `product-release` dispatch is a GO for new downloads, not for other website
+changes that were merged to `main` but never deployed. Before upload, the
+release deploy runs [`tools/check_metadata_only_deploy.py`](tools/check_metadata_only_deploy.py):
+
+1. It finds the commit that is live now: the head commit of the newest
+   `website-ci` run whose **Deploy to Cloudflare Pages** step succeeded. It
+   reads the Actions API with the run's own read-only token, back through the
+   newest 1,000 manual and 1,000 dispatch runs (the most the API lists), and
+   reads the jobs only of runs that could have deployed: manual runs and
+   `product-release` dispatches.
+2. It builds two public folders the same clean way, each in its own new
+   temporary worktree and its own new output folder: one from the commit about
+   to be deployed, one from the live commit. Both get the same freshly synced
+   `repo-metadata.json`, and each commit's **own** tools do the work, run with
+   that worktree as the working folder and only its own `tools/` importable:
+   its `tools/sync_repo_metadata.py` (`stamp_html_versions`) stamps the version
+   badges, and its `tools/build_site.py --source . --out <folder>` builds the
+   folder.
+3. It requires the `_site/` about to be uploaded to be byte-for-byte the clean
+   build of its own commit (so no uncommitted or leftover file rides along),
+   and that build to be byte-for-byte the live commit's build.
+
+So only `repo-metadata.json` and the badges stamped from it can differ from
+production. `repo-metadata.json` itself is written by `main`'s
+`sync_repo_metadata.py`, so a change to what the sync records ships with the
+next release deploy. Files that are never published (README, tests, most of
+`tools/`) can change freely. A change to how the public folder is made counts like a
+page change: if `main`'s `tools/build_site.py` publishes a different set of
+files, or `main`'s badge stamping writes different HTML, the two builds differ
+and the release deploy refuses. If `main` holds any public change that is not
+live yet (a page, a style, a script, a new or removed file, or such a tool
+change), the release deploy stops before upload, names the files and deploys
+nothing. Run `website-ci` manually on `main` with `deploy_production=true` once
+those changes are approved; it publishes them and the new downloads together.
+
+The guard also refuses, deploying nothing, whenever it cannot prove the
+result: the live commit is not found in that run history (the message says how
+many runs it read and why it stopped), cannot be fetched, or cannot be rebuilt
+with its own tools. A live commit older than `tools/build_site.py`, or one
+whose tools lack `stamp_html_versions()` or the `--source` and `--out` options,
+is refused with the note that a manual deploy is needed. Manual deploys skip
+this step. The guard compares built files only; a change to a workflow takes
+effect on its next run, deployed or not.
+
+To see what a release deploy would decide, commit your changes, then run
+`python tools/sync_repo_metadata.py`, `python tools/build_site.py` and
+`python tools/check_metadata_only_deploy.py` (add `--deployed-sha <commit>` to
+skip the Actions API lookup). It only reads; it never deploys. An uncommitted
+change to a public file makes `_site/` differ from the clean build of `HEAD`,
+and the guard refuses.
+
+### Shape pack releases need a manual deploy
+
+A shape pack (`steel-v*`) release never deploys the site by itself. The
+`steel-shapes-release.yml` workflow in the SketchUp and FreeCAD repos publishes
+the release with `GITHUB_TOKEN`, and GitHub starts no other workflow from an
+event made with that token, so `notify-website-deploy` does not run and no
+`product-release` dispatch reaches the website. (A `steel-shapes-release`
+dispatch only validates.) After every shape pack release, run `website-ci`
+manually on `main` with `deploy_production=true`. The next importer release
+deploy also picks the pack up, because every deploy reads all channels. If
+neither happens, the daily drift check turns red after 24 hours, and its issue
+says the shape pack needs the manual deploy.
+
+### Release drift check
+
+[`.github/workflows/release-drift.yml`](.github/workflows/release-drift.yml)
+runs once a day (13:41 UTC), and on demand from the Actions tab. It runs
+[`tools/check_release_drift.py`](tools/check_release_drift.py), which reads the
+live `https://bluecollar-systems.com/repo-metadata.json` (cache bypassed) and
+compares each importer with the release a deploy would publish now: the newest
+published, final `v*` release, and the newest `steel-v*` shape-pack release in
+the SketchUp and FreeCAD repos. The check reads that rule from
+`sync_repo_metadata.py` (`importer_tag_prefix()`; a tracked repo outside the
+PDF importers would follow GitHub's `/releases/latest` in both). A normal
+deploy clears available-release drift. If the last final release was withdrawn,
+the sync retains its previous snapshot: that needs an approved replacement or
+explicit retirement, rather than a metadata refresh alone. Drafts and
+prereleases never count as replacements.
+
+- **Behind for less than 24 hours:** a warning only; the job stays green. The
+  release deploy normally closes this within minutes. A shape pack waits for
+  the manual deploy (see above), and the report says so.
+- **Behind for more than 24 hours:** the job turns red and opens one issue,
+  *Live site downloads are behind GitHub releases*, or updates it if it is
+  already open. The age counts from the publish time of the first release the
+  site is missing, so a fresh release on top of an old gap does not reset it.
+- **A live release that GitHub no longer lists** (deleted, back to draft or
+  prerelease) turns red at once, because its Download link may be dead. This
+  includes withdrawal of the channel's last final release; a truly empty
+  channel with no advertised release remains in sync.
+- **In sync again:** the next run comments with the result and closes the issue.
+- **The check could not run** (site or GitHub API unreachable, or an error in
+  the tool itself): red with status 2, and the issue is not opened, edited or
+  closed. Only a finished check that found stale downloads (exit 1, with the
+  stale marker in its report) can open the issue, so a crash never reads as
+  drift.
+
+For available-release drift, the fix is the manual `website-ci` run with
+`deploy_production=true` once that deployment is approved. If no final
+replacement exists, approve a replacement release or a website change that
+retires the affected download; syncing alone retains the withdrawn snapshot.
+The report identifies the applicable recovery and never automatically unlinks
+or republishes anything. The workflow never builds, deploys or pushes. Pull
+requests that change the check run it read-only and never touch the issue.
+
+To check by hand: `python tools/check_release_drift.py` (exit 0 in sync or
+within the grace period, 1 stale, 2 could not check; `--grace-hours` and
+`--report drift.md` are optional).
 
 To check a prepared snapshot manually, run `python tools/verify_deployed_metadata.py --expected repo-metadata.json`. This reads the public metadata; it does not deploy or change any content.
 
@@ -155,7 +288,7 @@ Do **not** put GitHub or Cloudflare tokens in HTML, `nav.js`, or committed confi
 |--------|----------|---------|
 | `WEBSITE_DISPATCH_TOKEN` | Recommended | PAT or fine-grained token allowed to trigger `repository_dispatch` on `BlueCollar-Systems/BlueCollar-Website`. Classic PAT: `repo` scope (or fine-grained: **Actions: Read and write** on `BlueCollar-Website`). Aliases accepted in workflows: `BLUECOLLAR_WEBSITE_DISPATCH_TOKEN`, `REPO_DISPATCH_TOKEN`. |
 
-If `WEBSITE_DISPATCH_TOKEN` is unset, releases still publish on GitHub. Production website updates always require the manual deployment described above.
+If `WEBSITE_DISPATCH_TOKEN` is unset, releases still publish on GitHub, but no `product-release` dispatch arrives, so the site does not update by itself; the daily drift check turns red after 24 hours. Every website change other than download metadata always requires the manual deployment described above.
 
 **Dispatch payload** (informational; website workflow re-syncs all repos, it does not merge this JSON into the site):
 
@@ -171,7 +304,7 @@ If `WEBSITE_DISPATCH_TOKEN` is unset, releases still publish on GitHub. Producti
 }
 ```
 
-Event types listened by `website-ci`: `product-release`, `product-update`, `steel-shapes-release`, `steel-shapes-update`.
+Event types listened by `website-ci`: `product-release` (validates, then deploys download metadata), `product-update`, `steel-shapes-release`, `steel-shapes-update` (validate only).
 
 ## License
 

@@ -21,9 +21,14 @@ on:
         type: boolean
         default: false
 
+# Production runs (a manual deploy_production=true run, or an importer's
+# product-release dispatch) share one group, so two deploys never overlap.
+# A release deploy waits for a running deploy instead of cancelling it, and a
+# newer waiting release run replaces an older waiting one (it reads every
+# repo's latest release anyway). Validation runs keep cancelling each other.
 concurrency:
-  group: website-ci-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.deploy_production == true && 'production' || 'validation' }}
-  cancel-in-progress: true
+  group: website-ci-${{ github.ref }}-${{ ((github.event_name == 'workflow_dispatch' && inputs.deploy_production == true) || (github.event_name == 'repository_dispatch' && github.event.action == 'product-release')) && 'production' || 'validation' }}
+  cancel-in-progress: ${{ !(github.event_name == 'repository_dispatch' && github.event.action == 'product-release') }}
 
 jobs:
   static-checks:
@@ -191,6 +196,12 @@ jobs:
       - name: Public link check regression
         run: python tests/test_check_public_links.py -v
 
+      - name: Release drift check regression
+        run: python tests/test_check_release_drift.py -v
+
+      - name: Metadata-only release deploy guard regression
+        run: python tests/test_check_metadata_only_deploy.py -v
+
       - name: Build repository metadata snapshot
         env:
           GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
@@ -217,12 +228,21 @@ jobs:
           python tools/build_site.py
           python tests/test_build_site.py -v
 
+  # Production deploy. Two ways in, both on main and both only after every
+  # static check passed: a manual run with deploy_production=true, or an
+  # importer's product-release dispatch (owner decision O13: downloads follow
+  # releases with no separate GO; deploy only, no website snapshot release).
+  # A release deploy may publish nothing but refreshed download metadata; see
+  # the metadata-only guard step below. Pushes, pull requests, the schedule
+  # and the other dispatch types never reach this job.
   deploy-pages:
     needs: static-checks
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy_production == true && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.deploy_production == true) || (github.event_name == 'repository_dispatch' && github.event.action == 'product-release'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Read-only: the metadata-only guard looks up which run deployed last.
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -244,6 +264,20 @@ jobs:
       # verified repo-metadata.json are the files that get published.
       - name: Build site folder
         run: python tools/build_site.py
+
+      # A product-release dispatch is not a GO for other website changes.
+      # Build this commit and the live commit, each in a clean worktree with
+      # its own build_site.py and badge stamping and both fed this fresh
+      # metadata; require _site to equal the first build and the first to
+      # equal the second, so only repo-metadata.json and the badges stamped
+      # from it can change. Otherwise, or when the live commit cannot be
+      # found or rebuilt, stop before upload; the manual deploy_production
+      # run publishes approved changes.
+      - name: Confirm a release deploy changes only download metadata
+        if: github.event_name == 'repository_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/check_metadata_only_deploy.py --site _site --metadata repo-metadata.json
 
       - name: Deploy to Cloudflare Pages
         env:

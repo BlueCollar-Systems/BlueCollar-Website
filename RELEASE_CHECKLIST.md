@@ -26,8 +26,17 @@ git push origin main
 
 ## 4) Validate, then explicitly deploy when authorized
 
-A push runs static checks only; production deployment is skipped. Product
-release dispatches and the six-hour schedule also validate without publishing.
+A push runs static checks only; production deployment is skipped. The
+six-hour schedule and `product-update` / steel-shapes dispatches also validate
+without publishing. An importer's `product-release` dispatch is the one
+automatic deploy: after every check passes it refreshes only the download
+metadata and version badges, and it refuses (deploying nothing) when `main`
+holds other website changes that are not live yet (including a change to the
+public file list in `tools/build_site.py` or to the badge stamping). A website
+change like this one therefore still needs the manual run below. A shape pack
+(`steel-v*`) release never deploys by itself (its release workflow publishes
+with `GITHUB_TOKEN`, so no dispatch reaches the website): run the manual
+deploy below after each one.
 
 When production publication is authorized, run **website-ci** manually from
 **main** with **deploy_production=true**. The default is validation only.

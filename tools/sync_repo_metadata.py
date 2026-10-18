@@ -72,6 +72,21 @@ STEEL_RELEASE_REPOS: frozenset[str] = frozenset(
     }
 )
 
+IMPORTER_TAG_PREFIX = "v"
+STEEL_TAG_PREFIX = "steel-v"
+
+
+def importer_tag_prefix(repo: str) -> str | None:
+    """The tag prefix of the release the site offers as repo's importer download.
+
+    A PDF importer repo offers its newest published, final ``v*`` release
+    (its /releases listing also carries ``steel-v*`` shape packs). Any other
+    tracked repo offers GitHub's /releases/latest; None means that rule.
+    build_metadata() and tools/check_release_drift.py both read this, so the
+    deploy and the drift check pick the same release.
+    """
+    return IMPORTER_TAG_PREFIX if repo in PDF_IMPORTER_RELEASE_REPOS else None
+
 
 def _json_get(url: str, token: str | None = None) -> Any:
     headers = {
@@ -115,8 +130,13 @@ def _release_summary(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def latest_release_url(repo: str) -> str:
+    """GitHub's own "latest release" of repo (no drafts or prereleases)."""
+    return f"https://api.github.com/repos/{repo}/releases/latest"
+
+
 def _safe_latest_release(repo: str, token: str | None) -> dict[str, Any] | None:
-    url = f"https://api.github.com/repos/{repo}/releases/latest"
+    url = latest_release_url(repo)
     try:
         data = _json_get(url, token)
     except urllib.error.HTTPError as exc:
@@ -127,20 +147,21 @@ def _safe_latest_release(repo: str, token: str | None) -> dict[str, Any] | None:
     return _release_summary(data)
 
 
-def _safe_latest_tagged_release(
-    repo: str, token: str | None, tag_prefix: str
-) -> dict[str, Any] | None:
-    url = f"https://api.github.com/repos/{repo}/releases?per_page=100"
-    try:
-        releases = _json_get(url, token)
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return None
-        raise
+def releases_url(repo: str) -> str:
+    """The API listing the site reads a repo's releases from (newest first)."""
+    return f"https://api.github.com/repos/{repo}/releases?per_page=100"
 
+
+def final_tagged_releases(releases: Any, tag_prefix: str) -> list[dict[str, Any]]:
+    """Published, final releases whose tag starts with tag_prefix, in API order.
+
+    The first entry is the release the site publishes for that channel.
+    tools/check_release_drift.py uses the same rule, so the drift check and
+    the deploy can never disagree about which release is the latest.
+    """
     if not isinstance(releases, list):
-        return None
-
+        return []
+    found: list[dict[str, Any]] = []
     for release in releases:
         release = release or {}
         # R21-11: a PAT in the website-ci token chain sees drafts via
@@ -150,8 +171,22 @@ def _safe_latest_tagged_release(
             continue
         tag = release.get("tag_name") or ""
         if tag.startswith(tag_prefix):
-            return _release_summary(release)
-    return None
+            found.append(release)
+    return found
+
+
+def _safe_latest_tagged_release(
+    repo: str, token: str | None, tag_prefix: str
+) -> dict[str, Any] | None:
+    try:
+        releases = _json_get(releases_url(repo), token)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+
+    candidates = final_tagged_releases(releases, tag_prefix)
+    return _release_summary(candidates[0]) if candidates else None
 
 
 def _load_previous_payload(path: Path) -> dict[str, Any] | None:
@@ -278,8 +313,9 @@ def build_metadata(token: str | None, previous_repos: dict[str, Any] | None = No
                 continue
             raise
 
-        if repo in PDF_IMPORTER_RELEASE_REPOS:
-            latest_release = _safe_latest_tagged_release(repo, token, "v")
+        importer_prefix = importer_tag_prefix(repo)
+        if importer_prefix is not None:
+            latest_release = _safe_latest_tagged_release(repo, token, importer_prefix)
         else:
             latest_release = _safe_latest_release(repo, token)
         if latest_release is None and previous.get("latest_release"):
@@ -288,7 +324,7 @@ def build_metadata(token: str | None, previous_repos: dict[str, Any] | None = No
 
         steel_release = None
         if repo in STEEL_RELEASE_REPOS:
-            steel_release = _safe_latest_tagged_release(repo, token, "steel-v")
+            steel_release = _safe_latest_tagged_release(repo, token, STEEL_TAG_PREFIX)
             if steel_release is None and previous.get("steel_release"):
                 steel_release = previous["steel_release"]
                 print(f"  using previous steel release snapshot for {repo}")
@@ -309,12 +345,12 @@ def build_metadata(token: str | None, previous_repos: dict[str, Any] | None = No
     }
 
 
-def stamp_html_versions(payload: dict[str, Any]) -> None:
+def stamp_html_versions(payload: dict[str, Any], pages_root: Path = Path(".")) -> None:
     """Write latest release tags into static HTML as fallback content."""
     import re
 
     repos = payload.get("repos", {})
-    for page in sorted(Path(".").glob("*.html")):
+    for page in sorted(Path(pages_root).glob("*.html")):
         original = html = page.read_text(encoding="utf-8")
         for repo_key, repo_data in repos.items():
             release_attr = (
