@@ -101,17 +101,17 @@ assert(
   "site must not keep the old shapes-first Steel Logic headline"
 );
 assert(
-  html.includes("Tag QC Builder"),
-  "site must advertise Tag QC Builder"
+  /<h2\b[^>]*>\s*BlueCollar Tag Logic\s*<\/h2>/.test(html),
+  "site must advertise the exact BlueCollar Tag Logic product heading"
 );
 // Owner decision 2026-10-05: no direct download of Tag QC Builder from the website yet.
 assert(
-  html.includes("Tag QC Builder is not available for download from this website yet"),
-  "Tag QC section must say it is not available for download yet"
+  html.includes("BlueCollar Tag Logic is not available for download from this website yet"),
+  "BlueCollar Tag Logic section must say it is not available for download yet"
 );
 assert(
   html.includes("BCS1:") && html.includes("CS1:"),
-  "Tag QC copy must name the BCS1: prefix and say older CS1: tags still scan"
+  "BlueCollar Tag Logic copy must name the BCS1: prefix and say older CS1: tags still scan"
 );
 assert(
   html.includes("Coming soon"),
@@ -122,8 +122,8 @@ assert(
   "site must not advertise the unpublished Tag QC v10.37"
 );
 assert(
-  !/1Tag-QC-Builder|Download Tag QC|OPEN_BlueCollar_Systems_Tag_QC_Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/.test(html),
-  "site must not offer a Tag QC Builder download until the owner releases it"
+  !/1Tag-QC-Builder|Download Tag QC|Download BlueCollar Tag Logic|OPEN_BlueCollar_Systems_Tag_QC_Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/.test(html),
+  "site must not offer a BlueCollar Tag Logic download until the owner releases it"
 );
 assert(
   html.includes("GitHub Release"),
