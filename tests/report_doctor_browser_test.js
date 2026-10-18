@@ -1,5 +1,6 @@
-// Standards-browser regression for Report Doctor file pickers, adjacent
-// feedback privacy guidance and the phone menu. This launches an
+// Standards-browser regression for Report Doctor file pickers, the parts
+// list shown from a parts file alone (T18), adjacent feedback privacy
+// guidance and the phone menu. This launches an
 // already-installed Chromium browser; it does not emulate DOM, File,
 // DataTransfer, or FileReader APIs. Browser lookup (Chrome first on Windows),
 // page loading and temp-folder cleanup are shared with the other
@@ -77,8 +78,33 @@ var REPORT_TEST = String.raw`
     await waitForValue(bootstrapJson, bootstrapContents);
     check(reportJson.value === 'report sentinel', 'bootstrap picker must not update report JSON');
 
+    // T18: a real importer parts file with no report shows the parts list
+    // on screen (it used to sit inside the hidden diagnosis area).
+    var tagsSection = document.getElementById('doctor-tags-section');
+    var output = document.getElementById('doctor-output');
+    function shown(el) { return el.getClientRects().length > 0 && getComputedStyle(el).display !== 'none'; }
+    document.getElementById('clear-report').click();
+    check(!shown(tagsSection) && !shown(output), 'Clear must hide the parts list and the diagnosis');
+    selectFile(bootstrapFile, 'parts_bootstrap.json', IMPORTER_PARTS);
+    await waitForValue(bootstrapJson, IMPORTER_PARTS);
+    check(document.getElementById('doctor-error').textContent === '', 'a parts file alone is not an error: ' +
+      document.getElementById('doctor-error').textContent);
+    check(shown(tagsSection), 'a parts file alone must show the parts list on screen');
+    check(!shown(output), 'a parts file alone must not show a diagnosis');
+    var marks = Array.from(tagsSection.querySelectorAll('tbody tr')).map(function(tr) {
+      return tr.cells[0].textContent;
+    });
+    check(marks.join(',') === 'EX101,EX102,EX103', 'parts list must show the importer rows; got ' + marks.join(','));
+    check(tagsSection.querySelectorAll('.copy-tag').length === 0, 'importer rows carry no part_id, so no tag links');
+    check(/No row carries a part_id/.test(document.getElementById('doctor-tags-summary').textContent),
+      'the summary must say why there are no tag links');
+    document.getElementById('analyze-report').click();
+    check(document.getElementById('doctor-error').textContent === '', 'Analyze with only a parts file is not an error');
+    check(shown(tagsSection) && tagsSection.querySelectorAll('tbody tr').length === 3,
+      'Analyze with only a parts file must keep the parts list on screen');
+
     result.dataset.status = 'pass';
-    result.textContent = 'PASS real label, File, input.files, change, and FileReader behavior';
+    result.textContent = 'PASS real label, File, input.files, change, FileReader behavior and the parts list without a report';
   }).catch(function(error) {
     result.dataset.status = 'fail';
     result.textContent = error.stack || error.message || String(error);
@@ -122,6 +148,9 @@ var FEEDBACK_TEST = String.raw`
 `;
 
 var browser = harness.findBrowser();
+// Written by the importers' own parts_bootstrap writer (fictional job D042).
+var IMPORTER_PARTS = fs.readFileSync(
+  path.join(__dirname, 'fixtures', 'report_doctor', 'parts_bootstrap_importer.json'), 'utf8');
 var NAV_TEST = String.raw`
 (function() {
   var result = document.createElement('pre');
@@ -163,7 +192,8 @@ try {
   var reportHtml = localizeAssets(
     fs.readFileSync(path.join(ROOT, 'report-doctor.html'), 'utf8')
   );
-  runBrowserPage(browser, tempRoot, 'report-doctor', injectTest(reportHtml, REPORT_TEST));
+  runBrowserPage(browser, tempRoot, 'report-doctor', injectTest(reportHtml,
+    'var IMPORTER_PARTS = ' + JSON.stringify(IMPORTER_PARTS).replace(/</g, '\\u003c') + ';\n' + REPORT_TEST));
 
   var feedbackHtml = localizeAssets(
     fs.readFileSync(path.join(ROOT, 'feedback.html'), 'utf8')
