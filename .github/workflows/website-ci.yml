@@ -216,6 +216,28 @@ jobs:
           python tools/build_site.py
           python tests/test_build_site.py -v
 
+      # Exercised here because build-only is workflow_dispatch-only and this
+      # token cannot dispatch workflows. These steps publish nothing.
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Prepare release snapshot without publishing
+        run: python tools/release_snapshot.py prepare --version "$(cat VERSION)" --repository "$GITHUB_REPOSITORY" --output-dir "$RUNNER_TEMP/website-build-only"
+      - name: Confirm Node is available for the deploy job
+        run: |
+          node --version
+          npm --version
+          npx --version
+      - name: Upload source and public-site build for inspection
+        uses: actions/upload-artifact@v7
+        with:
+          name: website-ubuntu-2604-smoke-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/website-build-only/
+            _site/
+
   deploy-pages:
     needs: static-checks
     if: github.event_name == 'workflow_dispatch' && inputs.deploy_production == true && github.ref == 'refs/heads/main'
