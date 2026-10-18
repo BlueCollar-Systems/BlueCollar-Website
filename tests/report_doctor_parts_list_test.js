@@ -64,6 +64,14 @@ assert.ok(
   'the parts list must not sit inside #doctor-output, or it stays hidden until a report is analyzed'
 );
 assert.ok(!/Tags tab/i.test(html) && !/Tags tab/i.test(script), 'there is no Tags tab; the wording must not mention one');
+// Screen readers announce the one-line summary, not the whole parts table.
+var tagsOpenTag = html.slice(html.lastIndexOf('<', tagsStart), html.indexOf('>', tagsStart) + 1);
+assert.ok(!/aria-live/.test(tagsOpenTag), '#doctor-tags-section must not be a live region: ' + tagsOpenTag);
+var summaryTag = html.match(/<p id="doctor-tags-summary"[^>]*>/);
+assert.ok(summaryTag && /\saria-live="polite"/.test(summaryTag[0]), '#doctor-tags-summary must carry aria-live="polite"');
+var tagsEnd = elementEnd(html, html.lastIndexOf('<', tagsStart), 'section');
+assert.strictEqual((html.slice(tagsStart, tagsEnd).match(/aria-live/g) || []).length, 1,
+  'only #doctor-tags-summary is live inside the parts list');
 var bootstrapLabel = html.match(/<label for="bootstrap-file"[^>]*>([^<]*)<\/label>/);
 assert.ok(bootstrapLabel && /parts list/i.test(bootstrapLabel[1]) && /parts_bootstrap\.json/.test(bootstrapLabel[1]),
   'the parts picker label must name the parts list and the file');
@@ -313,11 +321,51 @@ function report(host, textMode, result, extra) {
 var EDITABLE = 'Editable text (LibreCAD font)';
 // Advice that is wrong for LibreCAD, where Labels and 3D Text come in as the
 // same outlines as Exact look and the window has no Raster/Hybrid choice.
+// --librecad-exe exists only on lcpdf-import, which has no Editable text
+// option; pdf2dxf.py (the command line with --editable-text) rejects it.
 var LIBRECAD_NEVER = [
   'Use Labels', 'Try Labels', 'compare against Labels mode', 'Labels for editable',
   'once your LibreCAD importer has it', 'Until that release', 'Raster/Hybrid',
-  'editable labels where the host can support it'
+  'editable labels where the host can support it', '--librecad-exe'
 ];
+
+// Per-word delivery records shaped like the ones LibreCAD importer main
+// e4f089b wrote for pdf2dxf.py --editable-text on a fictional 2-line PDF with
+// embedded Arial (TrueType): the native Text attempt is refused and the word
+// comes in as Glyphs. Evidence values and reasons are the measured ones.
+var NOT_FOUND = 'no resolved LibreCAD executable is available to bind the unicode.lff asset';
+var NO_CFF_PEN = 'native text has no source-bound positive CFF pen: source has no usable CFF dominant-stem metric';
+var NO_ROMANS = 'native Romans has no safe linear layout';
+function nativeTextRecords(evidence, reasons) {
+  return {
+    text_representation_delivery: {
+      requested_representation: 'text',
+      items: reasons.map(function(reason, i) {
+        return {
+          source_id: 'text_span:1:' + (i + 1), requested_representation: 'text', final_representation: 'glyphs',
+          verified: true, degraded: false, dropped: false,
+          attempts: [
+            { attempted_representation: 'text', strategy: 'native_dxf_text', outcome: 'impossible',
+              reason: '_RepresentationImpossible: ' + reason, evidence: evidence },
+            { attempted_representation: 'glyphs', strategy: 'entity_text2path', outcome: 'verified', reason: '', evidence: {} }
+          ]
+        };
+      })
+    }
+  };
+}
+function zeroEditable(records, count) {
+  return Object.assign({ editable_text: { chosen: true, item_count: count === undefined ? 0 : count } }, records || {});
+}
+var FONT_FOUND = nativeTextRecords({
+  librecad_lff_asset_verified: true, librecad_parent_installation_verified: true,
+  librecad_lff_resolution_reason: 'verified LibreCAD Font 1 romans.lff asset'
+}, [NO_CFF_PEN, NO_ROMANS, NO_CFF_PEN]);
+var FONT_NOT_FOUND = nativeTextRecords({
+  librecad_lff_asset_verified: false, librecad_parent_installation_verified: false,
+  librecad_lff_resolution_reason: NOT_FOUND
+}, [NOT_FOUND, NOT_FOUND]);
+var INSTALL_ADVICE = ['Install LibreCAD', 'Locate LibreCAD...'];
 
 var CASES = [
   { name: 'LibreCAD Exact look (main: glyphs)', report: report('librecad', 'glyphs'), actions: [EDITABLE, 'Exact look'] },
@@ -333,6 +381,74 @@ var CASES = [
     actionsNot: [EDITABLE]
   },
   {
+    // 0 editable words gets its own message. Install/locate is the advice
+    // only when the per-item records say LibreCAD was not found; pdf2dxf.py
+    // users set BCS_LIBRECAD_EXECUTABLE (LibreCAD INSTALL.md).
+    name: 'LibreCAD Editable text chosen, 0 items, LibreCAD not found',
+    report: report('librecad', 'text', null, zeroEditable(FONT_NOT_FOUND)),
+    findings: ['"Editable text (LibreCAD font)" was chosen, but no text came in as editable text', 'LibreCAD was not found', "LibreCAD's font was not found"],
+    findingsNot: ['0 text item(s)', 'letter shapes differ from the PDF'],
+    actions: INSTALL_ADVICE.concat(['pdf2dxf.py', 'BCS_LIBRECAD_EXECUTABLE', 'full path of LibreCAD.exe', 'import the PDF again'])
+  },
+  {
+    name: 'LibreCAD Editable text chosen, 0 items as a string, not-found reason only',
+    report: report('librecad', 'text', null, zeroEditable(nativeTextRecords({ librecad_lff_asset_verified: 'false' }, [NOT_FOUND]), '0')),
+    findings: ['was chosen, but no text came in as editable text', 'LibreCAD was not found'],
+    findingsNot: ['0 text item(s)'],
+    actions: INSTALL_ADVICE.concat(['BCS_LIBRECAD_EXECUTABLE'])
+  },
+  {
+    // Measured: LibreCAD found, embedded Arial, 0 of 2 words. Repeated
+    // reasons are listed once, without the Python exception name.
+    name: 'LibreCAD Editable text chosen, 0 items, LibreCAD found',
+    report: report('librecad', 'text', null, zeroEditable(FONT_FOUND)),
+    findings: ["LibreCAD's font was found", 'Reasons in the import report: "' + NO_CFF_PEN + '"; "' + NO_ROMANS + '".'],
+    findingsNot: ['0 text item(s)', 'letter shapes differ from the PDF', 'not found', 'likely reason', '_RepresentationImpossible'],
+    actions: ['ordinary TrueType', 'CID-keyed CFF', 'symbol font', 'R12', 'reason for each word'],
+    actionsNot: INSTALL_ADVICE.concat(['BCS_LIBRECAD_EXECUTABLE'])
+  },
+  {
+    // A found font wins over a not-found attempt elsewhere in the report.
+    name: 'LibreCAD Editable text chosen, 0 items, found and not-found attempts',
+    report: report('librecad', 'text', null, zeroEditable({
+      text_representation_delivery: {
+        items: FONT_NOT_FOUND.text_representation_delivery.items.concat(FONT_FOUND.text_representation_delivery.items)
+      }
+    })),
+    findings: ["LibreCAD's font was found"],
+    findingsNot: ['not found'],
+    actionsNot: INSTALL_ADVICE
+  },
+  {
+    name: 'LibreCAD Editable text chosen, 0 items, LibreCAD found but its font unusable',
+    report: report('librecad', 'text', null, zeroEditable(nativeTextRecords({
+      librecad_lff_asset_verified: false, librecad_parent_installation_verified: true
+    }, ['file is not a parseable LibreCAD Font 1 asset']))),
+    findings: ['LibreCAD was found, but its font could not be used', '"file is not a parseable LibreCAD Font 1 asset"'],
+    findingsNot: ['not found'],
+    actions: ['Repair or reinstall LibreCAD', 'import the PDF again'],
+    actionsNot: INSTALL_ADVICE
+  },
+  {
+    name: 'LibreCAD Editable text chosen, 0 items, no per-item records',
+    report: report('librecad', 'text', null, zeroEditable()),
+    findings: ['was chosen, but no text came in as editable text', 'does not record why'],
+    findingsNot: ['0 text item(s)', 'not found', 'likely reason'],
+    actions: ['If the importer said LibreCAD was not found', 'Locate LibreCAD...', 'BCS_LIBRECAD_EXECUTABLE', 'ordinary TrueType']
+  },
+  {
+    // Hostile or odd records: never thrown on, reasons capped at three.
+    name: 'LibreCAD Editable text chosen, 0 items, malformed records',
+    report: report('librecad', 'text', null, zeroEditable({
+      text_representation_delivery: {
+        items: [null, 7, { attempts: 'x' }, { attempts: [null, { attempted_representation: 'text', reason: 42 }] }]
+          .concat(nativeTextRecords({ librecad_lff_asset_verified: true }, ['r1', 'r2', 'r3', 'r4', 'r5']).text_representation_delivery.items)
+      }
+    })),
+    findings: ['"r1"; "r2"; "r3" (and 2 more).'],
+    findingsNot: ['r4']
+  },
+  {
     name: 'LibreCAD Raster result',
     report: report('librecad', 'glyphs', null, { resolved_mode: 'raster' }),
     actions: ['--mode vector', EDITABLE],
@@ -344,6 +460,106 @@ var CASES = [
   { name: 'FreeCAD dense page', report: report('freecad', 'glyphs', { glyphs: 6000 }), actions: ['Try Labels for editable text'], allNot: ['LibreCAD'] },
   { name: 'Blender Labels with outlines', report: report('blender', 'labels', { glyphs: 40 }), findings: ['even though Labels mode was requested'], status: 'Review' }
 ];
+
+// Final outcomes are independent of a failed native Text attempt. These
+// records exercise the actual e4f089b exporter contract, including its
+// unverified/degraded TEXT and dropped-item terminal paths.
+function finalTextRecords(mode, changes, evidence, reason) {
+  var records = nativeTextRecords(evidence || {
+    librecad_lff_asset_verified: true, librecad_parent_installation_verified: true
+  }, [reason || NO_CFF_PEN]);
+  Object.assign(records.text_representation_delivery.items[0], {
+    final_representation: mode, verified: true, degraded: false, dropped: false
+  }, changes || {});
+  return records;
+}
+var ZERO_FALSE_DELIVERY_CLAIMS = [
+  'every word comes in as exact outlines', 'every word came in as exact outlines',
+  'each word failed another check and came in as exact outlines',
+  "Those words keep the PDF's exact look", 'so that was not the cause',
+  'installing or locating LibreCAD will not change that',
+  'a Labels request comes in as exact outlines', 'is delivered as flat 2D text outlines'
+];
+var ROMANS_UNAVAILABLE = 'native Unicode arcs cannot be stretched safely; executable-bound Romans is unavailable';
+var HOSTILE_REASON = '<img src=x onerror="window.__doctorReasonXss=1">';
+var ZERO_DELIVERY_CASES = [
+  {
+    name: 'LibreCAD zero editable, recorded raw outline geometry',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('geometry'))),
+    findings: ['1 raw outline geometry item(s)', '1 item(s) reported verified']
+  },
+  {
+    name: 'LibreCAD zero editable, recorded verified glyph outlines',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('glyphs'))),
+    findings: ['Recorded final text delivery: 1 glyph outline item(s)', '1 item(s) reported verified', '0 degraded; 0 dropped']
+  },
+  {
+    name: 'LibreCAD zero editable, recorded verified image',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('raster'))),
+    findings: ['Recorded final text delivery: 1 image item(s)', '1 item(s) reported verified'],
+    findingsNot: ['glyph outline item(s)']
+  },
+  {
+    name: 'LibreCAD zero editable, visible degraded text',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('text', {verified: false, degraded: true}))),
+    findings: ['1 native text item(s)', '0 item(s) reported verified', '1 unverified or without usable verification', '1 degraded; 0 dropped'],
+    actions: ['Review the final representation, verification'], status: 'Review'
+  },
+  {
+    name: 'LibreCAD zero editable, dropped item retains incomplete status',
+    report: report('librecad', 'text', null, Object.assign(zeroEditable(finalTextRecords(null, {verified: false, degraded: true, dropped: true})), {result_status: 'incomplete'})),
+    findings: ['1 item(s) with no final representation', '1 degraded; 1 dropped', 'Import result: Incomplete'],
+    actions: ['does not establish a completed import'], status: 'Incomplete'
+  },
+  {
+    name: 'LibreCAD zero editable, unknown final type cannot be counted verified',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('future-representation'))),
+    findings: ['1 item(s) with an unknown final representation', '0 item(s) reported verified', '1 unverified or without usable verification'], status: 'Review'
+  },
+  {
+    name: 'LibreCAD zero editable, mixed outline and image outcomes',
+    report: report('librecad', 'text', null, zeroEditable({text_representation_delivery: {items:
+      finalTextRecords('glyphs').text_representation_delivery.items.concat(finalTextRecords('raster').text_representation_delivery.items)
+    }})),
+    findings: ['1 glyph outline item(s), 1 image item(s)', '2 item(s) reported verified']
+  },
+  {
+    name: 'LibreCAD zero editable Labels cannot later promise outlines for an image',
+    report: report('librecad', 'labels', null, zeroEditable(finalTextRecords('raster'))),
+    findings: ['1 image item(s)', 'DXF has no label entity', 'Check the recorded final delivery']
+  },
+  {
+    name: 'LibreCAD zero editable 3D request cannot later promise exact flat outlines',
+    report: report('librecad', '3d_text', null, zeroEditable(finalTextRecords('raster'))),
+    findings: ['1 image item(s)', 'LibreCAD is 2D-only', 'inspect the recorded final delivery']
+  },
+  {
+    name: 'LibreCAD verified Unicode but executable-bound Romans unavailable',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('glyphs', {}, null, ROMANS_UNAVAILABLE))),
+    findings: ['report says that font is unavailable', 'verified Unicode font does not prove', ROMANS_UNAVAILABLE],
+    actions: ['Repair or reinstall the selected LibreCAD installation', 'executable-bound Romans font is available', 'import the PDF again'],
+    actionsNot: ['installing or locating LibreCAD will not change that'], status: 'Review', title: 'LibreCAD Romans Font Unavailable'
+  },
+  {
+    name: 'LibreCAD font binding override failure gets configuration advice',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('glyphs', {}, {
+      librecad_lff_asset_verified: false, librecad_parent_installation_verified: true
+    }, 'configured LibreCAD unicode.lff is not bound to the resolved LibreCAD executable installation'))),
+    actions: ['correct any BCS_LIBRECAD_UNICODE_LFF override', 'if an installation font is missing or damaged'],
+    actionsNot: ['locating it again will not help']
+  },
+  {
+    name: 'LibreCAD per-item reason remains literal text',
+    report: report('librecad', 'text', null, zeroEditable(finalTextRecords('glyphs', {}, null, HOSTILE_REASON))),
+    findings: [HOSTILE_REASON], reasonSafety: true
+  }
+];
+
+ZERO_DELIVERY_CASES.forEach(function(c) { CASES.push(c); });
+CASES.forEach(function(c) {
+  var chosen=c.report.extra.editable_text;
+  if(chosen && Number(chosen.item_count)===0)c.allNot=(c.allNot || []).concat(ZERO_FALSE_DELIVERY_CLAIMS);
+});
 
 page = loadPage();
 CASES.forEach(function(c) {
@@ -359,6 +575,9 @@ CASES.forEach(function(c) {
   (c.findings || []).forEach(function(s) {
     assert.ok(findings.indexOf(s) >= 0, c.name + ': findings must mention "' + s + '"; got: ' + findings);
   });
+  (c.findingsNot || []).forEach(function(s) {
+    assert.ok(findings.indexOf(s) < 0, c.name + ': findings must not say "' + s + '"; got: ' + findings);
+  });
   (c.actionsNot || []).forEach(function(s) {
     assert.ok(actions.indexOf(s) < 0, c.name + ': actions must not say "' + s + '"');
   });
@@ -366,9 +585,12 @@ CASES.forEach(function(c) {
     assert.ok((actions + findings).indexOf(s) < 0, c.name + ': must not say "' + s + '"');
   });
   if (c.status) assert.strictEqual(page['doctor-status'].textContent, c.status, c.name + ': status');
+  if (c.title) assert.strictEqual(page['doctor-title'].textContent, c.title, c.name + ': actionable headline');
   var editableMentions = actions.split(EDITABLE).length - 1;
   assert.ok(editableMentions <= 1, c.name + ': the Editable text advice must be given at most once');
 });
+
+assert.strictEqual(innerHTMLWrites.length, 0, 'parts and per-item advice must remain textContent-only');
 
 console.log('PASS report_doctor_parts_list_test: parts list without a report (picker, paste, Analyze), importer files with and without rows, ' +
   'part_id tag links match the published record, ' + CASES.length + ' text-advice cases');
