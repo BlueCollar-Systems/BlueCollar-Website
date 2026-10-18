@@ -17,6 +17,7 @@
   var bootstrapJsonInput = document.getElementById('bootstrap-json');
   var tagsSection = document.getElementById('doctor-tags-section');
   var tagsTable = document.getElementById('doctor-tags-table');
+  var tagsSummary = document.getElementById('doctor-tags-summary');
   var reportReadVersion = 0;
   var bootstrapReadVersion = 0;
 
@@ -30,7 +31,7 @@
     return [];
   }
 
-  // R21 corrective §6: every displayed Tags value is sidecar-controlled
+  // R21 corrective §6: every displayed parts-list value is sidecar-controlled
   // (user-supplied JSON) and must never reach an HTML parser. Rows are built
   // with createElement/textContent and explicit attribute assignment only —
   // report-doctor.js must contain no innerHTML sinks fed by report/sidecar
@@ -55,14 +56,27 @@
     return td;
   }
 
-  function renderTagsTable(rows) {
+  // parts is null (no parts file, or one that could not be read: the section
+  // is hidden) or { rows, note } from parseBootstrapInput. The section lives
+  // outside #doctor-output, so a parts file shows on its own, with no report.
+  function renderTagsTable(parts) {
     if (!tagsSection || !tagsTable) return;
     clearNode(tagsTable);
-    if (!rows.length) {
+    if (tagsSummary) tagsSummary.textContent = '';
+    if (!parts) {
       tagsSection.classList.add('hidden');
       return;
     }
+    var rows = parts.rows;
     tagsSection.classList.remove('hidden');
+    if (!rows.length) {
+      if (tagsSummary) {
+        tagsSummary.textContent = 'This parts file lists no parts' +
+          (parts.note ? ' (note in the file: ' + safeText(parts.note) + ').' : '.');
+      }
+      return;
+    }
+    var linked = 0;
     var table = document.createElement('table');
     table.className = 'w-full text-sm text-left text-gray-300 border border-gray-700';
     var thead = document.createElement('thead');
@@ -90,6 +104,7 @@
       tr.appendChild(tableCell('p-3', safeText(row.profile_hint || row.designation || '—')));
       tr.appendChild(tableCell('p-3', safeText(row.quantity == null ? 1 : row.quantity)));
       if (isValidPartId(partId)) {
+        linked++;
         var tagUrl = TAG_ORIGIN + '/p/' + encodeURIComponent(partId);
         tr.appendChild(tableCell('p-3 font-mono text-xs', tagUrl));
         var buttonCell = document.createElement('td');
@@ -113,6 +128,17 @@
     }
     table.appendChild(tbody);
     tagsTable.appendChild(table);
+    if (tagsSummary) {
+      var count = rows.length + (rows.length === 1 ? ' part' : ' parts') + ' listed. ';
+      if (linked === 0) {
+        tagsSummary.textContent = count + 'No row carries a part_id, so there are no tag links.';
+      } else if (linked === rows.length) {
+        tagsSummary.textContent = count + (rows.length === 1 ? 'It has a tag link.' : 'Every part has a tag link.');
+      } else {
+        tagsSummary.textContent = count + linked + ' of ' + rows.length + (linked === 1 ? ' has' : ' have') +
+          ' a tag link; the others carry no valid part_id.';
+      }
+    }
     var copyButtons = tagsTable.querySelectorAll('.copy-tag');
     for (var j = 0; j < copyButtons.length; j++) {
       copyButtons[j].addEventListener('click', function() {
@@ -122,23 +148,33 @@
     }
   }
 
+  function hasBootstrapInput() {
+    return Boolean(bootstrapJsonInput && bootstrapJsonInput.value.trim());
+  }
+
+  // Returns null when no parts file is given or it cannot be used (the reason
+  // goes to the error line), otherwise { rows, note } for renderTagsTable.
   function parseBootstrapInput() {
     var text = bootstrapJsonInput ? bootstrapJsonInput.value.trim() : '';
-    if (!text) return [];
+    if (!text) return null;
     try {
       var data = JSON.parse(text);
       if (!data || typeof data !== 'object' || Array.isArray(data)) {
         setError('The parts sidecar must be a JSON object containing rows, parts, or candidates. Report Doctor expects schema bcs.parts_bootstrap/1.0.');
-        return [];
+        return null;
       }
       if (data.schema && data.schema !== 'bcs.parts_bootstrap/1.0') {
         setError('Unsupported parts sidecar schema: ' + safeText(data.schema) + '. This parts file is not schema bcs.parts_bootstrap/1.0, so its rows were not listed.');
-        return [];
+        return null;
       }
-      return bootstrapRows(data);
+      if (!Array.isArray(data.rows) && !Array.isArray(data.parts) && !Array.isArray(data.candidates)) {
+        setError('The parts sidecar must be a JSON object containing rows, parts, or candidates. Report Doctor expects schema bcs.parts_bootstrap/1.0.');
+        return null;
+      }
+      return { rows: bootstrapRows(data), note: typeof data.note === 'string' ? data.note.trim() : '' };
     } catch (err) {
       setError('Could not parse parts sidecar JSON: ' + err.message + ' This parts file is not readable. Report Doctor expects schema bcs.parts_bootstrap/1.0.');
-      return [];
+      return null;
     }
   }
 
@@ -192,6 +228,7 @@
     [metrics, findings, actions, tagsTable].forEach(function(node) {
       if (node) clearNode(node);
     });
+    if (tagsSummary) tagsSummary.textContent = '';
     if (title) title.textContent = '';
     if (status) {
       status.className = 'doctor-pill';
@@ -542,6 +579,81 @@
     return value !== null && typeof value === 'object' && !Array.isArray(value);
   }
 
+  // Native-attempt font evidence is separate from final delivery evidence.
+  // A verified Unicode asset can still be followed by a missing Romans font
+  // or an unsuccessful layout check (LibreCAD importer e4f089b).
+  var LIBRECAD_NOT_FOUND_REASON = 'no resolved LibreCAD executable';
+  function libreCADNativeTextEvidence(report) {
+    var out = { notFound: false, fontFound: false, fontUnusable: false, romansUnavailable: false, reasons: [], moreReasons: 0 };
+    var items = getPath(report, ['extra', 'text_representation_delivery', 'items']);
+    if (!Array.isArray(items)) return out;
+    items.forEach(function(item) {
+      if (!isRecord(item) || !Array.isArray(item.attempts)) return;
+      item.attempts.forEach(function(attempt) {
+        if (!isRecord(attempt) || attempt.attempted_representation !== 'text') return;
+        var evidence = isRecord(attempt.evidence) ? attempt.evidence : {};
+        var reason = typeof attempt.reason === 'string'
+          ? attempt.reason.replace(/^_?[A-Za-z]*(?:Impossible|Error|Exception):\s*/, '').trim() : '';
+        var resolution = typeof evidence.librecad_lff_resolution_reason === 'string' ? evidence.librecad_lff_resolution_reason : '';
+        if ((reason + ' ' + resolution).indexOf('executable-bound Romans is unavailable') >= 0) out.romansUnavailable = true;
+        var asset = model3dTriState(evidence.librecad_lff_asset_verified);
+        if (asset === true) {
+          out.fontFound = true;
+        } else if (asset === false) {
+          if (model3dTriState(evidence.librecad_parent_installation_verified) === false ||
+              (reason + ' ' + resolution).indexOf(LIBRECAD_NOT_FOUND_REASON) >= 0) {
+            out.notFound = true;
+          } else {
+            out.fontUnusable = true;
+          }
+        }
+        if (!reason || attempt.outcome === 'verified') return;
+        if (reason.length > 160) reason = reason.slice(0, 157) + '...';
+        if (out.reasons.indexOf(reason) >= 0) return;
+        if (out.reasons.length < 3) out.reasons.push(reason);
+        else out.moreReasons += 1;
+      });
+    });
+    // One asset was found; this does not prove all required fonts are usable.
+    if (out.fontFound) { out.notFound = false; out.fontUnusable = false; }
+    if (out.notFound) out.fontUnusable = false;
+    return out;
+  }
+
+  function libreCADFinalTextEvidence(report) {
+    var items = getPath(report, ['extra', 'text_representation_delivery', 'items']);
+    if (!Array.isArray(items) || !items.length) {
+      return { needsReview: true, summary: 'This report does not record each text item\'s final delivery. The final representation and its verification are unknown.' };
+    }
+    var counts = { glyphs: 0, geometry: 0, raster: 0, text: 0, none: 0, unknown: 0 };
+    var verified = 0, degraded = 0, dropped = 0;
+    items.forEach(function(item) {
+      if (!isRecord(item)) { counts.unknown++; return; }
+      var mode = typeof item.final_representation === 'string' ? normalizeModeName(item.final_representation) : '';
+      var known = ['glyphs', 'geometry', 'raster', 'text', 'labels', '3d_text'].indexOf(mode) >= 0;
+      if (!mode || mode === 'none') counts.none++;
+      else if (mode === 'labels' || mode === '3d_text') counts.text++;
+      else if (known) counts[mode]++;
+      else counts.unknown++;
+      var isDegraded = model3dTriState(item.degraded) === true;
+      var isDropped = model3dTriState(item.dropped) === true;
+      if (isDegraded) degraded++;
+      if (isDropped) dropped++;
+      if (known && !isDegraded && !isDropped && model3dTriState(item.verified) === true) verified++;
+    });
+    var labels = { glyphs: 'glyph outline item(s)', geometry: 'raw outline geometry item(s)', raster: 'image item(s)', text: 'native text item(s)', none: 'item(s) with no final representation', unknown: 'item(s) with an unknown final representation' };
+    var parts = Object.keys(counts).filter(function(key) { return counts[key] > 0; }).map(function(key) {
+      return counts[key] + ' ' + labels[key];
+    });
+    var unverified = items.length - verified;
+    return {
+      needsReview: unverified > 0 || degraded > 0 || dropped > 0,
+      summary: 'Recorded final text delivery: ' + parts.join(', ') + '. ' + verified + ' item(s) reported verified; ' +
+        unverified + ' unverified or without usable verification; ' + degraded + ' degraded; ' + dropped +
+        ' dropped. Check flagged items against the PDF; these counts do not certify their appearance.'
+    };
+  }
+
   function importOutcome(report) {
     // The shared bcs.import_report writers use extra.result_status/result.status.
     // FreeCAD failures carry a message; Blender can carry delivery-detail maps.
@@ -782,41 +894,118 @@
       addListItem(findings, 'No fallback was reported.');
     }
 
+    // LibreCAD gets its own text advice. Its importer window (v1.0.105 and
+    // later, see the LibreCAD README "Two text choices in the window") offers
+    // "Exact look" (the default: words as outlines) and "Editable text
+    // (LibreCAD font)". DXF has no label entity and LibreCAD is 2D, so Labels
+    // and 3D Text are not recommended as ways to get editable words. Final
+    // delivery is item-specific, including image/degraded/drop outcomes.
+    // The window always uses Auto;
+    // vector/raster/hybrid are command-line options.
+    var isLibreCAD = String(host).toLowerCase().indexOf('librecad') >= 0;
+    var editableTextBlock = isLibreCAD ? getPath(report, ['extra', 'editable_text']) : undefined;
+    var editableTextChosen = isRecord(editableTextBlock) && model3dTriState(editableTextBlock.chosen) === true;
+    var libreCADAdviceGiven = false;
+    function addLibreCADEditableAdvice() {
+      if (libreCADAdviceGiven || editableTextChosen) return;
+      libreCADAdviceGiven = true;
+      addListItem(actions, 'For words you can click and edit in LibreCAD, choose "Editable text (LibreCAD font)" in the importer window (importer v1.0.105 or later; on the command line, --editable-text). Words that pass its checks use LibreCAD\'s own font and need no outlines. The default, "Exact look", attempts the PDF\'s letter shapes as outlines. Labels and 3D Text are not ways to get native editable words in LibreCAD. Check the per-item report for the actual delivery and any image, degraded, or dropped items.');
+    }
+
     if (String(resolvedMode || requestedMode || '').toLowerCase().indexOf('raster') >= 0) {
       severity = usedFallback ? 'risk' : 'warn';
       heading = 'Raster Output Needs Review';
       addListItem(findings, 'The resolved strategy appears to be Raster. Text and linework may be image pixels instead of editable CAD entities.');
-      addListItem(actions, 'If the source PDF is vector-based, retry with Auto or Vector and check whether the report still resolves to Raster.');
+      if (isLibreCAD) {
+        addListItem(actions, 'If the source PDF is vector-based, check whether the report still resolves to Raster when you import it again. The LibreCAD importer window always uses Auto; to force Vector, use the command line with --mode vector.');
+      } else {
+        addListItem(actions, 'If the source PDF is vector-based, retry with Auto or Vector and check whether the report still resolves to Raster.');
+      }
     }
 
-    // LibreCAD Labels and 3D Text output measured identical to Glyphs (outlines,
-    // no visible DXF TEXT), so LibreCAD gets its own advice for editable words.
-    var isLibreCAD = String(host).toLowerCase().indexOf('librecad') >= 0;
-    var libreCADAdviceGiven = false;
-    function addLibreCADEditableAdvice() {
-      if (libreCADAdviceGiven) return;
-      libreCADAdviceGiven = true;
-      addListItem(actions, 'For editable words in LibreCAD, choose the new "Editable text (LibreCAD font)" option once your LibreCAD importer has it. Until that release, LibreCAD output keeps the exact look of the text as outlines, so Labels and 3D Text do not give editable DXF text.');
+    if (editableTextChosen) {
+      var editableCount = toNumber(editableTextBlock.item_count);
+      if (editableCount === 0) {
+        if (severity === 'ok') {
+          severity = 'warn';
+          heading = 'Editable Text Was Not Delivered';
+        }
+        // A zero native count says nothing about final fallback fidelity.
+        // Font evidence guides installation advice independently from each
+        // item's recorded final delivery. "Locate LibreCAD..." is shown
+        // after lookup or launch failure (gui.py). pdf2dxf.py, the CLI with
+        // --editable-text, has no --librecad-exe and never reads the
+        // remembered choice: it reads BCS_LIBRECAD_EXECUTABLE, then PATH and
+        // Program Files (LibreCAD INSTALL.md, librecad_runtime.py). With
+        // LibreCAD found, the README lists ordinary TrueType, CID-keyed CFF,
+        // symbol fonts and R12 as reasons native text can be refused.
+        var lff = libreCADNativeTextEvidence(report);
+        var noneEditable = '"Editable text (LibreCAD font)" was chosen, but no text came in as editable text';
+        var reasonsText = lff.reasons.length
+          ? ' Reasons in the import report: "' + lff.reasons.join('"; "') + '"' +
+            (lff.moreReasons ? ' (and ' + lff.moreReasons + ' more)' : '') + '.'
+          : '';
+        var locateText = 'press "Locate LibreCAD..." in the importer window (it appears after the lookup fails) and pick LibreCAD.exe once; the choice is remembered. With pdf2dxf.py on the command line, set the BCS_LIBRECAD_EXECUTABLE environment variable to the full path of LibreCAD.exe instead';
+        var againText = 'import the PDF again with "Editable text (LibreCAD font)" chosen';
+        var causesText = 'The LibreCAD README lists source-pen and format limits that can prevent native editable text: an ordinary TrueType font, a CID-keyed CFF font whose stem metrics the importer cannot use yet (the pen width comes from them), a symbol font, or DXF version R12.';
+        if (lff.romansUnavailable) {
+          if (severity !== 'risk') heading = 'LibreCAD Romans Font Unavailable';
+          addListItem(findings, noneEditable + '. The native text attempt needs Romans from the selected LibreCAD installation, but the report says that font is unavailable. A verified Unicode font does not prove the required Romans font is usable.' + reasonsText);
+          addListItem(actions, 'Repair or reinstall the selected LibreCAD installation so its executable-bound Romans font is available, then ' + againText + '. Review the reason for each word; another source or layout check may still prevent native text.');
+        } else if (lff.notFound) {
+          addListItem(findings, noneEditable + '. The import report says LibreCAD was not found, so LibreCAD\'s font was not found either: that font comes from your LibreCAD installation.' + reasonsText);
+          addListItem(actions, 'Install LibreCAD, or if it is already installed, ' + locateText + '. Then ' + againText + '.');
+        } else if (lff.fontFound) {
+          addListItem(findings, noneEditable + '. LibreCAD\'s font was found for at least one attempt, but another font, source, or layout check prevented native editable text. The verified asset alone does not show that every required font was usable.' + reasonsText);
+          addListItem(actions, causesText + ' For an R12 file, choose R2000 or later and import again. The import report gives the reason for each word; use that reason to distinguish a source limit from a font or installation problem.');
+        } else if (lff.fontUnusable) {
+          addListItem(findings, noneEditable + '. LibreCAD was found, but its font could not be used.' + reasonsText);
+          addListItem(actions, 'Check the font path and installation binding named in the report; correct any BCS_LIBRECAD_UNICODE_LFF override. Repair or reinstall LibreCAD if an installation font is missing or damaged, then ' + againText + '.');
+        } else {
+          addListItem(findings, noneEditable + '.' + (reasonsText || ' This report does not record why for each word.'));
+          addListItem(actions, 'If the importer said LibreCAD was not found, install LibreCAD or ' + locateText + ', then ' + againText + '. ' + causesText);
+        }
+        var delivery = libreCADFinalTextEvidence(report);
+        addListItem(findings, delivery.summary);
+        if (delivery.needsReview) {
+          severity = severity === 'ok' ? 'warn' : severity;
+          addListItem(actions, 'Review the final representation, verification, and any degraded or dropped text items before using this drawing. A zero editable-text count does not establish its appearance.');
+        }
+      } else {
+        addListItem(findings, '"Editable text (LibreCAD font)" was chosen' +
+          (editableCount !== null ? ': ' + editableCount + ' text item(s) came in as editable text' : '') +
+          ' in LibreCAD\'s own font, so letter shapes differ from the PDF. Check the per-item report for the actual fallback and any image, degraded, or dropped text items.');
+      }
     }
 
     if (normalizedTextMode === 'geometry' || normalizedTextMode === 'glyphs') {
-      addListItem(findings, 'Text was requested as visual geometry/outlines, not editable labels.');
+      addListItem(findings, isLibreCAD
+        ? 'Text was requested as outlines (Exact look, Glyphs or raw outlines), not editable text.'
+        : 'Text was requested as visual geometry/outlines, not editable labels.');
       if (isLibreCAD) addLibreCADEditableAdvice();
       else addListItem(actions, 'Use Labels or 3D Text if the downstream workflow needs editable text.');
     } else if (normalizedTextMode === 'labels') {
-      addListItem(findings, 'Text was requested as editable labels where the host can support it.');
-      if (isLibreCAD) addLibreCADEditableAdvice();
-      if (text.outlines !== null && text.outlines > 0) {
-        severity = severity === 'ok' ? 'warn' : severity;
-        addListItem(findings, 'Some text appears to have landed as outlines/glyph geometry even though Labels mode was requested.');
-        addListItem(actions, 'Compare the affected text against the PDF. Rotated, warped, clipped, or font-dependent spans may need outlines for visual accuracy.');
+      if (isLibreCAD) {
+        addListItem(findings, 'Labels was requested. DXF has no label entity, so the importer follows its item-specific Text and fallback checks. Check the recorded final delivery; a Labels request does not prove editable words or exact outlines were delivered.');
+        addLibreCADEditableAdvice();
+      } else {
+        addListItem(findings, 'Text was requested as editable labels where the host can support it.');
+        if (text.outlines !== null && text.outlines > 0) {
+          severity = severity === 'ok' ? 'warn' : severity;
+          addListItem(findings, 'Some text appears to have landed as outlines/glyph geometry even though Labels mode was requested.');
+          addListItem(actions, 'Compare the affected text against the PDF. Rotated, warped, clipped, or font-dependent spans may need outlines for visual accuracy.');
+        }
       }
     } else if (normalizedTextMode === '3d_text' || normalizedTextMode === 'text3d') {
       addListItem(findings, 'Text was requested as 3D/extruded text where the host can support it.');
       if (text.labels !== null && text.labels > 0) {
         addListItem(findings, 'The report shows editable labels alongside 3D text. This can happen when a host preserves simple text differently from complex spans.');
       }
-      addListItem(actions, 'If table text or dimensions look misaligned, compare against Labels mode on the same page.');
+      // LibreCAD's own 3D Text finding and advice are added further down.
+      if (!isLibreCAD) addListItem(actions, 'If table text or dimensions look misaligned, compare against Labels mode on the same page.');
+    } else if (normalizedTextMode === 'text' && isLibreCAD && !editableTextChosen) {
+      addListItem(findings, 'In LibreCAD a Text request without "Editable text" attempts outlines (the Exact look default). Check the per-item report for the actual final representation and its verification.');
+      addLibreCADEditableAdvice();
     } else if (textMode === undefined) {
       addListItem(findings, 'No text mode was recorded. This may be an older report or a host adapter gap.');
       addListItem(actions, 'Update to the latest importer and include the full import report if you contact support.');
@@ -826,7 +1015,6 @@
       severity = severity === 'ok' ? 'warn' : severity;
       addListItem(findings, 'The report suggests a large amount of text/glyph geometry. Dense glyph pages can be slow and hard to edit.');
       if (isLibreCAD) {
-        addListItem(actions, 'Try Raster/Hybrid when exact appearance matters more than editability.');
         addLibreCADEditableAdvice();
       } else {
         addListItem(actions, 'Try Labels for editable text, or Raster/Hybrid when exact appearance matters more than editability.');
@@ -877,7 +1065,7 @@
     }
 
     if (isLibreCAD && normalizedTextMode === '3d_text') {
-      addListItem(findings, 'LibreCAD is 2D-only; a 3D Text request is delivered as flat 2D text outlines that keep the exact look, not as 3D geometry or editable DXF text.');
+      addListItem(findings, 'LibreCAD is 2D-only; a 3D Text request cannot establish native 3D text. The importer follows its item-specific flat Text and fallback checks; inspect the recorded final delivery and its verification.');
       addLibreCADEditableAdvice();
     }
 
@@ -976,7 +1164,12 @@
     resetResult();
     var text = jsonInput.value.trim();
     if (!text) {
-      setError('Paste report JSON or choose a report file first.');
+      // A parts file alone is a complete request: list its parts.
+      if (hasBootstrapInput()) {
+        renderTagsTable(parseBootstrapInput());
+        return;
+      }
+      setError('Paste report JSON or choose a report file first. A parts file can also be listed on its own.');
       return;
     }
     var report;

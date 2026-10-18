@@ -138,11 +138,14 @@ var IDS = [
   'doctor-error', 'doctor-output', 'doctor-title', 'doctor-status',
   'doctor-metrics', 'doctor-findings', 'doctor-actions', 'doctor-support',
   'copy-support', 'email-support', 'bootstrap-file', 'bootstrap-json',
-  'doctor-tags-section', 'doctor-tags-table'
+  'doctor-tags-section', 'doctor-tags-table', 'doctor-tags-summary'
 ];
 
 var elements = {};
 IDS.forEach(function (id) { elements[id] = new StubElement('div'); });
+// Both result areas start hidden, as in report-doctor.html.
+elements['doctor-output'].classList.add('hidden');
+elements['doctor-tags-section'].classList.add('hidden');
 
 var documentStub = {
   getElementById: function (id) { return elements[id] || null; },
@@ -170,7 +173,7 @@ try {
 }
 
 // ---------------------------------------------------------------------------
-// Drive the Tags tab with a hostile sidecar
+// Drive the parts list with a hostile sidecar
 // ---------------------------------------------------------------------------
 
 var HOSTILE = '<img src=x onerror=alert(1)>';
@@ -266,6 +269,16 @@ assert.strictEqual(r3[0].textContent, 'D"4');
 assert.strictEqual(r3[1].textContent, 'attr" onmouseover="alert(1)');
 assert.ok(rowText(trs[3]).indexOf('bluecollar-systems.com') < 0, 'malformed part_id must not produce a tag URL');
 assert.strictEqual(trs[3].querySelectorAll('.copy-tag').length, 0, 'malformed part_id row must have no copy button');
+
+// The summary line is literal text too, and counts the one valid tag link.
+assert.strictEqual(
+  elements['doctor-tags-summary'].textContent,
+  '4 parts listed. 1 of 4 has a tag link; the others carry no valid part_id.'
+);
+assert.strictEqual(elements['doctor-tags-section'].classList.contains('hidden'), false,
+  'a parts file alone must show the parts list (no report loaded)');
+assert.strictEqual(elements['doctor-output'].classList.contains('hidden'), true,
+  'a parts file alone must not show a report diagnosis');
 
 // D. Re-render replaces (not appends) the table.
 bootstrapInput.dispatch('blur');
@@ -384,7 +397,7 @@ terminalOnly.extra.result_status = 'future_unrecognized_status';
 expectReport(terminalOnly, 'Review', 'Import Status Needs Review');
 
 [
-  '', 'broken json', '{}', 'null', '[]', '42', '"hello"',
+  'broken json', '{}', 'null', '[]', '42', '"hello"',
   '{"unrelated":"document"}', '{"host":"Blender"}',
   '{"schema":{"toString":null,"valueOf":null}}',
   '{"host":{"toString":null,"valueOf":null},"result":{"pages":1}}',
@@ -410,6 +423,38 @@ expectReport(terminalOnly, 'Review', 'Import Status Needs Review');
   });
   invalidReportCases++;
 });
+
+// An empty report box with a parts file is a parts-only request (T18): the
+// parts list is rendered again from the parts box, and no stale report
+// output survives.
+expectReport(sharedReport(), 'Healthy');
+analyzeInput('');
+assert.strictEqual(elements['doctor-error'].textContent, '', 'a parts file alone is not an error');
+assert.strictEqual(elements['doctor-output'].classList.contains('hidden'), true);
+assert.strictEqual(elements['doctor-title'].textContent, '');
+assert.strictEqual(elements['doctor-status'].textContent, 'Waiting');
+assert.strictEqual(elements['doctor-support'].textContent, '');
+assert.strictEqual(elements['email-support'].href, 'mailto:support@bluecollar-systems.com');
+['doctor-metrics', 'doctor-findings', 'doctor-actions'].forEach(function(id) {
+  assert.strictEqual(elements[id].childNodes.length, 0, id + ' must not retain stale output');
+});
+assert.strictEqual(elements['doctor-tags-section'].classList.contains('hidden'), false);
+assert.strictEqual(elements['doctor-tags-table'].childNodes.length, 1, 'parts list must be rendered once');
+assert.strictEqual(elements['doctor-tags-table'].childNodes[0].childNodes[1].childNodes.length, 4);
+assert.strictEqual(innerHTMLWrites.length, 0);
+invalidReportCases++;
+
+// With no parts file either, an empty report box is rejected as before.
+elements['bootstrap-json'].value = '';
+expectReport(sharedReport(), 'Healthy');
+analyzeInput('');
+assert.ok(elements['doctor-error'].textContent, 'an empty request must explain what to load');
+assert.strictEqual(elements['doctor-output'].classList.contains('hidden'), true);
+assert.strictEqual(elements['doctor-tags-section'].classList.contains('hidden'), true);
+assert.strictEqual(elements['doctor-tags-table'].childNodes.length, 0);
+assert.strictEqual(elements['doctor-tags-summary'].textContent, '');
+invalidReportCases++;
+elements['bootstrap-json'].value = JSON.stringify(sidecar);
 
 expectReport({
   schema: 'bcs.ready_check/1.0', product: 'Fixture', status: 'pass',
