@@ -127,20 +127,21 @@ def _safe_latest_release(repo: str, token: str | None) -> dict[str, Any] | None:
     return _release_summary(data)
 
 
-def _safe_latest_tagged_release(
-    repo: str, token: str | None, tag_prefix: str
-) -> dict[str, Any] | None:
-    url = f"https://api.github.com/repos/{repo}/releases?per_page=100"
-    try:
-        releases = _json_get(url, token)
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return None
-        raise
+def releases_url(repo: str) -> str:
+    """The API listing the site reads a repo's releases from (newest first)."""
+    return f"https://api.github.com/repos/{repo}/releases?per_page=100"
 
+
+def final_tagged_releases(releases: Any, tag_prefix: str) -> list[dict[str, Any]]:
+    """Published, final releases whose tag starts with tag_prefix, in API order.
+
+    The first entry is the release the site publishes for that channel.
+    tools/check_release_drift.py uses the same rule, so the drift check and
+    the deploy can never disagree about which release is the latest.
+    """
     if not isinstance(releases, list):
-        return None
-
+        return []
+    found: list[dict[str, Any]] = []
     for release in releases:
         release = release or {}
         # R21-11: a PAT in the website-ci token chain sees drafts via
@@ -150,8 +151,22 @@ def _safe_latest_tagged_release(
             continue
         tag = release.get("tag_name") or ""
         if tag.startswith(tag_prefix):
-            return _release_summary(release)
-    return None
+            found.append(release)
+    return found
+
+
+def _safe_latest_tagged_release(
+    repo: str, token: str | None, tag_prefix: str
+) -> dict[str, Any] | None:
+    try:
+        releases = _json_get(releases_url(repo), token)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+
+    candidates = final_tagged_releases(releases, tag_prefix)
+    return _release_summary(candidates[0]) if candidates else None
 
 
 def _load_previous_payload(path: Path) -> dict[str, Any] | None:
@@ -309,12 +324,12 @@ def build_metadata(token: str | None, previous_repos: dict[str, Any] | None = No
     }
 
 
-def stamp_html_versions(payload: dict[str, Any]) -> None:
+def stamp_html_versions(payload: dict[str, Any], pages_root: Path = Path(".")) -> None:
     """Write latest release tags into static HTML as fallback content."""
     import re
 
     repos = payload.get("repos", {})
-    for page in sorted(Path(".").glob("*.html")):
+    for page in sorted(Path(pages_root).glob("*.html")):
         original = html = page.read_text(encoding="utf-8")
         for repo_key, repo_data in repos.items():
             release_attr = (

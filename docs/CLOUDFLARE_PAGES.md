@@ -40,9 +40,10 @@ Do **not** store API tokens in this repo. Configure in the Cloudflare dashboard 
 
 ### Build hooks / deploy triggers
 
-- **Primary trigger:** push to `main`, `repository_dispatch` (`product-release`, `product-update`, steel-shapes events), 6-hour schedule, `workflow_dispatch`.
+- **Validation triggers:** push to `main`, pull requests, the 6-hour schedule, and the `product-update` and steel-shapes dispatches. None of them deploy.
+- **Deploy triggers:** a manual `workflow_dispatch` on `main` with `deploy_production=true` (any approved site change), and an importer's `product-release` `repository_dispatch` (download metadata and badges only; the deploy refuses if `main` holds other undeployed site changes). See the README sections on release deploys and the release drift check.
 - **No separate Pages “build hook” required** unless you want a manual dashboard redeploy; CI is the source of truth.
-- After publishing a new GitHub **release** on an importer repo, ensure `WEBSITE_DISPATCH_TOKEN` (or equivalent) can fire `repository_dispatch` so metadata and deploy refresh without waiting for cron.
+- After publishing a new GitHub **release** on an importer repo, ensure `WEBSITE_DISPATCH_TOKEN` (or equivalent) can fire `repository_dispatch` so the download metadata deploys right away. The daily `release-drift` workflow turns red if the live downloads still lag a release after 24 hours.
 
 ## Deploy status
 

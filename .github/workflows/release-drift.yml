@@ -1,0 +1,91 @@
+name: release-drift
+
+# Once a day: does the live site still offer each importer's latest GitHub
+# release? Read-only for the site; it never builds or deploys. The job turns
+# red, and opens or updates one issue, when a download has been behind for
+# more than 24 hours (or the live release was deleted). It closes that issue
+# on the first run that finds no stale download. The fix is the manual
+# website-ci run with deploy_production=true.
+on:
+  schedule:
+    - cron: "41 13 * * *"
+  workflow_dispatch:
+  # Exercise the real check on a pull request that changes it. Pull request
+  # runs only report; they never open, edit or close the issue.
+  pull_request:
+    paths:
+      - .github/workflows/release-drift.yml
+      - tools/check_release_drift.py
+      - tools/sync_repo_metadata.py
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: release-drift-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ISSUE_TITLE: Live site downloads are behind GitHub releases
+      ISSUE_JQ: '.[] | select(.pull_request == null) | select(.user.login == "github-actions[bot]") | select((.body // "") | contains("<!-- release-drift-check -->")) | .number'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Same token chain as the deploy's metadata sync, so both see the same
+      # releases. Exit 0 = in sync or behind for less than 24 h, 1 = stale,
+      # 2 = the site or the GitHub API could not be read.
+      - name: Compare live download metadata with GitHub releases
+        id: drift
+        env:
+          GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          python tools/check_release_drift.py --report "$RUNNER_TEMP/release-drift.md"
+          status=$?
+          set -e
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          if [ -f "$RUNNER_TEMP/release-drift.md" ]; then cat "$RUNNER_TEMP/release-drift.md" >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Open or update the drift issue
+        if: steps.drift.outputs.status == '1' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          numbers="$(gh api "repos/$GH_REPO/issues?state=open&per_page=100" --paginate --jq "$ISSUE_JQ")"
+          number="${numbers%%$'\n'*}"
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file "$RUNNER_TEMP/release-drift.md"
+            echo "Updated issue #$number."
+          else
+            gh issue create --title "$ISSUE_TITLE" --body-file "$RUNNER_TEMP/release-drift.md"
+          fi
+
+      - name: Close the drift issue when no download is stale
+        if: steps.drift.outputs.status == '0' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          numbers="$(gh api "repos/$GH_REPO/issues?state=open&per_page=100" --paginate --jq "$ISSUE_JQ")"
+          for number in $numbers; do
+            gh issue comment "$number" --body-file "$RUNNER_TEMP/release-drift.md"
+            gh issue close "$number" --reason completed
+            echo "Closed issue #$number."
+          done
+
+      - name: Fail when a download is stale or the check could not run
+        if: steps.drift.outputs.status != '0'
+        env:
+          STATUS: ${{ steps.drift.outputs.status }}
+        run: |
+          echo "::error::Release drift check finished with status $STATUS (1 = stale downloads, 2 = could not check). See the job summary."
+          exit 1
