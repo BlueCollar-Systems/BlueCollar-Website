@@ -278,9 +278,80 @@ class CompareTests(unittest.TestCase):
     def test_channel_without_any_github_release_is_not_drift(self) -> None:
         world = World()
         world.releases[BLENDER] = []
+        world.live = world.deploy(NOW - dt.timedelta(hours=1))
         code, _, results = world.evaluate()
+        result = _result(results, BLENDER)
         self.assertEqual(code, DRIFT.EXIT_IN_SYNC)
-        self.assertIn("no published GitHub release", _result(results, BLENDER).note)
+        self.assertTrue(result.in_sync)
+        self.assertIsNone(result.live_tag)
+        self.assertIsNone(result.github_tag)
+        self.assertIn("no published GitHub release", result.note)
+
+    def test_last_final_withdrawal_is_stale_for_delete_draft_and_prerelease(self) -> None:
+        for withdrawn in ("deleted", "draft", "prerelease"):
+            with self.subTest(withdrawn=withdrawn):
+                world = World()
+                advertised = copy.deepcopy(world.live)
+                if withdrawn == "deleted":
+                    world.releases[BLENDER] = []
+                else:
+                    world.releases[BLENDER][0][withdrawn] = True
+                code, report, results = world.evaluate()
+                result = _result(results, BLENDER)
+                self.assertEqual(code, DRIFT.EXIT_STALE)
+                self.assertFalse(result.in_sync)
+                self.assertEqual(result.live_tag, "v1.0.111")
+                self.assertIsNone(result.github_tag)
+                self.assertIsNone(result.age_hours(NOW))
+                self.assertIn("no final replacement is available", result.note)
+                self.assertIn("no grace (fix now)", report)
+                self.assertIn(DRIFT.STALE_MARKER, report)
+                self.assertEqual(world.live, advertised)  # reporting never retires the link
+
+    def test_last_shape_pack_withdrawal_is_independent_of_importer_channel(self) -> None:
+        world = World()
+        world.releases[SKETCHUP] = [r for r in world.releases[SKETCHUP]
+                                    if not r["tag_name"].startswith("steel-v")]
+        code, report, results = world.evaluate()
+        result = _result(results, SKETCHUP, "shape pack")
+        self.assertEqual(code, DRIFT.EXIT_STALE)
+        self.assertTrue(_result(results, SKETCHUP).in_sync)
+        self.assertFalse(result.in_sync)
+        self.assertEqual(result.live_tag, "steel-v1.0.2")
+        self.assertIsNone(result.github_tag)
+        self.assertIsNone(result.age_hours(NOW))
+        self.assertNotIn("A shape pack (`steel-v*`) release needs the manual deploy", report)
+        self.assertIn("Withdrawn release with no final replacement", report)
+
+    def test_withdrawal_report_has_truthful_age_and_non_deploy_recovery(self) -> None:
+        world = World()
+        world.releases[BLENDER] = []
+        _, report, _ = world.evaluate()
+        self.assertIn("downloads are out of sync with published GitHub releases", report)
+        self.assertNotIn("offered old downloads for more than", report)
+        self.assertIn("no grace (fix now)", report)
+        self.assertIn("approve a replacement final release", report)
+        self.assertIn("explicit website change to retire", report)
+        self.assertIn("metadata refresh alone keeps the previous snapshot", report)
+        self.assertNotIn("**Available-release drift:**", report)
+        self.assertNotIn("**How to fix:** run", report)
+
+    def test_mixed_drift_report_keeps_both_state_specific_recoveries(self) -> None:
+        world = World()
+        world.releases[BLENDER] = []
+        world.publish(FREECAD, "v4.0.116", hours_ago=30)
+        _, report, _ = world.evaluate()
+        self.assertIn("**Withdrawn release with no final replacement:**", report)
+        self.assertIn("**Available-release drift:** run the `website-ci` workflow", report)
+        self.assertIn("`deploy_production` set to true once that deployment is approved", report)
+        self.assertIn("metadata refresh alone keeps the previous snapshot", report)
+
+    def test_available_release_report_retains_manual_deploy_recovery(self) -> None:
+        world = World()
+        world.publish(BLENDER, "v1.0.112", hours_ago=30)
+        _, report, _ = world.evaluate()
+        self.assertIn("**Available-release drift:** run the `website-ci` workflow", report)
+        self.assertNotIn("**Withdrawn release with no final replacement:**", report)
 
     def test_snapshot_of_2026_10_12_against_the_releases_of_2026_10_14_is_red(self) -> None:
         # The real gap this check exists for: the site kept v1.0.109 /
@@ -391,6 +462,15 @@ class SharedSelectionRuleTests(unittest.TestCase):
             live["repos"][OTHER] = {"latest_release": None}
             _, _, results = DRIFT.evaluate(live, world.releases, NOW, 24, latest_by_repo=latest)
         self.assertTrue(_result(results, OTHER).in_sync)
+
+    def test_latest_api_channel_with_retained_live_tag_is_stale_when_none_remain(self) -> None:
+        result = DRIFT.compare_channel(
+            OTHER, "importer", {"tag": "2.1.0", "assets": []}, [], None, NOW, latest=None)
+        self.assertFalse(result.in_sync)
+        self.assertTrue(result.is_stale(NOW, 24))
+        self.assertEqual(result.live_tag, "2.1.0")
+        self.assertIsNone(result.github_tag)
+        self.assertIn("no final replacement is available", result.note)
 
     def test_importer_repos_never_ask_for_releases_latest(self) -> None:
         def fake_get(url, token=None):
@@ -525,6 +605,16 @@ class MainTests(unittest.TestCase):
         self.assertTrue(text.startswith(DRIFT.ISSUE_MARKER))
         self.assertIn("This is not a drift finding", text)
         self.assertNotIn(DRIFT.STALE_MARKER, text)
+
+    def test_withdrawn_shape_pack_annotation_does_not_promise_deploy_repair(self) -> None:
+        world = World()
+        world.releases[SKETCHUP] = [r for r in world.releases[SKETCHUP]
+                                    if not r["tag_name"].startswith("steel-v")]
+        code, report, out = self.run_main(world)
+        self.assertEqual(code, DRIFT.EXIT_STALE)
+        self.assertIn("approve a replacement final release or explicit download retirement", out)
+        self.assertNotIn("shape pack releases need the manual deploy", out)
+        self.assertIn(DRIFT.STALE_MARKER, report)
 
     def test_shape_pack_annotation_names_the_manual_deploy(self) -> None:
         world = World()

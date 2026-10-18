@@ -84,6 +84,8 @@ STAMP_TOOL = "tools/sync_repo_metadata.py"
 EXIT_TOOLS_UNSUPPORTED = 64
 # Seconds one stamp or build subprocess may take.
 TOOL_TIMEOUT = 600
+# Git checkout/fetch/cleanup must also finish or refuse within a bounded time.
+GIT_TIMEOUT = 60
 
 # Runs in the worktree (cwd) with -B -E -s, so the only sync_repo_metadata it
 # can import is that commit's own tools/sync_repo_metadata.py. It calls
@@ -227,10 +229,14 @@ def find_deployed_commit(
 # ---------------------------------------------------------------------------
 
 def _git(repo_root: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["git", "-C", str(repo_root), *args],
-        check=False, capture_output=True, text=True, encoding="utf-8", errors="replace",
-    )
+    try:
+        return subprocess.run(
+            ["git", "-C", str(repo_root), *args],
+            check=False, capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=GIT_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise GuardError(f"Git {' '.join(args[:2])} took longer than {GIT_TIMEOUT} s.") from exc
 
 
 def _require_commit(repo_root: Path, sha: str) -> None:

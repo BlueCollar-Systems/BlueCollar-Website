@@ -7,8 +7,9 @@ site tracks, the release a deploy would publish now: the newest published,
 final ``v*`` release (sync_repo_metadata.importer_tag_prefix(); a tracked repo
 outside the PDF importers uses GitHub's /releases/latest instead), plus the
 newest ``steel-v*`` shape-pack release in the repositories that host one. That
-is the selection rule of tools/sync_repo_metadata.py, read from it, so a
-deploy always clears what this reports.
+is the selection rule of tools/sync_repo_metadata.py, read from it. A normal
+refresh clears available-release drift; a withdrawn last final release needs
+an approved replacement or retirement because the sync retains its snapshot.
 
 Shape-pack releases never deploy the site by themselves (the
 steel-shapes-release workflow publishes them with GITHUB_TOKEN, which starts
@@ -162,9 +163,15 @@ def compare_channel(
     candidates = _candidates(releases, tag_prefix, latest)
     live_tag = live_release.get("tag") if isinstance(live_release, dict) else None
     if not candidates:
-        # The deploy keeps the previous snapshot when GitHub lists nothing,
-        # so a deploy would not change this channel either.
-        return ChannelResult(repo, channel, live_tag, None, None, True, "no published GitHub release")
+        if live_tag:
+            # The sync intentionally keeps the previous snapshot, but that
+            # does not prove its advertised download is still published.
+            return ChannelResult(
+                repo, channel, live_tag, None, None, False,
+                f"the live release {live_tag} is no longer a published GitHub release "
+                "(deleted, draft or prerelease); no final replacement is available",
+            )
+        return ChannelResult(repo, channel, None, None, None, True, "no published GitHub release")
 
     expected = sync._release_summary(candidates[0])
     github_tag = expected.get("tag")
@@ -354,8 +361,9 @@ def render_report(
     waiting = [r for r in results if not r.in_sync and not r.is_stale(now, grace_hours)]
     if stale:
         headline = (
-            f"**The live site has offered old downloads for more than {grace_hours:g} hours.** "
-            "Visitors pressing Download get the version in the Live column."
+            "**The live site's downloads are out of sync with published GitHub releases.** "
+            "Visitors pressing Download get the version in the Live column; "
+            "the table distinguishes aged drift from withdrawals with no grace."
         )
     elif waiting:
         headline = (
@@ -395,19 +403,30 @@ def render_report(
         + f". Grace period: {grace_hours:g} hours.",
     ]
     if stale:
-        lines += [
-            "",
-            "**How to fix:** run the `website-ci` workflow on `main` with `deploy_production` "
-            "set to true. It fetches the current releases, checks every download link, "
-            "deploys and verifies the live metadata. This issue closes itself on the first "
-            "daily check that finds the site in sync.",
-            "",
-            "If an importer release did not deploy the site by itself, look at the "
-            "`website-ci` run its `product-release` dispatch started: a failed check, or a "
-            "refused metadata-only deploy because `main` holds website changes that were "
-            "never deployed, leaves the old downloads live.",
-        ]
-    if any(r.channel == SHAPE_PACK and not r.in_sync for r in results):
+        withdrawn = [r for r in stale if r.live_tag and r.github_tag is None]
+        lines += ["", "**How to fix:** follow the recovery for the affected channel below."]
+        if withdrawn:
+            lines += [
+                "",
+                "**Withdrawn release with no final replacement:** approve a replacement final "
+                "release or an explicit website change to retire the affected download. A "
+                "metadata refresh alone keeps the previous snapshot and does not clear this "
+                "condition. This check never unlinks, replaces or republishes a release.",
+            ]
+        if len(withdrawn) < len(stale):
+            lines += [
+                "",
+                "**Available-release drift:** run the `website-ci` workflow on `main` with "
+                "`deploy_production` set to true once that deployment is approved. It fetches "
+                "the current releases, checks download links, deploys and verifies the live metadata.",
+                "",
+                "If an importer release did not deploy the site by itself, look at the "
+                "`website-ci` run its `product-release` dispatch started: a failed check, or a "
+                "refused metadata-only deploy because `main` holds website changes that were "
+                "never deployed, leaves the old downloads live.",
+            ]
+        lines += ["", "This issue closes itself on the first daily check that finds no stale downloads."]
+    if any(r.channel == SHAPE_PACK and not r.in_sync and r.github_tag for r in results):
         lines += [
             "",
             "**A shape pack (`steel-v*`) release needs the manual deploy.** Shape pack "
@@ -489,8 +508,10 @@ def _check(args: argparse.Namespace, now: dt.datetime) -> int:
         detail = f"live {result.live_tag or 'none'}, GitHub {result.github_tag or 'none'}"
         if result.note:
             detail += f"; {result.note}"
-        if result.channel == SHAPE_PACK:
+        if result.channel == SHAPE_PACK and result.github_tag:
             detail += "; shape pack releases need the manual deploy (deploy_production=true)"
+        elif result.live_tag and result.github_tag is None:
+            detail += "; approve a replacement final release or explicit download retirement"
         if result.is_stale(now, args.grace_hours):
             print(f"::error::{where} downloads are stale ({detail}).")
         else:

@@ -189,8 +189,11 @@ compares each importer with the release a deploy would publish now: the newest
 published, final `v*` release, and the newest `steel-v*` shape-pack release in
 the SketchUp and FreeCAD repos. The check reads that rule from
 `sync_repo_metadata.py` (`importer_tag_prefix()`; a tracked repo outside the
-PDF importers would follow GitHub's `/releases/latest` in both), so a deploy
-always clears what it reports. Drafts and prereleases never count.
+PDF importers would follow GitHub's `/releases/latest` in both). A normal
+deploy clears available-release drift. If the last final release was withdrawn,
+the sync retains its previous snapshot: that needs an approved replacement or
+explicit retirement, rather than a metadata refresh alone. Drafts and
+prereleases never count as replacements.
 
 - **Behind for less than 24 hours:** a warning only; the job stays green. The
   release deploy normally closes this within minutes. A shape pack waits for
@@ -200,7 +203,9 @@ always clears what it reports. Drafts and prereleases never count.
   already open. The age counts from the publish time of the first release the
   site is missing, so a fresh release on top of an old gap does not reset it.
 - **A live release that GitHub no longer lists** (deleted, back to draft or
-  prerelease) turns red at once, because its Download link may be dead.
+  prerelease) turns red at once, because its Download link may be dead. This
+  includes withdrawal of the channel's last final release; a truly empty
+  channel with no advertised release remains in sync.
 - **In sync again:** the next run comments with the result and closes the issue.
 - **The check could not run** (site or GitHub API unreachable, or an error in
   the tool itself): red with status 2, and the issue is not opened, edited or
@@ -208,8 +213,12 @@ always clears what it reports. Drafts and prereleases never count.
   stale marker in its report) can open the issue, so a crash never reads as
   drift.
 
-The fix for a red run is the manual `website-ci` run with
-`deploy_production=true`. The workflow never builds, deploys or pushes. Pull
+For available-release drift, the fix is the manual `website-ci` run with
+`deploy_production=true` once that deployment is approved. If no final
+replacement exists, approve a replacement release or a website change that
+retires the affected download; syncing alone retains the withdrawn snapshot.
+The report identifies the applicable recovery and never automatically unlinks
+or republishes anything. The workflow never builds, deploys or pushes. Pull
 requests that change the check run it read-only and never touch the issue.
 
 To check by hand: `python tools/check_release_drift.py` (exit 0 in sync or

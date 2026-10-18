@@ -407,6 +407,32 @@ class GuardEndToEndTests(unittest.TestCase):
         # index.html carries the importer badges this wording applies to.
         self.assertEqual(self.release_deploy(), ["changed: index.html"])
 
+    def test_undeployed_builder_transformation_is_refused(self) -> None:
+        # Both commits keep identical input pages and public file lists.
+        # Only main's builder appends bytes to the built index page.
+        anchor = '    return sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file())'
+        replacement = (
+            '    index = out / "index.html"\n'
+            '    index.write_text(index.read_text(encoding="utf-8") + "<!-- builder-only -->", encoding="utf-8")\n'
+            + anchor
+        )
+        _edit(self.repo / GUARD.BUILD_TOOL, anchor, replacement)
+        self.commit("builder changes output without changing input pages")
+        self.assertEqual(self.release_deploy(), ["changed: index.html"])
+        self.assertNoWorktreesLeft()
+
+    def test_undeployed_allowlist_addition_is_refused(self) -> None:
+        # The bytes already exist in the live commit but are not published.
+        # Only the new commit's public allowlist starts publishing them.
+        (self.repo / "extra-public.txt").write_text("not yet published\n", encoding="utf-8")
+        self.live_sha = self.commit("live repository holds an unpublished text file")
+        _edit(self.repo / GUARD.BUILD_TOOL,
+              '    # Add future root public files here.',
+              '    "extra-public.txt",\n    # Add future root public files here.')
+        self.commit("start publishing the existing text file")
+        self.assertEqual(self.release_deploy(), ["new public file: extra-public.txt"])
+        self.assertNoWorktreesLeft()
+
     def test_leftover_or_uncommitted_file_in_the_upload_is_refused(self) -> None:
         (self.repo / "scratch.html").write_text("<!DOCTYPE html><title>x</title>\n", encoding="utf-8", newline="\n")
         site, metadata = self.deploy_job()
@@ -473,6 +499,34 @@ class GuardEndToEndTests(unittest.TestCase):
         self.assertIn("a manual deploy is needed", output.getvalue())
         self.assertIn("deploy_production=true", output.getvalue())
 
+    def test_live_builder_that_exits_without_output_is_refused(self) -> None:
+        def no_output() -> None:
+            (self.repo / GUARD.BUILD_TOOL).write_text("raise SystemExit(0)\n", encoding="utf-8")
+        old = self.old_live_commit(no_output)
+        self.assertRefusedSafely(old, "did not write the folder given with --out")
+        self.assertFalse((self.temp / "work-1" / "live-source").exists())
+
+    def test_live_builder_timeout_refuses_and_removes_owned_worktree(self) -> None:
+        def slow_builder() -> None:
+            (self.repo / GUARD.BUILD_TOOL).write_text(
+                "import time\ntime.sleep(10)\n", encoding="utf-8")
+        old = self.old_live_commit(slow_builder)
+        site, metadata = self.deploy_job()
+        run_tool = GUARD._run_tool
+        def short_live_deadline(worktree, args):
+            # Normal HEAD stamp/build keeps its production budget. Only the
+            # deliberately sleeping historical builder gets the short test deadline.
+            if worktree.name == "live-source" and args[0] == GUARD.BUILD_TOOL:
+                with patch.object(GUARD, "TOOL_TIMEOUT", 0.2):
+                    return run_tool(worktree, args)
+            return run_tool(worktree, args)
+        with patch.object(GUARD, "_run_tool", side_effect=short_live_deadline):
+            with self.assertRaises(GUARD.GuardError) as caught:
+                self.guard(site, metadata, live_sha=old)
+        self.assertIn("took longer than 0.2 s", str(caught.exception))
+        self.assertFalse((self.temp / "work-1" / "live-source").exists())
+        self.assertNoWorktreesLeft()
+
     def test_unknown_live_commit_is_refused(self) -> None:
         site, metadata = self.deploy_job()
         with self.assertRaises(GUARD.GuardError):
@@ -501,6 +555,14 @@ class GuardEndToEndTests(unittest.TestCase):
 
 
 class ToolProcessTests(unittest.TestCase):
+    def test_git_timeout_is_a_bounded_guard_refusal(self) -> None:
+        timeout = subprocess.TimeoutExpired(["git", "fetch"], GUARD.GIT_TIMEOUT)
+        with patch.object(GUARD.subprocess, "run", side_effect=timeout) as run:
+            with self.assertRaises(GUARD.GuardError) as caught:
+                GUARD._git(ROOT, "fetch", "--no-tags", "origin", "a" * 40)
+        self.assertEqual(run.call_args.kwargs["timeout"], 60)
+        self.assertIn("took longer than 60 s", str(caught.exception))
+
     def test_tools_run_without_secrets(self) -> None:
         secrets = {"GH_TOKEN": "x", "GITHUB_TOKEN": "x", "CLOUDFLARE_API_TOKEN": "x",
                    "AWS_SECRET_ACCESS_KEY": "x", "SOME_API_KEY": "x", "DB_PASSWORD": "x"}
