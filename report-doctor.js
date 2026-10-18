@@ -17,6 +17,7 @@
   var bootstrapJsonInput = document.getElementById('bootstrap-json');
   var tagsSection = document.getElementById('doctor-tags-section');
   var tagsTable = document.getElementById('doctor-tags-table');
+  var tagsSummary = document.getElementById('doctor-tags-summary');
   var reportReadVersion = 0;
   var bootstrapReadVersion = 0;
 
@@ -30,7 +31,7 @@
     return [];
   }
 
-  // R21 corrective §6: every displayed Tags value is sidecar-controlled
+  // R21 corrective §6: every displayed parts-list value is sidecar-controlled
   // (user-supplied JSON) and must never reach an HTML parser. Rows are built
   // with createElement/textContent and explicit attribute assignment only —
   // report-doctor.js must contain no innerHTML sinks fed by report/sidecar
@@ -55,14 +56,27 @@
     return td;
   }
 
-  function renderTagsTable(rows) {
+  // parts is null (no parts file, or one that could not be read: the section
+  // is hidden) or { rows, note } from parseBootstrapInput. The section lives
+  // outside #doctor-output, so a parts file shows on its own, with no report.
+  function renderTagsTable(parts) {
     if (!tagsSection || !tagsTable) return;
     clearNode(tagsTable);
-    if (!rows.length) {
+    if (tagsSummary) tagsSummary.textContent = '';
+    if (!parts) {
       tagsSection.classList.add('hidden');
       return;
     }
+    var rows = parts.rows;
     tagsSection.classList.remove('hidden');
+    if (!rows.length) {
+      if (tagsSummary) {
+        tagsSummary.textContent = 'This parts file lists no parts' +
+          (parts.note ? ' (note in the file: ' + safeText(parts.note) + ').' : '.');
+      }
+      return;
+    }
+    var linked = 0;
     var table = document.createElement('table');
     table.className = 'w-full text-sm text-left text-gray-300 border border-gray-700';
     var thead = document.createElement('thead');
@@ -90,6 +104,7 @@
       tr.appendChild(tableCell('p-3', safeText(row.profile_hint || row.designation || '—')));
       tr.appendChild(tableCell('p-3', safeText(row.quantity == null ? 1 : row.quantity)));
       if (isValidPartId(partId)) {
+        linked++;
         var tagUrl = TAG_ORIGIN + '/p/' + encodeURIComponent(partId);
         tr.appendChild(tableCell('p-3 font-mono text-xs', tagUrl));
         var buttonCell = document.createElement('td');
@@ -113,6 +128,17 @@
     }
     table.appendChild(tbody);
     tagsTable.appendChild(table);
+    if (tagsSummary) {
+      var count = rows.length + (rows.length === 1 ? ' part' : ' parts') + ' listed. ';
+      if (linked === 0) {
+        tagsSummary.textContent = count + 'No row carries a part_id, so there are no tag links.';
+      } else if (linked === rows.length) {
+        tagsSummary.textContent = count + (rows.length === 1 ? 'It has a tag link.' : 'Every part has a tag link.');
+      } else {
+        tagsSummary.textContent = count + linked + ' of ' + rows.length + (linked === 1 ? ' has' : ' have') +
+          ' a tag link; the others carry no valid part_id.';
+      }
+    }
     var copyButtons = tagsTable.querySelectorAll('.copy-tag');
     for (var j = 0; j < copyButtons.length; j++) {
       copyButtons[j].addEventListener('click', function() {
@@ -122,23 +148,33 @@
     }
   }
 
+  function hasBootstrapInput() {
+    return Boolean(bootstrapJsonInput && bootstrapJsonInput.value.trim());
+  }
+
+  // Returns null when no parts file is given or it cannot be used (the reason
+  // goes to the error line), otherwise { rows, note } for renderTagsTable.
   function parseBootstrapInput() {
     var text = bootstrapJsonInput ? bootstrapJsonInput.value.trim() : '';
-    if (!text) return [];
+    if (!text) return null;
     try {
       var data = JSON.parse(text);
       if (!data || typeof data !== 'object' || Array.isArray(data)) {
         setError('The parts sidecar must be a JSON object containing rows, parts, or candidates. Report Doctor expects schema bcs.parts_bootstrap/1.0.');
-        return [];
+        return null;
       }
       if (data.schema && data.schema !== 'bcs.parts_bootstrap/1.0') {
         setError('Unsupported parts sidecar schema: ' + safeText(data.schema) + '. This parts file is not schema bcs.parts_bootstrap/1.0, so its rows were not listed.');
-        return [];
+        return null;
       }
-      return bootstrapRows(data);
+      if (!Array.isArray(data.rows) && !Array.isArray(data.parts) && !Array.isArray(data.candidates)) {
+        setError('The parts sidecar must be a JSON object containing rows, parts, or candidates. Report Doctor expects schema bcs.parts_bootstrap/1.0.');
+        return null;
+      }
+      return { rows: bootstrapRows(data), note: typeof data.note === 'string' ? data.note.trim() : '' };
     } catch (err) {
       setError('Could not parse parts sidecar JSON: ' + err.message + ' This parts file is not readable. Report Doctor expects schema bcs.parts_bootstrap/1.0.');
-      return [];
+      return null;
     }
   }
 
@@ -192,6 +228,7 @@
     [metrics, findings, actions, tagsTable].forEach(function(node) {
       if (node) clearNode(node);
     });
+    if (tagsSummary) tagsSummary.textContent = '';
     if (title) title.textContent = '';
     if (status) {
       status.className = 'doctor-pill';
@@ -782,41 +819,70 @@
       addListItem(findings, 'No fallback was reported.');
     }
 
+    // LibreCAD gets its own text advice. Its importer window (v1.0.105 and
+    // later, see the LibreCAD README "Two text choices in the window") offers
+    // "Exact look" (the default: words as outlines) and "Editable text
+    // (LibreCAD font)". Labels and 3D Text requests come in as the same exact
+    // outlines there (DXF has no label entity and LibreCAD is 2D), so they
+    // are never recommended to LibreCAD users. The window always uses Auto;
+    // vector/raster/hybrid are command-line options.
+    var isLibreCAD = String(host).toLowerCase().indexOf('librecad') >= 0;
+    var editableTextBlock = isLibreCAD ? getPath(report, ['extra', 'editable_text']) : undefined;
+    var editableTextChosen = isRecord(editableTextBlock) && model3dTriState(editableTextBlock.chosen) === true;
+    var libreCADAdviceGiven = false;
+    function addLibreCADEditableAdvice() {
+      if (libreCADAdviceGiven || editableTextChosen) return;
+      libreCADAdviceGiven = true;
+      addListItem(actions, 'For words you can click and edit in LibreCAD, choose "Editable text (LibreCAD font)" in the importer window (importer v1.0.105 or later; on the command line, --editable-text). Letter shapes then come from LibreCAD\'s own font, and no outlines are written for those words, so the file is also much smaller. The default, "Exact look", keeps the PDF\'s letter shapes as outlines. In LibreCAD, Labels and 3D Text also come in as outlines, so they do not give editable words.');
+    }
+
     if (String(resolvedMode || requestedMode || '').toLowerCase().indexOf('raster') >= 0) {
       severity = usedFallback ? 'risk' : 'warn';
       heading = 'Raster Output Needs Review';
       addListItem(findings, 'The resolved strategy appears to be Raster. Text and linework may be image pixels instead of editable CAD entities.');
-      addListItem(actions, 'If the source PDF is vector-based, retry with Auto or Vector and check whether the report still resolves to Raster.');
+      if (isLibreCAD) {
+        addListItem(actions, 'If the source PDF is vector-based, check whether the report still resolves to Raster when you import it again. The LibreCAD importer window always uses Auto; to force Vector, use the command line with --mode vector.');
+      } else {
+        addListItem(actions, 'If the source PDF is vector-based, retry with Auto or Vector and check whether the report still resolves to Raster.');
+      }
     }
 
-    // LibreCAD Labels and 3D Text output measured identical to Glyphs (outlines,
-    // no visible DXF TEXT), so LibreCAD gets its own advice for editable words.
-    var isLibreCAD = String(host).toLowerCase().indexOf('librecad') >= 0;
-    var libreCADAdviceGiven = false;
-    function addLibreCADEditableAdvice() {
-      if (libreCADAdviceGiven) return;
-      libreCADAdviceGiven = true;
-      addListItem(actions, 'For editable words in LibreCAD, choose the new "Editable text (LibreCAD font)" option once your LibreCAD importer has it. Until that release, LibreCAD output keeps the exact look of the text as outlines, so Labels and 3D Text do not give editable DXF text.');
+    if (editableTextChosen) {
+      var editableCount = toNumber(editableTextBlock.item_count);
+      addListItem(findings, '"Editable text (LibreCAD font)" was chosen' +
+        (editableCount !== null ? ': ' + editableCount + ' text item(s) came in as editable text' : '') +
+        ' in LibreCAD\'s own font, so letter shapes differ from the PDF. Text that cannot be drawn reliably that way stays as exact outlines and is listed in the report.');
     }
 
     if (normalizedTextMode === 'geometry' || normalizedTextMode === 'glyphs') {
-      addListItem(findings, 'Text was requested as visual geometry/outlines, not editable labels.');
+      addListItem(findings, isLibreCAD
+        ? 'Text was requested as outlines (Exact look, Glyphs or raw outlines), not editable text.'
+        : 'Text was requested as visual geometry/outlines, not editable labels.');
       if (isLibreCAD) addLibreCADEditableAdvice();
       else addListItem(actions, 'Use Labels or 3D Text if the downstream workflow needs editable text.');
     } else if (normalizedTextMode === 'labels') {
-      addListItem(findings, 'Text was requested as editable labels where the host can support it.');
-      if (isLibreCAD) addLibreCADEditableAdvice();
-      if (text.outlines !== null && text.outlines > 0) {
-        severity = severity === 'ok' ? 'warn' : severity;
-        addListItem(findings, 'Some text appears to have landed as outlines/glyph geometry even though Labels mode was requested.');
-        addListItem(actions, 'Compare the affected text against the PDF. Rotated, warped, clipped, or font-dependent spans may need outlines for visual accuracy.');
+      if (isLibreCAD) {
+        addListItem(findings, 'Labels was requested. DXF has no label entity, so in LibreCAD a Labels request comes in as exact outlines' +
+          (editableTextChosen ? ' except for the words delivered as editable text.' : ', not editable words.'));
+        addLibreCADEditableAdvice();
+      } else {
+        addListItem(findings, 'Text was requested as editable labels where the host can support it.');
+        if (text.outlines !== null && text.outlines > 0) {
+          severity = severity === 'ok' ? 'warn' : severity;
+          addListItem(findings, 'Some text appears to have landed as outlines/glyph geometry even though Labels mode was requested.');
+          addListItem(actions, 'Compare the affected text against the PDF. Rotated, warped, clipped, or font-dependent spans may need outlines for visual accuracy.');
+        }
       }
     } else if (normalizedTextMode === '3d_text' || normalizedTextMode === 'text3d') {
       addListItem(findings, 'Text was requested as 3D/extruded text where the host can support it.');
       if (text.labels !== null && text.labels > 0) {
         addListItem(findings, 'The report shows editable labels alongside 3D text. This can happen when a host preserves simple text differently from complex spans.');
       }
-      addListItem(actions, 'If table text or dimensions look misaligned, compare against Labels mode on the same page.');
+      // LibreCAD's own 3D Text finding and advice are added further down.
+      if (!isLibreCAD) addListItem(actions, 'If table text or dimensions look misaligned, compare against Labels mode on the same page.');
+    } else if (normalizedTextMode === 'text' && isLibreCAD && !editableTextChosen) {
+      addListItem(findings, 'In LibreCAD a Text request without "Editable text" comes in as exact outlines (the Exact look default), not editable words.');
+      addLibreCADEditableAdvice();
     } else if (textMode === undefined) {
       addListItem(findings, 'No text mode was recorded. This may be an older report or a host adapter gap.');
       addListItem(actions, 'Update to the latest importer and include the full import report if you contact support.');
@@ -826,7 +892,6 @@
       severity = severity === 'ok' ? 'warn' : severity;
       addListItem(findings, 'The report suggests a large amount of text/glyph geometry. Dense glyph pages can be slow and hard to edit.');
       if (isLibreCAD) {
-        addListItem(actions, 'Try Raster/Hybrid when exact appearance matters more than editability.');
         addLibreCADEditableAdvice();
       } else {
         addListItem(actions, 'Try Labels for editable text, or Raster/Hybrid when exact appearance matters more than editability.');
@@ -976,7 +1041,12 @@
     resetResult();
     var text = jsonInput.value.trim();
     if (!text) {
-      setError('Paste report JSON or choose a report file first.');
+      // A parts file alone is a complete request: list its parts.
+      if (hasBootstrapInput()) {
+        renderTagsTable(parseBootstrapInput());
+        return;
+      }
+      setError('Paste report JSON or choose a report file first. A parts file can also be listed on its own.');
       return;
     }
     var report;

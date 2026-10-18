@@ -1,0 +1,12 @@
+{
+  "schema": "bcs.parts_bootstrap/1.0",
+  "rows": [],
+  "parts": [],
+  "part_count": 0,
+  "source_pdf": {
+    "file": "D042-fictional-cover-sheet.pdf",
+    "pages": 1
+  },
+  "tables": [],
+  "note": "no BOM rows detected"
+}

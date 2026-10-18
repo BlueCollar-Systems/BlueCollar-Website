@@ -1,59 +1,96 @@
 // Report Doctor must not send LibreCAD users to Labels or 3D Text for
-// editable words: measured LibreCAD output for Labels and 3D Text is the
-// same outline geometry as Glyphs, with no visible DXF TEXT. Editable words
-// in LibreCAD need the new "Editable text (LibreCAD font)" choice. Advice
-// for the other hosts stays as it was.
+// editable words: in LibreCAD, Labels and 3D Text requests come in as the
+// same exact outlines as "Exact look" (DXF has no label entity and LibreCAD
+// is 2D). Since importer v1.0.105 the LibreCAD window offers "Exact look"
+// (the default) and "Editable text (LibreCAD font)" (LibreCAD README, "Two
+// text choices in the window"), so that is the advice, unless the report
+// says Editable text was already chosen. The LibreCAD window always uses
+// Auto, so Raster/Hybrid are not window choices there. Advice for the other
+// hosts stays as it was. The same cases also run without a browser in
+// tests/report_doctor_parts_list_test.js.
 // Runs report-doctor.html in a real headless browser (see browser_harness).
 'use strict';
 
 var harness = require('./browser_harness');
 
-function report(host, textMode, result) {
+function report(host, textMode, result, extra) {
   var r = {
     schema: 'bcs.import_report/1.1',
-    host: { app: host, version: '1.0.0' },
+    host: { app: host, version: '1.0.108' },
     result: Object.assign({ pages: 1, geometry: 120 }, result || {}),
-    extra: { text_mode: textMode, requested_mode: 'auto', resolved_mode: 'vector' }
+    extra: Object.assign({ text_mode: textMode, requested_mode: 'auto', resolved_mode: 'vector' }, extra || {})
   };
   return r;
 }
 
+var EDITABLE = 'Editable text (LibreCAD font)';
+var LIBRECAD_NEVER = [
+  'Use Labels', 'Try Labels', 'compare against Labels mode', 'Labels for editable',
+  'once your LibreCAD importer has it', 'Until that release', 'Raster/Hybrid',
+  'maps to editable DXF TEXT'
+];
+
 var CASES = [
   {
-    name: 'LibreCAD glyphs',
+    name: 'LibreCAD Exact look (glyphs)',
     report: report('LibreCAD', 'glyphs'),
-    actionsMust: ['Editable text (LibreCAD font)'],
-    mustNot: ['Use Labels or 3D Text']
+    actionsMust: [EDITABLE, 'Exact look'],
+    mustNot: LIBRECAD_NEVER
+  },
+  {
+    name: 'LibreCAD Exact look (v1.0.108 records text)',
+    report: report('LibreCAD', 'text'),
+    actionsMust: [EDITABLE],
+    mustNot: LIBRECAD_NEVER
   },
   {
     name: 'LibreCAD 3D Text',
     report: report('LibreCAD', '3d_text'),
-    actionsMust: ['Editable text (LibreCAD font)'],
-    mustNot: ['maps to editable DXF TEXT', 'Use Labels for editable DXF text']
+    actionsMust: [EDITABLE],
+    mustNot: LIBRECAD_NEVER
   },
   {
     name: 'LibreCAD labels',
-    report: report('LibreCAD', 'labels'),
-    actionsMust: ['Editable text (LibreCAD font)'],
-    mustNot: []
+    report: report('LibreCAD', 'labels', { glyphs: 40 }),
+    actionsMust: [EDITABLE],
+    mustNot: LIBRECAD_NEVER
   },
   {
     name: 'LibreCAD dense glyph page',
     report: report('LibreCAD', 'glyphs', { glyphs: 6000 }),
-    actionsMust: ['Editable text (LibreCAD font)'],
-    mustNot: ['Try Labels for editable text', 'Use Labels or 3D Text']
+    actionsMust: [EDITABLE],
+    mustNot: LIBRECAD_NEVER
+  },
+  {
+    name: 'LibreCAD Editable text already chosen',
+    report: report('LibreCAD', 'text', null, { editable_text: { chosen: true, item_count: 12 } }),
+    findingsMust: ['12 text item(s) came in as editable text'],
+    actionsMustNot: [EDITABLE],
+    mustNot: LIBRECAD_NEVER
+  },
+  {
+    name: 'LibreCAD Raster result',
+    report: report('LibreCAD', 'glyphs', null, { resolved_mode: 'raster' }),
+    actionsMust: ['--mode vector'],
+    mustNot: LIBRECAD_NEVER.concat(['retry with Auto or Vector'])
   },
   {
     name: 'SketchUp glyphs (unchanged)',
     report: report('SketchUp', 'glyphs'),
     actionsMust: ['Use Labels or 3D Text if the downstream workflow needs editable text.'],
-    mustNot: ['LibreCAD font']
+    mustNot: ['LibreCAD']
+  },
+  {
+    name: 'SketchUp 3D Text (unchanged)',
+    report: report('SketchUp', '3d_text'),
+    actionsMust: ['compare against Labels mode'],
+    mustNot: ['LibreCAD']
   },
   {
     name: 'FreeCAD dense glyph page (unchanged)',
     report: report('FreeCAD', 'glyphs', { glyphs: 6000 }),
     actionsMust: ['Try Labels for editable text'],
-    mustNot: ['LibreCAD font']
+    mustNot: ['LibreCAD']
   }
 ];
 
@@ -75,8 +112,14 @@ var DOCTOR_TEST = String.raw`
       var actions = document.getElementById('doctor-actions').textContent;
       var findings = document.getElementById('doctor-findings').textContent;
       check(actions.length > 0, c.name + ': Report Doctor gave no actions (error: ' + document.getElementById('doctor-error').textContent + ')');
-      c.actionsMust.forEach(function(s) {
+      (c.actionsMust || []).forEach(function(s) {
         check(actions.indexOf(s) !== -1, c.name + ': actions must mention "' + s + '"; got: ' + actions);
+      });
+      (c.findingsMust || []).forEach(function(s) {
+        check(findings.indexOf(s) !== -1, c.name + ': findings must mention "' + s + '"; got: ' + findings);
+      });
+      (c.actionsMustNot || []).forEach(function(s) {
+        check(actions.indexOf(s) === -1, c.name + ': actions must not say "' + s + '"');
       });
       c.mustNot.forEach(function(s) {
         check((actions + findings).indexOf(s) === -1, c.name + ': must not say "' + s + '"');
