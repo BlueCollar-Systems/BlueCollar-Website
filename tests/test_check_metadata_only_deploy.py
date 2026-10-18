@@ -17,7 +17,9 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -231,6 +233,20 @@ def _git(repo: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def _remove_tree(path: Path) -> None:
+    """Delete a test folder, including git's read-only object files on Windows."""
+    def clear_and_retry(func, name, _exc) -> None:
+        try:
+            os.chmod(name, stat.S_IWRITE)
+            func(name)
+        except OSError:
+            pass
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=clear_and_retry)
+    else:
+        shutil.rmtree(path, onerror=clear_and_retry)
+
+
 def _copy_public_files(destination: Path, *, with_tools: bool = True) -> None:
     """The site's public files and build tools, plus a README that is not published."""
     for pattern in BUILD.ALLOWED_GLOBS:
@@ -271,7 +287,7 @@ def _edit(path: Path, old: str, new: str, count: int = 1) -> None:
 class GuardEndToEndTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = Path(tempfile.mkdtemp(prefix="guard-test-"))
-        self.addCleanup(shutil.rmtree, self.temp, True)
+        self.addCleanup(_remove_tree, self.temp)
         self.repo = self.temp / "repo"
         self.repo.mkdir()
         _git(self.repo, "init", "-q", "-b", "main")
