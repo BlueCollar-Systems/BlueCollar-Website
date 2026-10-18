@@ -143,10 +143,10 @@
         </section>
 
         <!-- The parts list sits outside #doctor-output so it shows with or without an analyzed report. -->
-        <section id="doctor-tags-section" class="bg-gray-800/50 p-8 rounded-xl border border-gray-700 mt-6 hidden" aria-live="polite" aria-labelledby="doctor-tags-heading">
+        <section id="doctor-tags-section" class="bg-gray-800/50 p-8 rounded-xl border border-gray-700 mt-6 hidden" aria-labelledby="doctor-tags-heading">
             <h2 id="doctor-tags-heading" class="text-xl font-bold mb-3">Parts List</h2>
             <p class="text-sm text-gray-400 mb-4">Piece marks from <code>parts_bootstrap.json</code>. A part gets a tag link only when its row carries a <code>part_id</code>, the Part Tracking ID that Steel Logic uses. Parts files written by the PDF importers list piece marks only, so their rows have no tag link.</p>
-            <p id="doctor-tags-summary" class="text-sm text-gray-300 mb-4"></p>
+            <p id="doctor-tags-summary" class="text-sm text-gray-300 mb-4" aria-live="polite"></p>
             <div id="doctor-tags-table" class="overflow-x-auto"></div>
         </section>
     </section>

@@ -64,6 +64,14 @@ assert.ok(
   'the parts list must not sit inside #doctor-output, or it stays hidden until a report is analyzed'
 );
 assert.ok(!/Tags tab/i.test(html) && !/Tags tab/i.test(script), 'there is no Tags tab; the wording must not mention one');
+// Screen readers announce the one-line summary, not the whole parts table.
+var tagsOpenTag = html.slice(html.lastIndexOf('<', tagsStart), html.indexOf('>', tagsStart) + 1);
+assert.ok(!/aria-live/.test(tagsOpenTag), '#doctor-tags-section must not be a live region: ' + tagsOpenTag);
+var summaryTag = html.match(/<p id="doctor-tags-summary"[^>]*>/);
+assert.ok(summaryTag && /\saria-live="polite"/.test(summaryTag[0]), '#doctor-tags-summary must carry aria-live="polite"');
+var tagsEnd = elementEnd(html, html.lastIndexOf('<', tagsStart), 'section');
+assert.strictEqual((html.slice(tagsStart, tagsEnd).match(/aria-live/g) || []).length, 1,
+  'only #doctor-tags-summary is live inside the parts list');
 var bootstrapLabel = html.match(/<label for="bootstrap-file"[^>]*>([^<]*)<\/label>/);
 assert.ok(bootstrapLabel && /parts list/i.test(bootstrapLabel[1]) && /parts_bootstrap\.json/.test(bootstrapLabel[1]),
   'the parts picker label must name the parts list and the file');
@@ -333,6 +341,22 @@ var CASES = [
     actionsNot: [EDITABLE]
   },
   {
+    // No LibreCAD install found: every word comes in as outlines, so the
+    // count is 0 and gets its own reason and fix (LibreCAD README).
+    name: 'LibreCAD Editable text chosen, 0 items',
+    report: report('librecad', 'text', null, { editable_text: { chosen: true, item_count: 0 } }),
+    findings: ['"Editable text (LibreCAD font)" was chosen, but no text came in as editable text', "LibreCAD's font was not found"],
+    findingsNot: ['0 text item(s)', 'letter shapes differ from the PDF'],
+    actions: ['Install LibreCAD', 'Locate LibreCAD...', '--librecad-exe', 'import the PDF again']
+  },
+  {
+    name: 'LibreCAD Editable text chosen, 0 items as a string',
+    report: report('librecad', 'text', null, { editable_text: { chosen: true, item_count: '0' } }),
+    findings: ['was chosen, but no text came in as editable text'],
+    findingsNot: ['0 text item(s)'],
+    actions: ['Locate LibreCAD...']
+  },
+  {
     name: 'LibreCAD Raster result',
     report: report('librecad', 'glyphs', null, { resolved_mode: 'raster' }),
     actions: ['--mode vector', EDITABLE],
@@ -358,6 +382,9 @@ CASES.forEach(function(c) {
   });
   (c.findings || []).forEach(function(s) {
     assert.ok(findings.indexOf(s) >= 0, c.name + ': findings must mention "' + s + '"; got: ' + findings);
+  });
+  (c.findingsNot || []).forEach(function(s) {
+    assert.ok(findings.indexOf(s) < 0, c.name + ': findings must not say "' + s + '"; got: ' + findings);
   });
   (c.actionsNot || []).forEach(function(s) {
     assert.ok(actions.indexOf(s) < 0, c.name + ': actions must not say "' + s + '"');

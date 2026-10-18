@@ -849,9 +849,18 @@
 
     if (editableTextChosen) {
       var editableCount = toNumber(editableTextBlock.item_count);
-      addListItem(findings, '"Editable text (LibreCAD font)" was chosen' +
-        (editableCount !== null ? ': ' + editableCount + ' text item(s) came in as editable text' : '') +
-        ' in LibreCAD\'s own font, so letter shapes differ from the PDF. Text that cannot be drawn reliably that way stays as exact outlines and is listed in the report.');
+      if (editableCount === 0) {
+        // No word came in as editable text. The font comes from the LibreCAD
+        // installation; when no LibreCAD is found, every word comes in as
+        // outlines and the report says why (LibreCAD README). The importer
+        // window then shows "Locate LibreCAD...", which is remembered.
+        addListItem(findings, '"Editable text (LibreCAD font)" was chosen, but no text came in as editable text. The likely reason is that LibreCAD\'s font was not found: that font comes from your LibreCAD installation, and when no LibreCAD is found every word comes in as exact outlines. The import report says why.');
+        addListItem(actions, 'Install LibreCAD, or if it is already installed, press "Locate LibreCAD..." in the importer window and pick LibreCAD.exe once (it is remembered; on the command line, --librecad-exe). Then import the PDF again with "Editable text (LibreCAD font)" chosen. If LibreCAD was found and words still came in as outlines, the import report lists why for each one.');
+      } else {
+        addListItem(findings, '"Editable text (LibreCAD font)" was chosen' +
+          (editableCount !== null ? ': ' + editableCount + ' text item(s) came in as editable text' : '') +
+          ' in LibreCAD\'s own font, so letter shapes differ from the PDF. Text that cannot be drawn reliably that way stays as exact outlines and is listed in the report.');
+      }
     }
 
     if (normalizedTextMode === 'geometry' || normalizedTextMode === 'glyphs') {

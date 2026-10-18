@@ -69,6 +69,24 @@ var CASES = [
     mustNot: LIBRECAD_NEVER
   },
   {
+    // No LibreCAD install found: every word comes in as outlines, so the
+    // count is 0 and gets its own reason and fix (LibreCAD README).
+    name: 'LibreCAD Editable text chosen, 0 items',
+    report: report('LibreCAD', 'text', null, { editable_text: { chosen: true, item_count: 0 } }),
+    findingsMust: ['was chosen, but no text came in as editable text', "LibreCAD's font was not found", 'every word comes in as exact outlines'],
+    findingsMustNot: ['0 text item(s)', 'letter shapes differ from the PDF'],
+    actionsMust: ['Install LibreCAD', 'Locate LibreCAD...', '--librecad-exe', 'import the PDF again'],
+    mustNot: LIBRECAD_NEVER
+  },
+  {
+    name: 'LibreCAD Editable text chosen, 0 items as a string',
+    report: report('LibreCAD', 'text', null, { editable_text: { chosen: true, item_count: '0' } }),
+    findingsMust: ['was chosen, but no text came in as editable text'],
+    findingsMustNot: ['0 text item(s)'],
+    actionsMust: ['Locate LibreCAD...'],
+    mustNot: LIBRECAD_NEVER
+  },
+  {
     name: 'LibreCAD Raster result',
     report: report('LibreCAD', 'glyphs', null, { resolved_mode: 'raster' }),
     actionsMust: ['--mode vector'],
@@ -117,6 +135,9 @@ var DOCTOR_TEST = String.raw`
       });
       (c.findingsMust || []).forEach(function(s) {
         check(findings.indexOf(s) !== -1, c.name + ': findings must mention "' + s + '"; got: ' + findings);
+      });
+      (c.findingsMustNot || []).forEach(function(s) {
+        check(findings.indexOf(s) === -1, c.name + ': findings must not say "' + s + '"; got: ' + findings);
       });
       (c.actionsMustNot || []).forEach(function(s) {
         check(actions.indexOf(s) === -1, c.name + ': actions must not say "' + s + '"');
