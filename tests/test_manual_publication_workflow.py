@@ -1,5 +1,5 @@
 from pathlib import Path
-import ast, os, re, shutil, subprocess, tempfile, textwrap, unittest
+import ast, json, os, re, shutil, subprocess, sys, tempfile, textwrap, unittest
 ROOT=Path(__file__).resolve().parents[1]
 def block(text,name,kind='job'):
     if kind=='job': pattern=r'(?ms)^  '+re.escape(name)+r':\n(.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)'
@@ -180,6 +180,114 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
                                       env=env,capture_output=True,text=True)
                 self.assertEqual(result.returncode,0,result.stderr)
                 self.assertEqual((folder/'out').read_text(encoding='utf-8').strip(),'status='+expected)
+    def upload_script(self):
+        """The Cloudflare step's shell after the Python credential precheck."""
+        text=(ROOT/'.github/workflows/website-ci.yml').read_text(encoding='utf-8')
+        step=block(block(text,'deploy-pages'),'Deploy to Cloudflare Pages','step')
+        body=[]
+        for line in step.split('run: |\n',1)[1].split('\n'):
+            if line.strip() and not line.startswith(' '*10):break
+            body.append(line)
+        precheck,upload=textwrap.dedent('\n'.join(body)).split('\nPY\n',1)
+        self.assertIn("python - <<'PY'",precheck)
+        return upload
+    def run_upload(self,folder,checkout,runner_temp):
+        """Run the upload commands in a fake checkout with a recording npx."""
+        bash=shutil.which('bash')
+        if not bash: self.skipTest('bash is not available')
+        script=folder/'upload.sh'
+        script.write_text(self.upload_script(),encoding='utf-8',newline='\n')
+        binary=folder/'bin'; binary.mkdir(exist_ok=True)
+        recorder=folder/'record_npx.py'
+        recorder.write_text(
+            'import json, os, sys\n'
+            'from pathlib import Path\n'
+            'here = Path.cwd()\n'
+            'Path(os.environ["NPX_RECORD"]).write_text(json.dumps(\n'
+            '    {"cwd": str(here), "args": sys.argv[1:], "listing": sorted(os.listdir(here))}), encoding="utf-8")\n',
+            encoding='utf-8',newline='\n')
+        npx=binary/'npx'
+        npx.write_text('#!/usr/bin/env bash\nexec "$NPX_PYTHON" "$NPX_RECORDER" "$@"\n',encoding='utf-8',newline='\n')
+        npx.chmod(0o755)
+        record=folder/'npx.json'
+        if record.exists():record.unlink()
+        env=dict(os.environ,PATH=str(binary)+os.pathsep+os.environ.get('PATH',''),RUNNER_TEMP=runner_temp.as_posix(),
+                 NPX_PYTHON=Path(sys.executable).as_posix(),NPX_RECORDER=recorder.as_posix(),NPX_RECORD=record.as_posix(),
+                 GIT_CONFIG_COUNT='1',GIT_CONFIG_KEY_0='safe.directory',GIT_CONFIG_VALUE_0='*')
+        result=subprocess.run([bash,'--noprofile','--norc','-eo','pipefail',script.as_posix()],cwd=str(checkout),
+                              env=env,capture_output=True,text=True,timeout=600)
+        recorded=json.loads(record.read_text(encoding='utf-8')) if record.exists() else None
+        return result,recorded
+    def fake_checkout(self,folder):
+        """A checkout holding every file Wrangler reads from its working folder."""
+        checkout=folder/'work'/'repo'
+        (checkout/'functions').mkdir(parents=True)
+        (checkout/'_site').mkdir()
+        files={'functions/_middleware.js':'export const onRequest = () => new Response("rewritten");\n',
+               'functions/hello.js':'export const onRequest = () => new Response("new route");\n',
+               'wrangler.toml':'name = "bluecollar-website"\npages_build_output_dir = "."\n[vars]\nUNAPPROVED = "1"\n',
+               'wrangler.json':'{"pages_build_output_dir": "."}\n','wrangler.jsonc':'{"pages_build_output_dir": "."}\n',
+               '.env':'CLOUDFLARE_API_BASE_URL=https://example.invalid/client/v4\n','.env.local':'UNAPPROVED=1\n',
+               '.npmrc':'registry=https://example.invalid/\n','package.json':'{"name": "x", "private": true}\n',
+               '.gitignore':'_site/\n','_site/index.html':'<!DOCTYPE html><title>site</title>\n'}
+        for name,content in files.items():(checkout/name).write_text(content,encoding='utf-8',newline='\n')
+        git=['git','-C',str(checkout),'-c','user.name=Workflow Test','-c','user.email=wf@example.invalid',
+             '-c','commit.gpgsign=false','-c','safe.directory=*']
+        subprocess.run(git+['init','-q'],check=True,capture_output=True)
+        subprocess.run(git+['add','-A'],check=True,capture_output=True)
+        subprocess.run(git+['commit','-q','-m','fake checkout'],check=True,capture_output=True)
+        sha=subprocess.run(git+['rev-parse','HEAD'],check=True,capture_output=True,text=True).stdout.strip()
+        return checkout,sha
+    def test_wrangler_uploads_only_the_built_folder(self):
+        # Review finding A1/A2: started in the checkout, Wrangler 4.83.0 also
+        # builds and uploads Pages Functions from ./functions, reads a
+        # wrangler.toml/json/jsonc there or in any parent folder, and loads
+        # .env/.env.local, while the release guard compares _site alone. The
+        # upload must start Wrangler in a new empty folder outside the checkout
+        # and give it the absolute path of _site.
+        upload=self.upload_script()
+        self.assertIn('npx --yes wrangler@4.83.0 pages deploy "$site" --project-name bluecollar-website --branch main ',upload)
+        self.assertNotIn('pages deploy _site',upload)
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp)
+            checkout,sha=self.fake_checkout(folder)
+            runner_temp=folder/'runner-temp'; runner_temp.mkdir()
+            result,recorded=self.run_upload(folder,checkout,runner_temp)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            self.assertIsNotNone(recorded,'npx was not started')
+            cwd=Path(recorded['cwd']).resolve()
+            self.assertEqual(recorded['listing'],[])  # no functions/, wrangler.*, .env, .npmrc or package.json
+            self.assertEqual(cwd.parent,runner_temp.resolve())
+            self.assertFalse(cwd.is_relative_to(checkout.resolve()))
+            for parent in [cwd,*cwd.parents]:
+                for name in ['wrangler.toml','wrangler.json','wrangler.jsonc']:
+                    self.assertFalse((parent/name).exists(),parent/name)
+            args=recorded['args']
+            self.assertEqual(args[:4],['--yes','wrangler@4.83.0','pages','deploy'])
+            self.assertEqual(Path(args[4]).resolve(),(checkout/'_site').resolve())
+            self.assertEqual(args[5:],['--project-name','bluecollar-website','--branch','main','--commit-hash',sha,
+                                       '--commit-message','fake checkout','--commit-dirty=false'])
+            # After the badge stamping a tracked file is modified; Wrangler
+            # used to report that from git, so the step still does.
+            (checkout/'package.json').write_text('{"name": "y"}\n',encoding='utf-8')
+            result,recorded=self.run_upload(folder,checkout,runner_temp)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            self.assertEqual(recorded['args'][-1],'--commit-dirty=true')
+    def test_wrangler_upload_refuses_a_folder_that_could_read_repository_config(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp)
+            checkout,_=self.fake_checkout(folder)
+            inside=checkout/'tmp'; inside.mkdir()
+            result,recorded=self.run_upload(folder,checkout,inside)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIsNone(recorded)
+            self.assertIn('inside the checkout; nothing was uploaded',result.stdout)
+            outer=folder/'outer'; (outer/'runner-temp').mkdir(parents=True)
+            (outer/'wrangler.toml').write_text('name = "x"\n',encoding='utf-8')
+            result,recorded=self.run_upload(folder,checkout,outer/'runner-temp')
+            self.assertNotEqual(result.returncode,0)
+            self.assertIsNone(recorded)
+            self.assertIn('wrangler.toml; nothing was uploaded',result.stdout)
     def test_snapshot_helper_is_validated_and_draft_publication_is_guarded(self):
         text=(ROOT/'.github/workflows/auto-release.yml').read_text(encoding='utf-8')
         release=block(text,'release')

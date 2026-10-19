@@ -109,17 +109,25 @@ class FindDeployedCommitTests(unittest.TestCase):
     def find(self, api: FakeActions, current: str | None = None):
         return GUARD.find_deployed_commit(REPO, api, current_run_id=current)
 
-    def test_newest_run_whose_upload_succeeded_wins(self) -> None:
+    def assertNoDispatchRunsRead(self, api: FakeActions) -> None:
+        self.assertFalse([url for url in api.calls if "event=repository_dispatch" in url])
+
+    def test_newest_manual_upload_wins_and_release_deploys_never_count(self) -> None:
+        # The review's probe: a newer product-release run (head b...) that
+        # uploaded must not beat the older manual deploy (head a...). A
+        # release deploy is not an approval, so it never becomes the baseline.
         api = FakeActions(
             manual=[
                 _run(30, "c" * 40, "2026-10-18T18:00:00Z"),  # validation only
-                _run(10, "a" * 40, "2026-10-12T12:00:00Z"),  # older deploy
+                _run(10, "a" * 40, "2026-10-12T12:00:00Z"),  # the manual deploy
+                _run(5, "0" * 40, "2026-10-01T12:00:00Z"),   # an older manual deploy
             ],
             dispatched=[_run(20, "b" * 40, "2026-10-18T17:00:00Z", title="product-release")],
-            jobs={30: _jobs(None), 20: _jobs("success"), 10: _jobs("success")},
+            jobs={30: _jobs(None), 20: _jobs("success"), 10: _jobs("success"), 5: _jobs("success")},
         )
-        self.assertEqual(self.find(api), ("b" * 40, 20))
-        self.assertNotIn(10, api.job_calls())
+        self.assertEqual(self.find(api), ("a" * 40, 10))
+        self.assertEqual(api.job_calls(), [30, 10])
+        self.assertNoDispatchRunsRead(api)
 
     def test_a_run_that_failed_after_uploading_still_counts(self) -> None:
         # The Cloudflare step succeeded, a later verification failed: the
@@ -134,41 +142,38 @@ class FindDeployedCommitTests(unittest.TestCase):
     def test_failed_upload_other_branch_and_current_run_are_skipped(self) -> None:
         api = FakeActions(
             manual=[
+                _run(60, "9" * 40, "2026-10-18T20:00:00Z"),
                 _run(50, "e" * 40, "2026-10-18T19:00:00Z"),
                 _run(45, "f" * 40, "2026-10-18T18:30:00Z", branch="claude/x"),
                 _run(10, "a" * 40, "2026-10-12T12:00:00Z"),
             ],
-            dispatched=[_run(60, "9" * 40, "2026-10-18T20:00:00Z", title="product-release")],
-            jobs={50: _jobs("failure"), 45: _jobs("success"), 10: _jobs("success"), 60: _jobs("success")},
+            dispatched=[],
+            jobs={60: _jobs("success"), 50: _jobs("failure"), 45: _jobs("success"), 10: _jobs("success")},
         )
         self.assertEqual(self.find(api, current="60"), ("a" * 40, 10))
         self.assertNotIn(45, api.job_calls())
         self.assertNotIn(60, api.job_calls())
 
-    def test_validation_only_dispatch_runs_cost_no_job_lookup(self) -> None:
-        # GitHub titles a repository_dispatch run with its event type; only a
-        # product-release dispatch (or an unknown title) can have deployed.
+    def test_a_listed_run_from_another_event_is_skipped(self) -> None:
+        # Belt and braces: even if the listing returned a dispatch run, its
+        # upload would not set the baseline.
+        stray = _run(70, "b" * 40, "2026-10-18T20:00:00Z", title="product-release")
+        stray["event"] = "repository_dispatch"
         api = FakeActions(
-            manual=[_run(10, "a" * 40, "2026-10-12T12:00:00Z")],
-            dispatched=[
-                _run(70, "7" * 40, "2026-10-18T20:00:00Z", title="product-update"),
-                _run(69, "6" * 40, "2026-10-18T19:00:00Z", title="steel-shapes-release"),
-                _run(68, "5" * 40, "2026-10-18T18:00:00Z", title="steel-shapes-update"),
-                _run(67, "4" * 40, "2026-10-18T17:00:00Z", title="something-new"),
-                _run(66, "3" * 40, "2026-10-18T16:00:00Z"),
-            ],
-            jobs={67: _jobs(None), 66: _jobs(None), 10: _jobs("success")},
+            manual=[stray, _run(10, "a" * 40, "2026-10-12T12:00:00Z")],
+            dispatched=[],
+            jobs={70: _jobs("success"), 10: _jobs("success")},
         )
         self.assertEqual(self.find(api), ("a" * 40, 10))
-        self.assertEqual(api.job_calls(), [67, 66, 10])
+        self.assertEqual(api.job_calls(), [10])
 
-    def test_pages_back_through_months_of_dispatch_traffic(self) -> None:
-        # About three product-update dispatches a day filled the old 60-run
-        # window in under three weeks. Ninety days of them still find the
-        # deploy, with one job lookup.
+    def test_months_of_dispatch_traffic_cannot_hide_the_manual_deploy(self) -> None:
+        # Dispatch runs are never listed, so no amount of them (about three a
+        # day filled the old 60-run window in under three weeks) pushes the
+        # last manual deploy out of reach: one page, one job lookup.
         dispatched = [
             _run(10_000 - n, "7" * 40, _stamp(18 - n // 300, 1439 - n % 300), title="product-update")
-            for n in range(270)
+            for n in range(2_000)
         ]
         api = FakeActions(
             manual=[_run(10, "a" * 40, "2026-07-01T12:00:00Z")],
@@ -177,33 +182,46 @@ class FindDeployedCommitTests(unittest.TestCase):
         )
         self.assertEqual(self.find(api), ("a" * 40, 10))
         self.assertEqual(api.job_calls(), [10])
-        pages = [url for url in api.calls if "event=repository_dispatch" in url]
-        self.assertEqual(len(pages), 3)
+        self.assertEqual(len([url for url in api.calls if "/runs?" in url]), 1)
+        self.assertNoDispatchRunsRead(api)
+
+    def test_pages_back_through_the_manual_run_history(self) -> None:
+        # Manual runs on other branches cost no job lookup; the listing is
+        # paged until the deploy on main turns up.
+        manual = [_run(9_000 - n, "c" * 40, _stamp(18, 1000 - n), branch="claude/x") for n in range(250)]
+        manual.append(_run(10, "a" * 40, "2026-07-01T12:00:00Z"))
+        api = FakeActions(manual=manual, dispatched=[], jobs={10: _jobs("success")})
+        self.assertEqual(self.find(api), ("a" * 40, 10))
+        self.assertEqual(len([url for url in api.calls if "event=workflow_dispatch" in url]), 3)
+        self.assertEqual(api.job_calls(), [10])
 
     def test_no_deploy_found_says_exactly_why(self) -> None:
         api = FakeActions(
             manual=[_run(30, "c" * 40, "2026-10-18T18:00:00Z")],
-            dispatched=[_run(31, "d" * 40, "2026-10-18T17:00:00Z", title="product-update")],
-            jobs={30: _jobs("skipped")},
+            dispatched=[_run(31, "d" * 40, "2026-10-18T17:00:00Z", title="product-release")],
+            jobs={30: _jobs("skipped"), 31: _jobs("success")},
         )
         with self.assertRaises(GUARD.GuardError) as caught:
             self.find(api)
         message = str(caught.exception)
-        self.assertIn("The live commit is unknown", message)
-        self.assertIn("all 1 completed workflow_dispatch runs and all 1 completed repository_dispatch runs", message)
-        self.assertIn("1 of them could have deployed", message)
+        self.assertIn("The approved live commit is unknown", message)
+        self.assertIn("It read all 1 completed workflow_dispatch runs of website-ci.yml", message)
+        self.assertIn("1 of them ran on main", message)
         self.assertIn(f"none has a successful '{GUARD.DEPLOY_STEP}' step", message)
+        self.assertIn("so none was a manual deploy_production=true deploy", message)
+        self.assertIn("Release deploys do not count", message)
+        self.assertNoDispatchRunsRead(api)
 
     def test_history_beyond_the_api_limit_is_named_in_the_refusal(self) -> None:
         full = GUARD.RUNS_PER_PAGE * GUARD.MAX_RUN_PAGES
-        dispatched = [_run(50_000 - n, "7" * 40, _stamp(18, 0), title="product-update") for n in range(full + 5)]
-        api = FakeActions(manual=[], dispatched=dispatched, jobs={})
+        manual = [_run(50_000 - n, "7" * 40, _stamp(18, 0), branch="claude/x") for n in range(full + 5)]
+        api = FakeActions(manual=manual, dispatched=[], jobs={})
         with self.assertRaises(GUARD.GuardError) as caught:
             self.find(api)
         message = str(caught.exception)
-        self.assertIn(f"the newest {full} of {full + 5} repository_dispatch runs (the Actions API lists no more)", message)
+        self.assertIn(f"the newest {full} of {full + 5} workflow_dispatch runs (the Actions API lists no more)", message)
         self.assertIn("older than the run history the Actions API lists", message)
-        self.assertEqual(len([url for url in api.calls if "event=repository_dispatch" in url]), GUARD.MAX_RUN_PAGES)
+        self.assertEqual(len([url for url in api.calls if "event=workflow_dispatch" in url]), GUARD.MAX_RUN_PAGES)
 
     def test_job_lookups_are_bounded_and_the_bound_is_named(self) -> None:
         manual = [_run(1000 + n, "c" * 40, _stamp(18, 1000 - n)) for n in range(GUARD.MAX_JOB_LOOKUPS + 3)]
@@ -212,12 +230,6 @@ class FindDeployedCommitTests(unittest.TestCase):
             self.find(api)
         self.assertEqual(len(api.job_calls()), GUARD.MAX_JOB_LOOKUPS)
         self.assertIn(f"reads at most {GUARD.MAX_JOB_LOOKUPS} runs' jobs", str(caught.exception))
-
-    def test_website_ci_keeps_the_dispatch_type_as_run_title(self) -> None:
-        # The title filter relies on GitHub's default run name; a run-name
-        # would only cost job lookups, but keep the assumption visible.
-        text = (ROOT / ".github" / "workflows" / "website-ci.yml").read_text(encoding="utf-8")
-        self.assertNotRegex(text, r"(?m)^run-name:")
 
 
 # ---------------------------------------------------------------------------
@@ -448,6 +460,56 @@ class GuardEndToEndTests(unittest.TestCase):
         self.assertEqual(self.guard(site, metadata, live_sha=_git(self.repo, "rev-parse", "HEAD")), [])
         self.assertTrue((self.temp / "work-1" / "deploy-site").is_dir())
         self.assertFalse((self.temp / "work-1" / "live-site").exists())
+
+    # -- a release deploy never becomes the approved baseline --------------
+
+    def test_latent_tool_change_shipped_by_a_release_deploy_stays_held_to_the_approved_commit(self) -> None:
+        # The review's A8: main's badge stamping adds a banner only once some
+        # importer tag starts with "v9.". For today's metadata it builds the
+        # same folder as the approved commit, so a release deploy passes and
+        # uploads it. If that release deploy became the baseline, the next
+        # release (Blender v9.0.0) would compare the commit with itself and
+        # publish the never-approved banner.
+        approved = self.live_sha
+        _edit(self.repo / GUARD.STAMP_TOOL,
+              '    """Write latest release tags into static HTML as fallback content."""\n',
+              '    """Write latest release tags into static HTML as fallback content."""\n'
+              '    if any(str(((r or {}).get("latest_release") or {}).get("tag", "")).startswith("v9.")\n'
+              '           for r in payload.get("repos", {}).values()):\n'
+              '        page = Path(pages_root) / "index.html"\n'
+              '        page.write_text(page.read_text(encoding="utf-8").replace(\n'
+              '            "</body>", "<p>latent banner</p></body>", 1), encoding="utf-8")\n')
+        latent = self.commit("badge stamping with a latent banner")
+
+        # (A8a) Today's release passes: the latent commit's output equals the
+        # approved commit's, and the run history records it as an upload.
+        self.assertEqual(self.release_deploy("v1.0.112", live_sha=approved), [])
+        api = FakeActions(
+            manual=[_run(10, approved, "2026-10-12T12:00:00Z")],
+            dispatched=[_run(20, latent, "2026-10-18T17:00:00Z", title="product-release")],
+            jobs={10: _jobs("success"), 20: _jobs("success")},
+        )
+
+        # (A8b/A8c) The next release, through the real command line and the
+        # (faked) Actions API: the baseline is still the approved commit, so
+        # the banner is named and nothing deploys.
+        site, _ = self.deploy_job("v9.0.0")
+        self.assertIn("<p>latent banner</p>", (site / "index.html").read_text(encoding="utf-8"))
+        shutil.move(str(site), str(self.repo / "_site"))
+        previous = os.getcwd()
+        os.chdir(self.repo)
+        self.addCleanup(os.chdir, previous)
+        output = io.StringIO()
+        with patch.object(GUARD, "_api_get", lambda url, token: api(url)), \
+                patch.dict(os.environ, {"GITHUB_RUN_ID": "21"}), contextlib.redirect_stdout(output):
+            self.assertEqual(GUARD.main(["--repo", REPO]), 1)
+        text = output.getvalue()
+        self.assertIn(f"Approved live commit: {approved} (the last manual deploy, run 10)", text)
+        self.assertIn("Release deploy refused, nothing was deployed", text)
+        self.assertIn("changed: index.html", text)
+        self.assertNotIn("is the approved live commit", text)
+        self.assertNotIn(20, api.job_calls())
+        self.assertNoWorktreesLeft()
 
     # -- (d) a live commit the guard cannot rebuild is refused safely ------
 

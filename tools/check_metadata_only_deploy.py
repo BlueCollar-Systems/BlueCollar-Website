@@ -7,12 +7,19 @@ GO (owner decision O13, deploy-only). Every other website change still goes
 live only through a manual website-ci run with deploy_production=true. This
 guard keeps the automatic deploy to that job:
 
-1. Find the commit that is live now: the head commit of the newest website-ci
-   run whose "Deploy to Cloudflare Pages" step succeeded (GitHub Actions API,
-   read back through the newest 1,000 runs of each dispatch kind).
+1. Find the approved commit: the head commit of the newest MANUAL website-ci
+   run (workflow_dispatch on main, so deploy_production=true) whose "Deploy to
+   Cloudflare Pages" step succeeded (GitHub Actions API, read back through the
+   newest 1,000 manual runs). Release deploys never become this baseline. A
+   release deploy uploads a commit that was only proven to build the same as
+   the approved commit for that day's metadata; if its tools behave
+   differently for some later metadata, that difference was never approved.
+   So every release deploy is compared with the last manually deployed commit,
+   and what it uploads is always what that commit builds with the new
+   metadata.
 2. Build two public folders the same clean way, each in its own new temporary
    git worktree and its own new output folder: one from the commit about to
-   be deployed, one from the live commit. Each worktree gets the same freshly
+   be deployed, one from the approved commit. Each worktree gets the same freshly
    synced repo-metadata.json, and each commit's OWN tools do the work, run as
    a subprocess with that worktree as the working folder and only that
    worktree's tools importable (python -B -E -s):
@@ -20,16 +27,23 @@ guard keeps the automatic deploy to that job:
        version badges in the worktree's *.html pages;
      - python tools/build_site.py --source . --out <folder> builds the folder.
    So a change on main to the public file list or to the badge stamping
-   builds differently from the live commit, and counts as a website change.
+   builds differently from the approved commit, and counts as a website change.
 3. Require the _site folder about to be uploaded to be byte-for-byte the clean
    build of its own commit (no leftover or uncommitted file rides along), and
-   that clean build to be byte-for-byte the live commit's build.
+   that clean build to be byte-for-byte the approved commit's build.
+
+The folder is the whole upload: website-ci runs Wrangler from a new empty
+folder outside the checkout and hands it the absolute path of _site, so no
+repository file outside _site reaches Cloudflare. (Run from the repository
+root, Wrangler 4.83.0 would also build and upload Pages Functions from
+./functions, read a wrangler.toml/json/jsonc found in that folder or any
+parent, and load .env and .env.local; none of those are compared here.)
 
 So only repo-metadata.json and the badges stamped from it can differ from
 production. If main holds any other public change that was never deployed,
 the deploy stops before upload and names the files; the manual deploy
-publishes them (and the new downloads) once they are approved. When the live
-commit cannot be found, fetched or rebuilt with its own tools (for example a
+publishes them (and the new downloads) once they are approved. When the
+approved commit cannot be found, fetched or rebuilt with its own tools (for example a
 commit older than tools/build_site.py), the guard refuses too: it never
 guesses, and the manual deploy is the way forward.
 
@@ -63,18 +77,17 @@ DEPLOY_STEP = "Deploy to Cloudflare Pages"
 PRODUCTION_BRANCH = "main"
 DEFAULT_SITE = "_site"
 
+# Only manual runs can set the approved baseline. A repository_dispatch run
+# (a release deploy among them) is never read, so dispatch traffic cannot push
+# the last manual deploy out of the listing either.
+BASELINE_EVENT = "workflow_dispatch"
 # The run history is read newest first, 100 runs a page. The Actions API lists
 # at most 1,000 runs for one event filter, so ten pages is all there is.
 RUNS_PER_PAGE = 100
 MAX_RUN_PAGES = 10
-# Jobs are read only for runs that could have deployed; past this many the
-# guard stops looking and refuses rather than guessing.
+# Jobs are read only for manual runs on main; past this many the guard stops
+# looking and refuses rather than guessing.
 MAX_JOB_LOOKUPS = 100
-# website-ci.yml has no run-name, so GitHub titles a repository_dispatch run
-# with its event type. These types only validate (deploy-pages needs
-# product-release), so their runs are skipped without reading their jobs. A
-# title outside this set is looked at, so a future run-name only costs calls.
-VALIDATION_ONLY_DISPATCHES = frozenset({"product-update", "steel-shapes-release", "steel-shapes-update"})
 
 # What a commit must hold for the guard to rebuild its public folder.
 BUILD_TOOL = "tools/build_site.py"
@@ -169,11 +182,12 @@ def _completed_runs(repo: str, event: str, api_get: Callable[[str], Any]) -> tup
 
 
 def _could_have_deployed(run: dict[str, Any], current_run_id: str | None) -> bool:
+    """A manual run on main: the only kind whose upload sets the baseline."""
     if current_run_id and str(run.get("id")) == str(current_run_id):
         return False
-    if run.get("head_branch") != PRODUCTION_BRANCH or not run.get("head_sha"):
+    if run.get("event") != BASELINE_EVENT:
         return False
-    if run.get("event") == "repository_dispatch" and run.get("display_title") in VALIDATION_ONLY_DISPATCHES:
+    if run.get("head_branch") != PRODUCTION_BRANCH or not run.get("head_sha"):
         return False
     return True
 
@@ -194,34 +208,35 @@ def find_deployed_commit(
     *,
     current_run_id: str | None = None,
 ) -> tuple[str, int]:
-    """(head commit, run id) of the newest run that uploaded the site."""
-    read: list[str] = []
-    candidates: list[dict[str, Any]] = []
-    for event in ("workflow_dispatch", "repository_dispatch"):
-        runs, total, more = _completed_runs(repo, event, api_get)
-        read.append(
-            f"the newest {len(runs)} of {total} {event} runs (the Actions API lists no more)"
-            if more else f"all {len(runs)} completed {event} runs"
-        )
-        candidates.extend(run for run in runs if _could_have_deployed(run, current_run_id))
+    """(head commit, run id) of the newest manual run that uploaded the site.
+
+    Release deploys (repository_dispatch runs) are never read: they are not an
+    approval, so they never become the commit a release deploy is held to.
+    """
+    runs, total, more = _completed_runs(repo, BASELINE_EVENT, api_get)
+    candidates = [run for run in runs if _could_have_deployed(run, current_run_id)]
     candidates.sort(key=lambda run: run.get("run_started_at") or run.get("created_at") or "", reverse=True)
 
     for run in candidates[:MAX_JOB_LOOKUPS]:
         if _uploaded(api_get(jobs_url(repo, run.get("id")))):
             return str(run["head_sha"]), int(run["id"])
 
+    read = (
+        f"the newest {len(runs)} of {total} {BASELINE_EVENT} runs (the Actions API lists no more)"
+        if more else f"all {len(runs)} completed {BASELINE_EVENT} runs"
+    )
     checked = min(len(candidates), MAX_JOB_LOOKUPS)
     why = (
-        f"It read {' and '.join(read)} of {WORKFLOW_FILE}. {len(candidates)} of them could have deployed "
-        f"(manual runs and product-release dispatches on {PRODUCTION_BRANCH}); the jobs of "
-        f"{'all of them' if checked == len(candidates) else f'the newest {checked}'} were read and none "
-        f"has a successful '{DEPLOY_STEP}' step."
+        f"It read {read} of {WORKFLOW_FILE}. {len(candidates)} of them ran on {PRODUCTION_BRANCH}; "
+        f"the jobs of {'all of them' if checked == len(candidates) else f'the newest {checked}'} were "
+        f"read and none has a successful '{DEPLOY_STEP}' step, so none was a manual "
+        "deploy_production=true deploy. Release deploys do not count: they are not an approval."
     )
     if checked < len(candidates):
-        why += f" The guard reads at most {MAX_JOB_LOOKUPS} runs' jobs, so the last deploy is older than that."
-    elif any("lists no more" in part for part in read):
-        why += " The last deploy is older than the run history the Actions API lists."
-    raise GuardError(f"The live commit is unknown, so the guard cannot compare against it. {why}")
+        why += f" The guard reads at most {MAX_JOB_LOOKUPS} runs' jobs, so the last manual deploy is older than that."
+    elif more:
+        why += " The last manual deploy is older than the run history the Actions API lists."
+    raise GuardError(f"The approved live commit is unknown, so the guard cannot compare against it. {why}")
 
 
 # ---------------------------------------------------------------------------
@@ -358,7 +373,7 @@ def check(
             + "; ".join(leftovers)
         )
     if deployed_sha == head_sha:
-        print(f"The commit about to be deployed is the live one ({head_sha[:12]}); only metadata can change.")
+        print(f"The commit about to be deployed is the approved live commit ({head_sha[:12]}); only metadata can change.")
         return []
     live_site = build_commit_site(repo_root, deployed_sha, metadata, workdir, "live")
     return compare_sites(head_site, live_site)
@@ -371,7 +386,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--metadata", type=Path, default=Path("repo-metadata.json"),
                         help="the freshly synced metadata about to be deployed")
     parser.add_argument("--repo", default=os.getenv("GITHUB_REPOSITORY", "BlueCollar-Systems/BlueCollar-Website"))
-    parser.add_argument("--deployed-sha", help="the live commit, instead of reading it from the run history")
+    parser.add_argument("--deployed-sha", help="the approved commit, instead of reading the last manual deploy from the run history")
     args = parser.parse_args(argv)
 
     repo_root = Path(".").resolve()
@@ -390,8 +405,8 @@ def main(argv: list[str] | None = None) -> int:
                 args.repo, lambda url: _api_get(url, token),
                 current_run_id=os.getenv("GITHUB_RUN_ID"),
             )
-            source = f"deployed by run {run_id}"
-        print(f"Live commit: {deployed_sha} ({source}); about to deploy: {head_sha}")
+            source = f"the last manual deploy, run {run_id}"
+        print(f"Approved live commit: {deployed_sha} ({source}); about to deploy: {head_sha}")
         with tempfile.TemporaryDirectory(prefix="metadata-only-deploy-") as temp:
             problems = check(repo_root, args.site.resolve(), args.metadata.resolve(),
                              deployed_sha, head_sha, Path(temp))
@@ -405,7 +420,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if problems:
         print("::error::Release deploy refused, nothing was deployed: main has website changes "
-              f"that are not live yet (live commit {deployed_sha[:12]}). A release deploy may only "
+              f"that were never approved by a manual deploy (approved live commit {deployed_sha[:12]}). "
+              "A release deploy may only "
               "refresh download metadata. Run website-ci manually on main with "
               "deploy_production=true once these changes are approved; it publishes them and the "
               "new downloads together.")

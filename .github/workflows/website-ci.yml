@@ -266,13 +266,15 @@ jobs:
         run: python tools/build_site.py
 
       # A product-release dispatch is not a GO for other website changes.
-      # Build this commit and the live commit, each in a clean worktree with
-      # its own build_site.py and badge stamping and both fed this fresh
-      # metadata; require _site to equal the first build and the first to
-      # equal the second, so only repo-metadata.json and the badges stamped
-      # from it can change. Otherwise, or when the live commit cannot be
-      # found or rebuilt, stop before upload; the manual deploy_production
-      # run publishes approved changes.
+      # Build this commit and the approved commit (the head of the last
+      # manual deploy_production run that uploaded; a release deploy never
+      # becomes it), each in a clean worktree with its own build_site.py and
+      # badge stamping and both fed this fresh metadata; require _site to
+      # equal the first build and the first to equal the second, so only
+      # repo-metadata.json and the badges stamped from it can change. The
+      # upload below sends _site alone. Otherwise, or when the approved
+      # commit cannot be found or rebuilt, stop before upload; the manual
+      # deploy_production run publishes approved changes.
       - name: Confirm a release deploy changes only download metadata
         if: github.event_name == 'repository_dispatch'
         env:
@@ -325,7 +327,35 @@ jobs:
 
           print("Cloudflare deploy credentials validated.")
           PY
-          npx --yes wrangler@4.83.0 pages deploy _site --project-name bluecollar-website --branch main
+          # Upload exactly _site and nothing else. Started in the checkout,
+          # Wrangler would also build and upload Pages Functions from
+          # ./functions, read a wrangler.toml/json/jsonc found there or in
+          # any parent folder, and load .env/.env.local; the release deploy's
+          # metadata-only guard compares _site alone. So Wrangler runs from a
+          # new empty folder outside the checkout, given the absolute path of
+          # _site, and the commit details it would read from git are passed.
+          site="$(pwd -P)/_site"
+          checkout="$(pwd -P)"
+          commit_hash="$(git rev-parse HEAD)"
+          commit_message="$(git show -s --format=%B HEAD)"
+          if [ -n "$(git status --porcelain)" ]; then commit_dirty=true; else commit_dirty=false; fi
+          upload_dir="$(cd "$(mktemp -d "$RUNNER_TEMP/pages-upload.XXXXXX")" && pwd -P)"
+          case "$upload_dir/" in
+            "$checkout"/*) echo "::error::Wrangler's folder $upload_dir is inside the checkout; nothing was uploaded."; exit 1 ;;
+          esac
+          dir="$upload_dir"
+          while :; do
+            for name in wrangler.toml wrangler.json wrangler.jsonc .wrangler/deploy/config.json; do
+              if [ -e "${dir%/}/$name" ]; then
+                echo "::error::Wrangler would read ${dir%/}/$name; nothing was uploaded."
+                exit 1
+              fi
+            done
+            if [ "$dir" = / ]; then break; fi
+            dir="${dir%/*}"; dir="${dir:-/}"
+          done
+          cd "$upload_dir"
+          npx --yes wrangler@4.83.0 pages deploy "$site" --project-name bluecollar-website --branch main --commit-hash "$commit_hash" --commit-message "$commit_message" --commit-dirty="$commit_dirty"
 
       # A successful upload does not prove that the custom domain serves the
       # new download links. Retry bounded propagation delays, then fail closed.

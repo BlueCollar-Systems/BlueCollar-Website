@@ -160,15 +160,22 @@ A `product-release` dispatch is a GO for new downloads, not for other website
 changes that were merged to `main` but never deployed. Before upload, the
 release deploy runs [`tools/check_metadata_only_deploy.py`](tools/check_metadata_only_deploy.py):
 
-1. It finds the commit that is live now: the head commit of the newest
-   `website-ci` run whose **Deploy to Cloudflare Pages** step succeeded. It
-   reads the Actions API with the run's own read-only token, back through the
-   newest 1,000 manual and 1,000 dispatch runs (the most the API lists), and
-   reads the jobs only of runs that could have deployed: manual runs and
-   `product-release` dispatches.
+1. It finds the approved commit: the head commit of the newest **manual**
+   `website-ci` run on `main` (`deploy_production=true`) whose **Deploy to
+   Cloudflare Pages** step succeeded. It reads the Actions API with the run's
+   own read-only token, back through the newest 1,000 manual runs (the most
+   the API lists). Dispatch runs are never read, so no amount of dispatch
+   traffic can push the last manual deploy out of reach. A release deploy
+   never becomes the approved commit: it only proved that its commit builds
+   the same folder as the approved one for that day's metadata. If that
+   commit's tools behave differently for some later metadata (for example a
+   banner that appears once a tag starts with `v9.`), that difference was
+   never approved. So every release deploy is compared with the last manual
+   deploy, and what it uploads is what that approved commit builds with the
+   new metadata.
 2. It builds two public folders the same clean way, each in its own new
    temporary worktree and its own new output folder: one from the commit about
-   to be deployed, one from the live commit. Both get the same freshly synced
+   to be deployed, one from the approved commit. Both get the same freshly synced
    `repo-metadata.json`, and each commit's **own** tools do the work, run with
    that worktree as the working folder and only its own `tools/` importable:
    its `tools/sync_repo_metadata.py` (`stamp_html_versions`) stamps the version
@@ -176,14 +183,25 @@ release deploy runs [`tools/check_metadata_only_deploy.py`](tools/check_metadata
    folder.
 3. It requires the `_site/` about to be uploaded to be byte-for-byte the clean
    build of its own commit (so no uncommitted or leftover file rides along),
-   and that build to be byte-for-byte the live commit's build.
+   and that build to be byte-for-byte the approved commit's build.
+
+`_site/` is the whole upload. The deploy step starts Wrangler in a new empty
+folder outside the checkout and hands it the absolute path of `_site/`.
+Started in the checkout, Wrangler 4.83.0 would also build and upload Pages
+Functions from `functions/`, read a `wrangler.toml`, `wrangler.json` or
+`wrangler.jsonc` found in that folder or any parent folder, and load `.env`
+and `.env.local`; the guard compares none of those. The step refuses to upload
+if its folder is inside the checkout or has a Wrangler config file above it.
+This holds for manual deploys too: this site has no Pages Functions, and
+adding one needs a deliberate change to the deploy step.
 
 So only `repo-metadata.json` and the badges stamped from it can differ from
 production. `repo-metadata.json` itself is written by `main`'s
 `sync_repo_metadata.py`, so a change to what the sync records ships with the
-next release deploy. Files that are never published (README, tests, most of
-`tools/`) can change freely. A change to how the public folder is made counts like a
-page change: if `main`'s `tools/build_site.py` publishes a different set of
+next release deploy. Files outside `_site/` never reach Cloudflare, so the
+README, tests and most of `tools/` can change freely. A change to how the
+public folder is made counts like a page change: if `main`'s
+`tools/build_site.py` publishes a different set of
 files, or `main`'s badge stamping writes different HTML, the two builds differ
 and the release deploy refuses. If `main` holds any public change that is not
 live yet (a page, a style, a script, a new or removed file, or such a tool
@@ -192,13 +210,14 @@ nothing. Run `website-ci` manually on `main` with `deploy_production=true` once
 those changes are approved; it publishes them and the new downloads together.
 
 The guard also refuses, deploying nothing, whenever it cannot prove the
-result: the live commit is not found in that run history (the message says how
-many runs it read and why it stopped), cannot be fetched, or cannot be rebuilt
-with its own tools. A live commit older than `tools/build_site.py`, or one
-whose tools lack `stamp_html_versions()` or the `--source` and `--out` options,
-is refused with the note that a manual deploy is needed. Manual deploys skip
-this step. The guard compares built files only; a change to a workflow takes
-effect on its next run, deployed or not.
+result: no successful manual deploy is found in the manual run history (the
+message says how many runs it read and why it stopped), or the approved commit
+cannot be fetched or cannot be rebuilt with its own tools. An approved commit
+older than `tools/build_site.py`, or one whose tools lack
+`stamp_html_versions()` or the `--source` and `--out` options, is refused with the note that a manual deploy is needed. Manual deploys skip
+this step. The guard compares built files only. The deploy machinery itself
+(`website-ci.yml`, this guard and the metadata sync) runs as committed on
+`main`, so a change to it takes effect on its next run, deployed or not.
 
 To see what a release deploy would decide, commit your changes, then run
 `python tools/sync_repo_metadata.py`, `python tools/build_site.py` and
