@@ -38,6 +38,16 @@ repository file outside _site reaches Cloudflare. (Run from the repository
 root, Wrangler 4.83.0 would also build and upload Pages Functions from
 ./functions, read a wrangler.toml/json/jsonc found in that folder or any
 parent, and load .env and .env.local; none of those are compared here.)
+Wrangler follows links when it walks that folder, so a link, junction or any
+entry that is not a plain file or folder, in _site or in either clean build,
+is refused rather than compared.
+
+The guard runs from tools/ of the checkout it judges. website-ci starts it
+with python -I, so that folder is not on sys.path; when started without -I it
+drops every sys.path entry inside the repository before its first import and
+refuses to run if any loaded module comes from the repository. A
+tools/json.py or tools/filecmp.py on main therefore cannot stand in for the
+standard library inside the guard.
 
 So only repo-metadata.json and the badges stamped from it can differ from
 production. If main holds any other public change that was never deployed,
@@ -49,22 +59,48 @@ guesses, and the manual deploy is the way forward.
 
 Read-only for the site: it never deploys or pushes. Usage, from the
 repository root after tools/sync_repo_metadata.py and tools/build_site.py:
-    python tools/check_metadata_only_deploy.py [--site _site] [--deployed-sha SHA]
+    python -I tools/check_metadata_only_deploy.py [--site _site] [--deployed-sha SHA]
 
 Exit codes: 0 only metadata differs from production, 1 refused (nothing may
 deploy).
 """
 
-from __future__ import annotations
+# No "from __future__ import": it imports a module through sys.path before
+# anything below could run.
+import os
+import sys
+
+
+def _inside(path: str, folder: str) -> bool:
+    """True when path (any form) resolves to folder or something in it."""
+    try:
+        path, folder = os.path.normcase(os.path.realpath(path)), os.path.normcase(os.path.realpath(folder))
+    except (OSError, ValueError):
+        return True  # cannot tell: treat it as the repository's
+    return path == folder or path.startswith(folder.rstrip(os.sep) + os.sep)
+
+
+# The repository this copy of the guard belongs to (tools/..).
+_REPOSITORY = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
+if __name__ == "__main__":
+    # Python puts the script's own folder, tools/, first on sys.path (and
+    # PYTHONPATH may add more), so a tools/<standard module>.py would be
+    # imported in place of the real one. Drop every entry inside the
+    # repository (a relative entry counts from the working folder, as for
+    # imports) before the imports below. sys is built in and os is frozen
+    # into the interpreter (or already loaded), so neither is read from
+    # sys.path; _repository_modules() confirms that before the guard runs.
+    sys.path[:] = [entry for entry in sys.path
+                   if isinstance(entry, str) and not _inside(entry or os.curdir, _REPOSITORY)]
 
 import argparse
 import filecmp
 import json
-import os
 import re
 import shutil
+import stat
 import subprocess
-import sys
 import tempfile
 import urllib.error
 import urllib.request
@@ -134,6 +170,38 @@ class ToolsUnsupported(GuardError):
     """A commit's own tools cannot rebuild its public folder the guard's way."""
 
 
+def _repository_modules(repository: str = _REPOSITORY, modules: dict | None = None) -> list[str]:
+    """Loaded modules (other than the guard itself) whose code is inside the repository."""
+    found = []
+    for name, module in list((sys.modules if modules is None else modules).items()):
+        if name == "__main__" or module is None:
+            continue
+        spec = getattr(module, "__spec__", None)
+        places = [getattr(module, "__file__", None)]
+        if getattr(spec, "has_location", False):  # not "built-in" or "frozen"
+            places.append(getattr(spec, "origin", None))
+        try:
+            places += list(getattr(module, "__path__", None) or [])
+        except TypeError:
+            pass
+        for place in places:
+            if isinstance(place, str) and place and _inside(place, repository):
+                found.append(f"{name} ({place})")
+                break
+    return sorted(found)
+
+
+def _refuse_repository_modules() -> bool:
+    """Print the refusal and return True when repository code was imported."""
+    loaded = _repository_modules()
+    if not loaded:
+        return False
+    print("::error::Release deploy refused, nothing was deployed: the guard imported code from the "
+          "repository it is checking instead of the standard library, so its result cannot be trusted: "
+          + "; ".join(loaded) + f". Run it as python -I tools/check_metadata_only_deploy.py. {MANUAL_DEPLOY_HINT}")
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Which commit is live
 # ---------------------------------------------------------------------------
@@ -168,6 +236,8 @@ def _completed_runs(repo: str, event: str, api_get: Callable[[str], Any]) -> tup
     total = 0
     for page in range(1, MAX_RUN_PAGES + 1):
         data = api_get(runs_url(repo, event, page)) or {}
+        if not isinstance(data, dict) or not isinstance(data.get("workflow_runs") or [], list):
+            raise GuardError(f"The Actions API returned an unexpected run listing ({type(data).__name__}).")
         batch = [run for run in data.get("workflow_runs") or [] if isinstance(run, dict)]
         try:
             total = max(total, int(data.get("total_count") or 0))
@@ -193,11 +263,14 @@ def _could_have_deployed(run: dict[str, Any], current_run_id: str | None) -> boo
 
 
 def _uploaded(jobs: Any) -> bool:
-    for job in (jobs or {}).get("jobs") or []:
-        if job.get("name") != DEPLOY_JOB:
+    jobs = {} if jobs is None else jobs
+    if not isinstance(jobs, dict) or not isinstance(jobs.get("jobs") or [], list):
+        raise GuardError(f"The Actions API returned an unexpected jobs listing ({type(jobs).__name__}).")
+    for job in jobs.get("jobs") or []:
+        if not isinstance(job, dict) or job.get("name") != DEPLOY_JOB:
             continue
         for step in job.get("steps") or []:
-            if step.get("name") == DEPLOY_STEP and step.get("conclusion") == "success":
+            if isinstance(step, dict) and step.get("name") == DEPLOY_STEP and step.get("conclusion") == "success":
                 return True
     return False
 
@@ -340,12 +413,74 @@ def build_commit_site(repo_root: Path, sha: str, metadata: Path, workdir: Path, 
     return out
 
 
+_REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+
+
+def _odd_kind(info: os.stat_result) -> str | None:
+    """None for a plain file or folder; otherwise what the entry is."""
+    if stat.S_ISLNK(info.st_mode):
+        return "symbolic link"
+    if getattr(info, "st_file_attributes", 0) & _REPARSE_POINT:
+        return "junction or other reparse point"
+    if stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode):
+        return None
+    return "special file"
+
+
 def _files(root: Path) -> set[str]:
-    return {p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()}
+    """The plain files under root, as POSIX paths relative to it.
+
+    Wrangler follows links when it walks the upload folder, so a link would
+    upload whatever it points at, while a comparison that does not follow it
+    sees nothing there. Any link, junction, reparse point or other entry that
+    is not a plain file or folder, anywhere in the folder or as the folder
+    itself, is refused instead. Nothing is followed while looking.
+    """
+    root = Path(root)
+    try:
+        top = os.lstat(root)
+    except OSError as exc:
+        raise GuardError(f"Cannot read the folder {root}: {exc}") from exc
+    kind = _odd_kind(top)
+    if kind or not stat.S_ISDIR(top.st_mode):
+        raise GuardError(f"{root} is a {kind or 'file'}, not a plain folder, so it cannot be compared.")
+
+    def unreadable(exc: OSError) -> None:
+        raise GuardError(f"Cannot read {exc.filename} in {root}: {exc}")
+
+    files: set[str] = set()
+    odd: list[str] = []
+    for current, folders, names in os.walk(root, onerror=unreadable, followlinks=False):
+        plain_folders = []
+        for name in folders + names:
+            path = os.path.join(current, name)
+            rel = Path(path).relative_to(root).as_posix()
+            try:
+                info = os.lstat(path)
+            except OSError as exc:
+                raise GuardError(f"Cannot read {rel} in {root}: {exc}") from exc
+            kind = _odd_kind(info)
+            if kind:
+                odd.append(f"{rel} ({kind})")
+            elif stat.S_ISDIR(info.st_mode):
+                plain_folders.append(name)
+            else:
+                files.add(rel)
+        folders[:] = [name for name in folders if name in plain_folders]
+    if odd:
+        raise GuardError(
+            f"{root} holds entries that are not plain files or folders. Wrangler would follow or upload "
+            "them, but the guard cannot compare what they point at, so nothing may deploy: "
+            + ", ".join(sorted(odd))
+        )
+    return files
 
 
 def compare_sites(new_site: Path, live_site: Path) -> list[str]:
-    """One line per public file that differs between two built folders."""
+    """One line per public file that differs between two built folders.
+
+    Both folders must hold nothing but plain files and folders (see _files).
+    """
     new_files, live_files = _files(new_site), _files(live_site)
     problems = [f"new public file: {name}" for name in sorted(new_files - live_files)]
     problems += [f"removed public file: {name}" for name in sorted(live_files - new_files)]
@@ -408,7 +543,8 @@ def main(argv: list[str] | None = None) -> int:
             source = f"the last manual deploy, run {run_id}"
         print(f"Approved live commit: {deployed_sha} ({source}); about to deploy: {head_sha}")
         with tempfile.TemporaryDirectory(prefix="metadata-only-deploy-") as temp:
-            problems = check(repo_root, args.site.resolve(), args.metadata.resolve(),
+            # absolute(), not resolve(): a _site that is itself a link is refused, not followed.
+            problems = check(repo_root, args.site.absolute(), args.metadata.resolve(),
                              deployed_sha, head_sha, Path(temp))
     except ToolsUnsupported as exc:
         print(f"::error::Release deploy refused, nothing was deployed: {exc} "
@@ -433,4 +569,11 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # Checked before the guard starts and again before a pass is reported,
+    # in case a later import was served from the repository.
+    if _refuse_repository_modules():
+        raise SystemExit(1)
+    status = main()
+    if _refuse_repository_modules():
+        status = 1
+    raise SystemExit(status)

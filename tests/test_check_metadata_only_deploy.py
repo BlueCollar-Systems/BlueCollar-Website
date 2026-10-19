@@ -223,6 +223,17 @@ class FindDeployedCommitTests(unittest.TestCase):
         self.assertIn("older than the run history the Actions API lists", message)
         self.assertEqual(len([url for url in api.calls if "event=workflow_dispatch" in url]), GUARD.MAX_RUN_PAGES)
 
+    def test_an_unexpected_api_payload_is_a_guard_refusal(self) -> None:
+        # A list where an object belongs used to end in an AttributeError
+        # traceback; it is now the guard's own refusal, with a reason.
+        api = FakeActions(manual=[_run(10, "a" * 40, "2026-10-12T12:00:00Z")], dispatched=[], jobs={10: []})
+        with self.assertRaises(GUARD.GuardError) as caught:
+            self.find(api)
+        self.assertIn("unexpected jobs listing (list)", str(caught.exception))
+        with self.assertRaises(GUARD.GuardError) as caught:
+            GUARD.find_deployed_commit(REPO, lambda url: [{"id": 1}])
+        self.assertIn("unexpected run listing (list)", str(caught.exception))
+
     def test_job_lookups_are_bounded_and_the_bound_is_named(self) -> None:
         manual = [_run(1000 + n, "c" * 40, _stamp(18, 1000 - n)) for n in range(GUARD.MAX_JOB_LOOKUPS + 3)]
         api = FakeActions(manual=manual, dispatched=[], jobs={run["id"]: _jobs("skipped") for run in manual})
@@ -461,6 +472,161 @@ class GuardEndToEndTests(unittest.TestCase):
         self.assertTrue((self.temp / "work-1" / "deploy-site").is_dir())
         self.assertFalse((self.temp / "work-1" / "live-site").exists())
 
+    # -- links: Wrangler follows them, a comparison of plain files does not -
+
+    def link(self, target: Path, link: Path) -> None:
+        try:
+            os.symlink(target, link, target_is_directory=target.is_dir())
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest(f"cannot make symbolic links here: {exc}")
+
+    def require_links(self) -> None:
+        probe = self.temp / "link-probe"
+        self.link(self.temp / "repo", probe)
+        os.rmdir(probe) if os.name == "nt" else probe.unlink()
+
+    def test_folder_link_added_by_the_builder_is_refused(self) -> None:
+        # Review finding B2 (A10): main publishes a new page through a folder
+        # link that its build_site.py adds to the output. In the guard's
+        # clean build the link dangles once the worktree is gone; in _site it
+        # resolves, and Wrangler uploads what it points at.
+        extra = self.repo / "public-extra"
+        extra.mkdir()
+        (extra / "promo.html").write_text("<!DOCTYPE html><title>promo</title>\n", encoding="utf-8", newline="\n")
+        anchor = '    return sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file())'
+        _edit(self.repo / GUARD.BUILD_TOOL, anchor,
+              "    import os\n"
+              "    os.symlink(os.path.relpath(source / 'public-extra', out), out / 'extra', target_is_directory=True)\n"
+              + anchor)
+        self.commit("publish public-extra through a link")
+        self.require_links()
+        site, metadata = self.deploy_job()
+        self.assertTrue((site / "extra" / "promo.html").is_file())  # what Wrangler would upload
+        with self.assertRaises(GUARD.GuardError) as caught:
+            self.guard(site, metadata)
+        self.assertIn("extra (symbolic link)", str(caught.exception))
+        self.assertIn("not plain files or folders", str(caught.exception))
+        self.assertNoWorktreesLeft()
+
+    def test_file_and_folder_links_in_the_upload_folder_are_refused(self) -> None:
+        site, metadata = self.deploy_job()
+        outside = self.temp / "outside"
+        (outside / "deep").mkdir(parents=True)
+        (outside / "deep" / "page.html").write_text("unapproved\n", encoding="utf-8")
+        self.link(outside, site / "linked-folder")
+        self.link(self.repo / "README.md", site / "linked-file.txt")
+        self.link(self.temp / "missing", site / "dangling")
+        with self.assertRaises(GUARD.GuardError) as caught:
+            self.guard(site, metadata)
+        message = str(caught.exception)
+        for name in ("linked-folder", "linked-file.txt", "dangling"):
+            self.assertIn(f"{name} (symbolic link)", message)
+        self.assertNotIn("deep", message)  # nothing behind a link is followed
+
+    def test_upload_folder_that_is_itself_a_link_is_refused(self) -> None:
+        site, metadata = self.deploy_job()
+        linked = self.temp / "linked-site"
+        self.link(site, linked)
+        with self.assertRaises(GUARD.GuardError) as caught:
+            self.guard(linked, metadata)
+        self.assertIn("is a symbolic link, not a plain folder", str(caught.exception))
+
+    @unittest.skipUnless(os.name == "nt", "junctions are a Windows folder link")
+    def test_junction_in_the_upload_folder_is_refused(self) -> None:
+        import _winapi
+        site, metadata = self.deploy_job()
+        outside = self.temp / "outside"
+        outside.mkdir()
+        (outside / "page.html").write_text("unapproved\n", encoding="utf-8")
+        _winapi.CreateJunction(str(outside), str(site / "joined"))
+        with self.assertRaises(GUARD.GuardError) as caught:
+            self.guard(site, metadata)
+        self.assertIn("joined (junction or other reparse point)", str(caught.exception))
+
+    def test_link_in_the_approved_commits_build_is_refused(self) -> None:
+        # Each built reference folder is walked the same way, not only _site.
+        anchor = '    return sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file())'
+        self.require_links()
+        old = self.old_live_commit(lambda: _edit(
+            self.repo / GUARD.BUILD_TOOL, anchor,
+            "    import os\n    os.symlink('index.html', out / 'alias.html')\n" + anchor))
+        site, metadata = self.deploy_job()
+        with self.assertRaises(GUARD.GuardError) as caught:
+            self.guard(site, metadata, live_sha=old)
+        message = str(caught.exception)
+        self.assertIn("live-site holds entries that are not plain files or folders", message)
+        self.assertIn("alias.html (symbolic link)", message)
+        self.assertNoWorktreesLeft()
+
+    # -- the guard's own imports come from the standard library -------------
+
+    SHADOWED = ("argparse", "json", "re", "shutil", "stat", "subprocess", "tempfile",
+                "typing", "pathlib", "os", "__future__")
+
+    def plant_shadow_modules(self) -> None:
+        """tools/<standard module>.py files that record any import and then fail."""
+        body = (
+            "import os as _os\n"
+            "with open(_os.environ['SHADOW_MARKER'], 'a', encoding='utf-8') as _f:\n"
+            "    _f.write(__name__ + '\\n')\n"
+            "raise ImportError('shadow module ' + __name__ + ' was imported')\n"
+        )
+        for name in self.SHADOWED:
+            (self.repo / "tools" / f"{name}.py").write_text(body, encoding="utf-8", newline="\n")
+        (self.repo / "tools" / "urllib").mkdir()
+        (self.repo / "tools" / "urllib" / "__init__.py").write_text(body, encoding="utf-8", newline="\n")
+
+    def test_stdlib_named_modules_in_tools_cannot_replace_the_guards_imports(self) -> None:
+        # Review finding B3 (A11): main changes index.html and adds a
+        # three-line tools/filecmp.py whose cmp() says every file is equal.
+        # Run as `python tools/check_metadata_only_deploy.py`, tools/ is first
+        # on sys.path, so the guard compared with it and passed.
+        shutil.copyfile(ROOT / "tools" / "check_metadata_only_deploy.py",
+                        self.repo / "tools" / "check_metadata_only_deploy.py")
+        self.live_sha = self.commit("the guard is part of the site's tools")
+        _edit(self.repo / "index.html", "</body>", "<p>UNAPPROVED PAGE CHANGE</p></body>")
+        (self.repo / "tools" / "filecmp.py").write_text(
+            "import os\n"
+            "open(os.environ['SHADOW_MARKER'], 'a', encoding='utf-8').write('filecmp\\n')\n"
+            "def cmp(f1, f2, shallow=True):\n    return True\n",
+            encoding="utf-8", newline="\n")
+        self.commit("page change and a tools/filecmp.py")
+        site, metadata = self.deploy_job()
+        shutil.move(str(site), str(self.repo / "_site"))
+        marker = self.temp / "shadow-imports.txt"
+
+        workflow = (ROOT / ".github" / "workflows" / "website-ci.yml").read_text(encoding="utf-8")
+        command = re.search(r"(?m)^        run: (python -I .*check_metadata_only_deploy\.py.*)$", workflow)
+        self.assertIsNotNone(command, "website-ci must run the guard with python -I")
+        isolated = [sys.executable, *command.group(1).split()[1:]]
+        bare = [sys.executable, "tools/check_metadata_only_deploy.py", "--site", "_site",
+                "--metadata", "repo-metadata.json"]
+        env = {name: value for name, value in os.environ.items() if not name.startswith("PYTHON")}
+        env["SHADOW_MARKER"] = str(marker)
+
+        def run(label: str, argv: list[str]) -> None:
+            with self.subTest(label):
+                result = subprocess.run([*argv, "--deployed-sha", self.live_sha], cwd=str(self.repo), env=env,
+                                        capture_output=True, text=True, encoding="utf-8", errors="replace",
+                                        timeout=GUARD.TOOL_TIMEOUT)
+                output = result.stdout + result.stderr
+                self.assertFalse(marker.exists(), marker.read_text(encoding="utf-8") if marker.exists() else "")
+                self.assertEqual(result.returncode, 1, output)
+                self.assertIn("changed: index.html", output)
+                self.assertNotIn("Only repo-metadata.json", output)
+                self.assertNotIn("Traceback", output)
+
+        # A11 as reproduced: without -I the guard itself drops tools/ from
+        # sys.path before its first import (Python adds the script's folder
+        # only after its own startup imports).
+        run("without -I, tools/filecmp.py", bare)
+        # Then every other standard module the guard imports, planted beside
+        # it (left uncommitted, so the commits' own tools build as before).
+        self.plant_shadow_modules()
+        run("as website-ci runs it, all planted", isolated)
+        run("without -I, all planted", bare)
+        self.assertNoWorktreesLeft()
+
     # -- a release deploy never becomes the approved baseline --------------
 
     def test_latent_tool_change_shipped_by_a_release_deploy_stays_held_to_the_approved_commit(self) -> None:
@@ -632,6 +798,61 @@ class ToolProcessTests(unittest.TestCase):
             env = GUARD._tool_env()
         self.assertFalse(set(secrets) & set(env))
         self.assertEqual(env.get("KEEP_ME"), "1")
+
+    def test_guard_refuses_to_run_with_a_repository_module_loaded(self) -> None:
+        # Second line of defence: if a repository module is already loaded
+        # (here tools/filecmp.py, imported before the guard starts), the guard
+        # refuses before doing anything instead of comparing with it.
+        with tempfile.TemporaryDirectory() as temp:
+            repo = Path(temp)
+            (repo / "tools").mkdir()
+            shutil.copyfile(ROOT / "tools" / "check_metadata_only_deploy.py",
+                            repo / "tools" / "check_metadata_only_deploy.py")
+            (repo / "tools" / "filecmp.py").write_text(
+                "def cmp(f1, f2, shallow=True):\n    return True\n", encoding="utf-8")
+            starter = ("import runpy, sys; sys.path.insert(0, 'tools'); import filecmp; "
+                       "sys.argv = ['tools/check_metadata_only_deploy.py', '--deployed-sha', 'a' * 40]; "
+                       "runpy.run_path('tools/check_metadata_only_deploy.py', run_name='__main__')")
+            result = subprocess.run([sys.executable, "-B", "-c", starter], cwd=str(repo), capture_output=True,
+                                    text=True, encoding="utf-8", errors="replace", timeout=60)
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 1, output)
+        self.assertIn("the guard imported code from the repository it is checking", output)
+        self.assertIn("filecmp (", output)
+        self.assertNotIn("not a git checkout", output)  # refused before main() ran
+        self.assertNotIn("Traceback", output)
+
+    def test_repository_modules_are_found_by_location(self) -> None:
+        import types
+        from importlib.machinery import ModuleSpec
+        with tempfile.TemporaryDirectory() as temp:
+            repo = Path(temp).resolve()
+            outside = Path(sys.executable).resolve().parent
+
+            def module(name: str, file: str | None = None, origin: str | None = None,
+                       path: list | None = None) -> types.ModuleType:
+                made = types.ModuleType(name)
+                if file is not None:
+                    made.__file__ = file
+                spec = ModuleSpec(name, None, origin=origin)
+                spec.has_location = origin not in (None, "built-in", "frozen")
+                made.__spec__ = spec
+                if path is not None:
+                    made.__path__ = path
+                return made
+
+            modules = {
+                "__main__": module("__main__", str(repo / "tools" / "check_metadata_only_deploy.py")),
+                "json": module("json", str(repo / "tools" / "json" / "__init__.py")),
+                "shutil": module("shutil", origin=str(repo / "tools" / "shutil.py")),
+                "space": module("space", path=[str(repo / "tools" / "space")]),
+                "filecmp": module("filecmp", str(outside / "Lib" / "filecmp.py")),
+                "sys": module("sys", origin="built-in"),
+                "os": module("os", str(outside / "Lib" / "os.py"), origin="frozen"),
+                "missing": None,
+            }
+            found = GUARD._repository_modules(str(repo), modules)
+        self.assertEqual([entry.split(" ", 1)[0] for entry in found], ["json", "shutil", "space"])
 
     def test_tools_import_only_their_own_worktree(self) -> None:
         # -E ignores PYTHONPATH, so today's tools folder cannot shadow the

@@ -35,7 +35,7 @@ holds other website changes that the last manual deploy did not publish
 (including a change to the public file list in `tools/build_site.py` or to the
 badge stamping). Only `_site/` is ever uploaded: Wrangler runs from an empty
 folder outside the checkout, so `functions/`, `wrangler.toml` and `.env` in the
-repository are never deployed. A website
+repository are never deployed, and a link inside `_site/` stops the upload. A website
 change like this one therefore still needs the manual run below. A shape pack
 (`steel-v*`) release never deploys by itself (its release workflow publishes
 with `GITHUB_TOKEN`, so no dispatch reaches the website): run the manual

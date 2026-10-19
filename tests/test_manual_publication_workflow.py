@@ -119,7 +119,9 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
         deploy=block(text,'deploy-pages')
         step=block(deploy,'Confirm a release deploy changes only download metadata','step')
         self.assertEqual(guard(step),"github.event_name == 'repository_dispatch'")
-        self.assertIn('python tools/check_metadata_only_deploy.py --site _site --metadata repo-metadata.json',step)
+        # -I: the guard runs from tools/ of the checkout it judges, and only
+        # isolated mode keeps that folder off sys.path (review finding B3).
+        self.assertRegex(step,r'(?m)^        run: python -I -B -X utf8 tools/check_metadata_only_deploy.py --site _site --metadata repo-metadata.json$')
         self.assertNotIn('secrets.',step)
         order=['Build repository metadata snapshot','Validate final immutable release metadata','Build site folder',
                'Confirm a release deploy changes only download metadata','Deploy to Cloudflare Pages',
@@ -218,7 +220,7 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
                               env=env,capture_output=True,text=True,timeout=600)
         recorded=json.loads(record.read_text(encoding='utf-8')) if record.exists() else None
         return result,recorded
-    def fake_checkout(self,folder):
+    def fake_checkout(self,folder,message='fake checkout'):
         """A checkout holding every file Wrangler reads from its working folder."""
         checkout=folder/'work'/'repo'
         (checkout/'functions').mkdir(parents=True)
@@ -235,7 +237,8 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
              '-c','commit.gpgsign=false','-c','safe.directory=*']
         subprocess.run(git+['init','-q'],check=True,capture_output=True)
         subprocess.run(git+['add','-A'],check=True,capture_output=True)
-        subprocess.run(git+['commit','-q','-m','fake checkout'],check=True,capture_output=True)
+        (folder/'message.txt').write_text(message,encoding='utf-8',newline='\n')
+        subprocess.run(git+['commit','-q','--cleanup=verbatim','-F',str(folder/'message.txt')],check=True,capture_output=True)
         sha=subprocess.run(git+['rev-parse','HEAD'],check=True,capture_output=True,text=True).stdout.strip()
         return checkout,sha
     def test_wrangler_uploads_only_the_built_folder(self):
@@ -246,7 +249,7 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
         # upload must start Wrangler in a new empty folder outside the checkout
         # and give it the absolute path of _site.
         upload=self.upload_script()
-        self.assertIn('npx --yes wrangler@4.83.0 pages deploy "$site" --project-name bluecollar-website --branch main ',upload)
+        self.assertIn('npx --yes wrangler@4.83.0 pages deploy "$site" --project-name=bluecollar-website --branch=main ',upload)
         self.assertNotIn('pages deploy _site',upload)
         with tempfile.TemporaryDirectory() as temp:
             folder=Path(temp)
@@ -265,8 +268,8 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
             args=recorded['args']
             self.assertEqual(args[:4],['--yes','wrangler@4.83.0','pages','deploy'])
             self.assertEqual(Path(args[4]).resolve(),(checkout/'_site').resolve())
-            self.assertEqual(args[5:],['--project-name','bluecollar-website','--branch','main','--commit-hash',sha,
-                                       '--commit-message','fake checkout','--commit-dirty=false'])
+            self.assertEqual(args[5:],['--project-name=bluecollar-website','--branch=main','--commit-hash='+sha,
+                                       '--commit-message=fake checkout','--commit-dirty=false'])
             # After the badge stamping a tracked file is modified; Wrangler
             # used to report that from git, so the step still does.
             (checkout/'package.json').write_text('{"name": "y"}\n',encoding='utf-8')
@@ -288,6 +291,86 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
             self.assertNotEqual(result.returncode,0)
             self.assertIsNone(recorded)
             self.assertIn('wrangler.toml; nothing was uploaded',result.stdout)
+    @staticmethod
+    def wrangler_options(args):
+        """Wrangler's arguments the way yargs reads them.
+
+        --name=value is one option. Any other argument that starts with '-' is
+        an option of its own and is never the value of the one before it:
+        yargs does that for every option declared without requiresArg, as
+        Wrangler 4.83.0 declares commit-message. Returns (options, positionals).
+        """
+        options,positional,i={},[],0
+        while i<len(args):
+            token=args[i]
+            if token.startswith('-') and len(token)>1:
+                name,equals,value=token.lstrip('-').partition('=')
+                if not equals:
+                    if i+1<len(args) and not args[i+1].startswith('-'):value=args[i+1];i+=1
+                    else:value=True
+                options.setdefault(name,[]).append(value)
+            else:positional.append(token)
+            i+=1
+        return options,positional
+    def test_commit_message_cannot_become_a_wrangler_option(self):
+        # Review finding B1: given as a separate argument, a message that
+        # starts with '-' is read as a Wrangler option, and Wrangler's global
+        # --cwd=<checkout> brings back the upload of functions/. Every option
+        # is now one --name=value argument, and the message is only a label:
+        # the subject on one line, no leading dashes, at most 200 characters.
+        old,_=self.wrangler_options(['pages','deploy','/site','--commit-message','--cwd=../../repo/repo'])
+        self.assertEqual(old['cwd'],['../../repo/repo'])  # the old form, as the review reproduced it
+        self.assertEqual(old['commit-message'],[True])
+        cases=[('--cwd=../../BlueCollar-Website/BlueCollar-Website','cwd=../../BlueCollar-Website/BlueCollar-Website'),
+               ('-h','h'),
+               ('--cwd=..\n--project-name=other-project\n\n--branch=preview','cwd=.. --project-name=other-project'),
+               (' \t- -- --cwd=work\r\n','cwd=work'),
+               ('---','website-ci deploy'),
+               ('x'*500,'x'*200),
+               ('Tag Logic — new page --cwd=/','Tag Logic — new page --cwd=/'),
+               ('Normal subject [skip release]\n\nBody\n--cwd=/\n','Normal subject [skip release]')]
+        for message,label in cases:
+            with self.subTest(message=message[:40]),tempfile.TemporaryDirectory() as temp:
+                folder=Path(temp)
+                checkout,sha=self.fake_checkout(folder,message)
+                runner_temp=folder/'runner-temp'; runner_temp.mkdir()
+                result,recorded=self.run_upload(folder,checkout,runner_temp)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                self.assertIsNotNone(recorded,'npx was not started')
+                args=recorded['args']
+                self.assertEqual(args[:4],['--yes','wrangler@4.83.0','pages','deploy'])
+                self.assertEqual(Path(args[4]).resolve(),(checkout/'_site').resolve())
+                self.assertEqual(args[5:],['--project-name=bluecollar-website','--branch=main','--commit-hash='+sha,
+                                           '--commit-message='+label,'--commit-dirty=false'])
+                options,positional=self.wrangler_options(args[2:])
+                self.assertEqual(positional,['pages','deploy',args[4]])
+                self.assertEqual(options,{'project-name':['bluecollar-website'],'branch':['main'],'commit-hash':[sha],
+                                          'commit-message':[label],'commit-dirty':['false']})
+                self.assertEqual(Path(recorded['cwd']).resolve().parent,runner_temp.resolve())
+                self.assertEqual(recorded['listing'],[])
+    def test_wrangler_upload_refuses_links_in_the_site_folder(self):
+        # Review finding B2: Wrangler follows links while it walks _site, so
+        # a link uploads whatever it points at, and the release guard compares
+        # plain files only. The step refuses any entry that is not a plain
+        # file or folder, and a _site that is itself a link.
+        for kind in ['folder link','file link','site link']:
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory() as temp:
+                folder=Path(temp)
+                checkout,_=self.fake_checkout(folder)
+                site=checkout/'_site'
+                try:
+                    if kind=='folder link':os.symlink(checkout/'functions',site/'extra',target_is_directory=True)
+                    elif kind=='file link':os.symlink(checkout/'wrangler.toml',site/'extra.txt')
+                    else:
+                        real=folder/'real-site'; shutil.move(str(site),str(real))
+                        os.symlink(real,site,target_is_directory=True)
+                except OSError as exc:self.skipTest('cannot make links here: %s'%exc)
+                runner_temp=folder/'runner-temp'; runner_temp.mkdir()
+                result,recorded=self.run_upload(folder,checkout,runner_temp)
+                self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
+                self.assertIsNone(recorded,'npx must not start')
+                self.assertIn('nothing was uploaded',result.stdout)
+                if kind!='site link':self.assertIn('extra',result.stdout)
     def test_snapshot_helper_is_validated_and_draft_publication_is_guarded(self):
         text=(ROOT/'.github/workflows/auto-release.yml').read_text(encoding='utf-8')
         release=block(text,'release')

@@ -274,12 +274,14 @@ jobs:
       # repo-metadata.json and the badges stamped from it can change. The
       # upload below sends _site alone. Otherwise, or when the approved
       # commit cannot be found or rebuilt, stop before upload; the manual
-      # deploy_production run publishes approved changes.
+      # deploy_production run publishes approved changes. -I keeps tools/
+      # off sys.path, so no tools/<standard module>.py on main can replace
+      # json, shutil or filecmp inside the guard.
       - name: Confirm a release deploy changes only download metadata
         if: github.event_name == 'repository_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python tools/check_metadata_only_deploy.py --site _site --metadata repo-metadata.json
+        run: python -I -B -X utf8 tools/check_metadata_only_deploy.py --site _site --metadata repo-metadata.json
 
       - name: Deploy to Cloudflare Pages
         env:
@@ -336,8 +338,29 @@ jobs:
           # _site, and the commit details it would read from git are passed.
           site="$(pwd -P)/_site"
           checkout="$(pwd -P)"
+          # Wrangler follows links while it uploads, and the release guard
+          # compares plain files only, so _site must hold nothing else.
+          if [ -L "$site" ] || [ ! -d "$site" ]; then
+            echo "::error::$site is not a plain folder; nothing was uploaded."
+            exit 1
+          fi
+          odd="$(find "$site" ! -type f ! -type d -print)"
+          if [ -n "$odd" ]; then
+            echo "::error::_site holds links or other entries that are not plain files or folders; nothing was uploaded:"
+            printf '%s\n' "$odd"
+            exit 1
+          fi
           commit_hash="$(git rev-parse HEAD)"
-          commit_message="$(git show -s --format=%B HEAD)"
+          if ! [[ "$commit_hash" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]]; then
+            echo "::error::Unexpected commit hash '$commit_hash'; nothing was uploaded."
+            exit 1
+          fi
+          # The commit message only labels the deployment. Wrangler takes a
+          # separate value that starts with "-" (such as --cwd=...) as an
+          # option of its own, so every option goes in one --name=value
+          # argument, and the label is the subject on one line, without
+          # leading dashes, at most 200 characters.
+          commit_message="$(git show -s --format=%s HEAD | python -I -X utf8 -c 'import sys; text = sys.stdin.read(); text = " ".join("".join(c if c.isprintable() else " " for c in text).split()).lstrip("- "); print(text[:200].rstrip() or "website-ci deploy")')"
           if [ -n "$(git status --porcelain)" ]; then commit_dirty=true; else commit_dirty=false; fi
           upload_dir="$(cd "$(mktemp -d "$RUNNER_TEMP/pages-upload.XXXXXX")" && pwd -P)"
           case "$upload_dir/" in
@@ -355,7 +378,7 @@ jobs:
             dir="${dir%/*}"; dir="${dir:-/}"
           done
           cd "$upload_dir"
-          npx --yes wrangler@4.83.0 pages deploy "$site" --project-name bluecollar-website --branch main --commit-hash "$commit_hash" --commit-message "$commit_message" --commit-dirty="$commit_dirty"
+          npx --yes wrangler@4.83.0 pages deploy "$site" --project-name=bluecollar-website --branch=main --commit-hash="$commit_hash" --commit-message="$commit_message" --commit-dirty="$commit_dirty"
 
       # A successful upload does not prove that the custom domain serves the
       # new download links. Retry bounded propagation delays, then fail closed.

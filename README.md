@@ -183,7 +183,10 @@ release deploy runs [`tools/check_metadata_only_deploy.py`](tools/check_metadata
    folder.
 3. It requires the `_site/` about to be uploaded to be byte-for-byte the clean
    build of its own commit (so no uncommitted or leftover file rides along),
-   and that build to be byte-for-byte the approved commit's build.
+   and that build to be byte-for-byte the approved commit's build. All three
+   folders may hold only plain files and folders: Wrangler follows links when
+   it uploads, so a link, a Windows junction or any other kind of entry is
+   refused instead of compared.
 
 `_site/` is the whole upload. The deploy step starts Wrangler in a new empty
 folder outside the checkout and hands it the absolute path of `_site/`.
@@ -191,9 +194,22 @@ Started in the checkout, Wrangler 4.83.0 would also build and upload Pages
 Functions from `functions/`, read a `wrangler.toml`, `wrangler.json` or
 `wrangler.jsonc` found in that folder or any parent folder, and load `.env`
 and `.env.local`; the guard compares none of those. The step refuses to upload
-if its folder is inside the checkout or has a Wrangler config file above it.
+if its folder is inside the checkout or has a Wrangler config file above it,
+or if `_site/` holds anything but plain files and folders. Every Wrangler
+option is passed as one `--name=value` argument, because Wrangler reads a
+separate value that starts with `-` as an option of its own (a commit message
+such as `--cwd=<checkout>` would have sent it back into the checkout). The
+commit message is only the deployment's label: the subject on one line,
+without leading dashes, at most 200 characters.
 This holds for manual deploys too: this site has no Pages Functions, and
 adding one needs a deliberate change to the deploy step.
+
+The guard runs from `tools/` of the very checkout it judges, so website-ci
+starts it with `python -I`, which keeps `tools/` off Python's import path: a
+`tools/json.py` or `tools/filecmp.py` on `main` cannot stand in for the
+standard library inside the guard. Started without `-I`, the guard drops every
+import-path entry inside the repository before its first import, and refuses
+to run if any module it loaded comes from the repository.
 
 So only `repo-metadata.json` and the badges stamped from it can differ from
 production. `repo-metadata.json` itself is written by `main`'s
@@ -215,13 +231,22 @@ message says how many runs it read and why it stopped), or the approved commit
 cannot be fetched or cannot be rebuilt with its own tools. An approved commit
 older than `tools/build_site.py`, or one whose tools lack
 `stamp_html_versions()` or the `--source` and `--out` options, is refused with the note that a manual deploy is needed. Manual deploys skip
-this step. The guard compares built files only. The deploy machinery itself
-(`website-ci.yml`, this guard and the metadata sync) runs as committed on
-`main`, so a change to it takes effect on its next run, deployed or not.
+this step. The guard compares built files only.
+
+**Trust boundary.** Some of `main` runs as committed inside the deploy job,
+before the upload, deployed or not: `website-ci.yml` itself, the metadata sync
+(`tools/sync_repo_metadata.py`, which writes `repo-metadata.json`), the
+metadata check (`tools/validate_static_metadata.py`), the site build
+(`tools/build_site.py`, which writes `_site/`), this guard, and any module in
+`tools/` that the sync, the check or the build imports. The guard compares
+what they build. It cannot see anything else they do while they run, such as
+a file they write for a later step or a process they leave running, so a
+change to any of them is a change to the deploy machinery and needs the same
+review as a change to the workflow.
 
 To see what a release deploy would decide, commit your changes, then run
 `python tools/sync_repo_metadata.py`, `python tools/build_site.py` and
-`python tools/check_metadata_only_deploy.py` (add `--deployed-sha <commit>` to
+`python -I tools/check_metadata_only_deploy.py` (add `--deployed-sha <commit>` to
 skip the Actions API lookup). It only reads; it never deploys. An uncommitted
 change to a public file makes `_site/` differ from the clean build of `HEAD`,
 and the guard refuses.

@@ -2,7 +2,7 @@
 
 Account ID (reference): `df143f08ce8d490ebf620fe776fbd375`  
 Project: `bluecollar-website`  
-Production site changes: manual only. Run GitHub Actions [`.github/workflows/website-ci.yml`](../.github/workflows/website-ci.yml) from `main` with `deploy_production=true` (`python tools/build_site.py`, then `wrangler pages deploy <absolute path of _site>`, branch `main`, started in a new empty folder outside the checkout so that only `_site/` is uploaded: no Pages Functions from `functions/`, no `wrangler.toml`/`.json`/`.jsonc`, no `.env`). An importer's `product-release` dispatch can publish refreshed download metadata and stamped badges only, after the metadata-only guard proves no other site changes would ship. All other runs validate and build without publishing.
+Production site changes: manual only. Run GitHub Actions [`.github/workflows/website-ci.yml`](../.github/workflows/website-ci.yml) from `main` with `deploy_production=true` (`python tools/build_site.py`, then `wrangler pages deploy <absolute path of _site>`, branch `main`, started in a new empty folder outside the checkout so that only `_site/` is uploaded: no Pages Functions from `functions/`, no `wrangler.toml`/`.json`/`.jsonc`, no `.env`; every option is one `--name=value` argument, and a `_site/` holding links is refused). An importer's `product-release` dispatch can publish refreshed download metadata and stamped badges only, after the metadata-only guard proves no other site changes would ship. All other runs validate and build without publishing.
 
 ## Verified from the public edge (no API token)
 
