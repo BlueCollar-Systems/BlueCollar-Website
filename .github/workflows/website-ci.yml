@@ -269,7 +269,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.deploy_production == true) || (github.event_name == 'repository_dispatch' && github.event.action == 'product-release'))
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       # Read-only: the metadata-only guard looks up which run deployed last.
       actions: read
     steps:
@@ -428,18 +428,13 @@ jobs:
       - name: Check live links the way a visitor sees them
         run: python -I -B tools/check_public_links.py --base https://bluecollar-systems.com
 
-      # Persist only the snapshot verified on the public domain. Failed auth,
-      # failed deployments and stale public metadata must not stamp main.
-      # GITHUB_TOKEN pushes do not retrigger workflows or mint new releases.
-      - name: Commit stamped version badges back to repo
-        run: |
-          set -e
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- *.html repo-metadata.json
-          if git diff --cached --quiet; then
-            echo "Repo badges already current."
-          else
-            git commit -m "chore: stamp release badges from metadata sync [skip release]"
-            git push origin "HEAD:main" || echo "::warning::Badge stamp push failed (non-fatal; live deploy was verified)."
-          fi
+      # Retain only the publicly verified snapshot. Any source update is reviewed
+      # in a normal PR; a deployment never writes directly to the protected branch.
+      - name: Retain verified metadata for a reviewed update
+        uses: actions/upload-artifact@v7
+        with:
+          name: verified-website-metadata-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          path: |
+            repo-metadata.json
+            *.html

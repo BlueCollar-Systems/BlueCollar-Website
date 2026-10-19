@@ -10,7 +10,7 @@ Static marketing site for **BlueCollar-Systems** — precision software for fabr
 | Product | Description | Link |
 |---------|-------------|------|
 | **Steel Logic** | Job Clock for fitter and welder time, plus AISC v16.0 shapes, calculators, converters, and inventory. The Android beta is free with ads. A free version and a paid Pro version are the plan; iOS is in development. | [Check Android test access (Google sign-in)](https://play.google.com/apps/testing/com.bluecollarsystems.steellogic) |
-| **BlueCollar Tag Logic** | Hang tags with a QR code that opens the piece in Steel Logic. New tags start with an editable BCS1: prefix; older CS1: tags still scan. Latest published build v10.43; not a download from this website yet. | [bluecollar-systems.com/#tag-qc](https://bluecollar-systems.com/#tag-qc) |
+| **BlueCollar Tag Logic** | Hang tags with a QR code that opens the piece in Steel Logic. New tags start with an editable BCS1: prefix; older CS1: tags still scan. Latest published build v10.45; not a download from this website yet. | [bluecollar-systems.com/#tag-qc](https://bluecollar-systems.com/#tag-qc) |
 | **Free Shape Packs** | Public-domain SketchUp + DXF/DWG shape packs | [Shapes Hub](https://bluecollar-systems.com/shapes) |
 | **SketchUp PDF Importer** | Vector-accurate PDF geometry import for SketchUp | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-SketchUp) |
 | **FreeCAD PDF Importer** | PDF vector import workbench for FreeCAD | [GitHub](https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD) |
@@ -62,8 +62,8 @@ Deployed to **Cloudflare Pages** (project `bluecollar-website`) via GitHub Actio
 - `static-checks` must pass before `deploy-pages` runs. There are two ways to deploy production, both from `main` only:
   - **Manual:** a `website-ci` run on `main` with `deploy_production=true`. Its default is validation only. This is the only way to publish page, style, script or other site changes.
   - **Importer release:** an importer's `product-release` dispatch deploys by itself, so the version badges and Download buttons follow each release with no separate GO (owner decision O13). It is deploy-only: no website snapshot release. It may change nothing but the download metadata; see [Release deploys change only download metadata](#release-deploys-change-only-download-metadata).
-- `deploy-pages` syncs and validates release metadata, builds `_site/` with `tools/build_site.py` (public files only), publishes that folder with Wrangler, then verifies that the public domain serves the exact new metadata bytes and that repository files such as `/README.md` answer 404, then requests every live page and on-site link, before committing stamped badges back to `main`. Both ways in use these same steps and secrets.
-- A manual `auto-release` run with `publish_release=true` bumps `VERSION` and publishes a GitHub Release snapshot zip. Its default builds an inspection artifact without publishing. Dispatches never start it.
+- `deploy-pages` syncs and validates release metadata, builds `_site/` with `tools/build_site.py` (public files only), publishes that folder with Wrangler, then verifies exact public metadata, repository-file 404s and live links. It retains the verified HTML/metadata as an Actions artifact for a reviewed source update; it never pushes to `main`. Both ways in use these same steps and secrets.
+- Prepare `VERSION` and its matching footer through a normal reviewed PR. A manual `auto-release` run on `main` with `publish_release=true` publishes that committed version as a source-pinned GitHub snapshot. It never bumps or pushes source. Its default builds an inspection artifact without publishing. Dispatches never start it.
 - Pushes, pull requests, the six-hour schedule and the `product-update`, `steel-shapes-release` and `steel-shapes-update` dispatches run validation only. They do not deploy or publish releases.
 - A shape pack (`steel-v*`) release never deploys the site by itself; run the manual deploy after each one. See [Shape pack releases need a manual deploy](#shape-pack-releases-need-a-manual-deploy).
 - The daily [`release-drift`](.github/workflows/release-drift.yml) workflow turns red when the live downloads have lagged GitHub releases for more than 24 hours; see [Release drift check](#release-drift-check).
@@ -99,7 +99,7 @@ changes would ship. `main` can therefore be ahead of what visitors see. To check
    Select the newest run whose **Deploy to Cloudflare Pages** step succeeded,
    whether it was manual or a `product-release` dispatch. Validation-only runs
    do not count; extend the history if none appears in these 100 runs. The
-   bot's `chore: stamp release badges` commit belongs to that same deploy.
+   `verified-website-metadata-<run>-<attempt>` artifact records that same deploy.
    `tools/build_site.py` publishes only its allowlist. README, docs and tests
    are not public files, but build or badge-stamping tool changes can alter
    the public output, and workflow changes affect subsequent runs. The log
@@ -138,7 +138,7 @@ Tracked repos: `PDF-Importer-SketchUp`, `PDF-Importer-FreeCAD`, `PDF-Importer-Bl
 1. Importer repo `auto-release` (or manual `release: published`) creates/updates a GitHub Release.
 2. Same pipeline dispatches `repository_dispatch` to `BlueCollar-Systems/BlueCollar-Website` with event type `product-release` (or `product-update`).
 3. A `product-release` dispatch runs every static check, then `deploy-pages` on `main`: it re-runs `sync_repo_metadata.py` (all four importers, not only the one that dispatched), validates the metadata, builds `_site/`, confirms the deploy changes only download metadata, and deploys to Cloudflare Pages. A `product-update` dispatch only validates.
-4. `tools/verify_deployed_metadata.py` requests the public metadata with cache bypass headers and a unique query, allowing up to 12 attempts with 10 seconds between attempts and a 15-second request timeout. It requires exact bytes, so stale tags, download URLs, source revisions, asset digests, or an older snapshot fail the job. Only a verified deployment commits the stamped badges back to `main`.
+4. `tools/verify_deployed_metadata.py` requests the public metadata with cache bypass headers and a unique query, allowing up to 12 attempts with 10 seconds between attempts and a 15-second request timeout. It requires exact bytes, so stale tags, download URLs, source revisions, asset digests, or an older snapshot fail the job. Only a verified deployment retains the stamped HTML/metadata artifact; any repository update goes through a reviewed PR.
 5. The daily drift check reports any release the site still lacks after 24 hours.
 
 Shape pack (`steel-v*`) releases do not take this path; see
@@ -250,11 +250,10 @@ from the clean build of `HEAD`, and the guard refuses.
 ### Trust boundary
 
 **Threat model.** `main` changes only through reviewed pull requests: the
-website ruleset requires a pull request for every change to `main`. The only
-commit the deploy job makes itself is `chore: stamp release badges`, holding
-just the stamped badges and `repo-metadata.json` (if the push is refused, the
-step only warns). The metadata-only release deploy guard exists for two
-things:
+website ruleset requires a pull request for every change to `main`. Neither
+deployment nor snapshot publication commits or pushes source. The deploy job
+retains its publicly verified HTML and `repo-metadata.json` as an artifact for
+a reviewed update. The metadata-only release deploy guard exists for two things:
 
 - to stop **benign but owner-unapproved** public site changes that are already
   merged to `main` from being published automatically by an importer-release
@@ -289,7 +288,7 @@ its metadata sync step). The deploy job's steps, in order:
 | Deploy to Cloudflare Pages | no repository file: only this step's inline script from `website-ci.yml` (the credential check as `python -I -B -`, the label cleaner as `python -I -B -X utf8 -c`, shell checks), `git rev-parse`/`show`/`status`, and `npx --yes wrangler@4.83.0`, started in an empty folder outside the checkout | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (this step only) |
 | Verify public download metadata | `python -I -B tools/verify_deployed_metadata.py` | none |
 | Check live links the way a visitor sees them | `python -I -B tools/check_public_links.py --base https://bluecollar-systems.com` (it imports `tools/build_site.py`, added to the end of the import path) | none |
-| Commit stamped version badges back to repo | `git add`, `git commit`, `git push` (no repository code) | the `GITHUB_TOKEN` stored by Checkout |
+| Retain verified metadata for a reviewed update | `actions/upload-artifact` (public HTML and metadata only) | the job's read-only repository token |
 
 The Cloudflare token is present only in the **Deploy to Cloudflare Pages**
 step, after the guard passed (release deploys) and before the upload. Nothing
