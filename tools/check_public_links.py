@@ -56,7 +56,10 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+# website-ci runs this as python -I, which leaves tools/ off sys.path. Append
+# it (after the standard library) so build_site is found while every
+# standard module still comes from the standard library.
+sys.path.append(str(Path(__file__).resolve().parent))
 import build_site  # noqa: E402  (shared Cloudflare Pages path rules)
 
 USER_AGENT = "Mozilla/5.0 (BlueCollar Website public link check)"

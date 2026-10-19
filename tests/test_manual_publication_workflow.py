@@ -191,8 +191,127 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
             if line.strip() and not line.startswith(' '*10):break
             body.append(line)
         precheck,upload=textwrap.dedent('\n'.join(body)).split('\nPY\n',1)
-        self.assertIn("python - <<'PY'",precheck)
+        self.assertIn("python -I -B - <<'PY'",precheck)
         return upload
+    def credential_check(self):
+        """(argv, script) of the Cloudflare step's inline credential check."""
+        text=(ROOT/'.github/workflows/website-ci.yml').read_text(encoding='utf-8')
+        step=block(block(text,'deploy-pages'),'Deploy to Cloudflare Pages','step')
+        lines=[]
+        for line in step.split('run: |\n',1)[1].split('\n'):
+            if line.strip() and not line.startswith(' '*10):break
+            lines.append(line)
+        first,rest=textwrap.dedent('\n'.join(lines)).split('\n',1)
+        command=first.split("<<'PY'",1)[0].split()
+        self.assertEqual(command[0],'python')
+        return [sys.executable,*command[1:]],rest.split('\nPY\n',1)[0]+'\n'
+    @staticmethod
+    def run_steps(job):
+        """The run: text of every step of one job, shell comment lines removed."""
+        scripts=[]
+        for match in re.finditer(r'(?ms)^        run: (\|\n(?:(?: {10}.*)?\n)+|.*\n)',job):
+            lines=match.group(1).split('\n')
+            scripts.append('\n'.join(line for line in lines if not line.strip().startswith('#')))
+        return scripts
+    def test_every_python_in_website_ci_runs_isolated(self):
+        # The recheck's route (a): the credential check ran as python - from
+        # the checkout root, so sys.path[0] was '' and a root json.py was
+        # imported with the Cloudflare token in the environment. Every Python
+        # in both jobs now starts as python -I -B (isolated, no caches), and
+        # every tool is named by its script path, never by a module name.
+        text=(ROOT/'.github/workflows/website-ci.yml').read_text(encoding='utf-8')
+        header=text.split('\njobs:',1)[0]
+        self.assertRegex(header,r'(?m)^env:\n  PYTHONDONTWRITEBYTECODE: "1"$')
+        for job in ['static-checks','deploy-pages']:
+            calls=[]
+            for script in self.run_steps(block(text,job)):
+                calls+=re.findall(r'(?<![\w./-])python3?\b[^\n|;)]*',script)
+            with self.subTest(job=job):
+                self.assertTrue(calls)
+                for call in calls:
+                    self.assertRegex(call,r'^python -I -B (-X utf8 )?(-c |- <<|(tools|tests)/[\w-]+\.py\b)',call)
+                    self.assertNotIn(' -m ',call)
+        deploy=block(text,'deploy-pages')
+        for name,script in [('Build repository metadata snapshot','tools/sync_repo_metadata.py'),
+                            ('Validate final immutable release metadata','tools/validate_static_metadata.py'),
+                            ('Build site folder','tools/build_site.py'),
+                            ('Verify public download metadata','tools/verify_deployed_metadata.py'),
+                            ('Check live links the way a visitor sees them','tools/check_public_links.py')]:
+            self.assertIn('run: python -I -B '+script,block(deploy,name,'step'))
+        # Only the Cloudflare step has the Cloudflare token, and it runs no
+        # repository file: no tools/ or tests/ script, nothing imported from the checkout.
+        cloudflare=block(deploy,'Deploy to Cloudflare Pages','step')
+        self.assertEqual(text.count('CLOUDFLARE_API_TOKEN:'),1)
+        self.assertIn('CLOUDFLARE_API_TOKEN:',cloudflare)
+        for forbidden in ['tools/','tests/','python -m','runpy','import_module','sys.path','PYTHONPATH']:
+            self.assertNotIn(forbidden,'\n'.join(self.run_steps(cloudflare)))
+    def test_python_file_check_runs_before_any_other_python(self):
+        text=(ROOT/'.github/workflows/website-ci.yml').read_text(encoding='utf-8')
+        static=block(text,'static-checks')
+        steps=re.findall(r'(?m)^      - (?:name|uses): (.+)$',static)
+        self.assertEqual(steps[:3],['Checkout','Refuse tracked Python caches and standard-module names',
+                                   'Tracked Python file check regression'])
+        self.assertIn('run: python -I -B tools/check_python_files.py\n',
+                      block(static,'Refuse tracked Python caches and standard-module names','step'))
+        self.assertIn('run: python -I -B tests/test_check_python_files.py -v\n',static)
+        gitignore=(ROOT/'.gitignore').read_text(encoding='utf-8').splitlines()
+        for pattern in ['__pycache__/','*.pyc']:self.assertIn(pattern,gitignore)
+    def test_credential_check_ignores_standard_module_names_in_the_checkout(self):
+        # Route (a) end to end: the step's own credential check, run the way
+        # the step runs it, in a checkout holding a root json.py and root
+        # urllib/ and http/ packages that record their import and whether
+        # the token was in sight. Control: the old "python -" imports them.
+        argv,script=self.credential_check()
+        self.assertEqual(argv[1:],['-I','-B','-'])
+        for module in ['import json','import os','import urllib.error','import urllib.request']:
+            self.assertIn(module,script)
+        with tempfile.TemporaryDirectory() as temp:
+            checkout=Path(temp)/'checkout'; checkout.mkdir()
+            marker=Path(temp)/'imported.txt'
+            planted=('import os as _os\n'
+                     'with open(_os.environ["SHADOW_MARKER"], "a", encoding="utf-8") as _f:\n'
+                     '    _f.write(__name__ + (" saw the token" if _os.environ.get("CLOUDFLARE_API_TOKEN") else "") + "\\n")\n'
+                     'raise SystemExit("shadow module " + __name__ + " was imported")\n')
+            (checkout/'json.py').write_text(planted,encoding='utf-8')
+            for package in ['urllib','http']:  # http: urllib.request imports http.client
+                (checkout/package).mkdir()
+                (checkout/package/'__init__.py').write_text(planted,encoding='utf-8')
+            env={name:value for name,value in os.environ.items() if not name.startswith(('PYTHON','CLOUDFLARE'))}
+            # Not a credential: a placeholder so the planted modules can say
+            # whether a token was in sight. The account id is left empty, so
+            # the check stops before any request is made.
+            env.update(SHADOW_MARKER=str(marker),CLOUDFLARE_API_TOKEN='placeholder-not-a-token',CLOUDFLARE_ACCOUNT_ID='')
+            def run(command,only=None):
+                if only:
+                    for name in ['json.py','urllib','http']:
+                        if name!=only:
+                            target=checkout/name
+                            target.rename(target.with_name(name+'.off'))
+                try:
+                    return subprocess.run(command,input=script,cwd=str(checkout),env=env,capture_output=True,
+                                          text=True,encoding='utf-8',errors='replace',timeout=60)
+                finally:
+                    for name in ['json.py','urllib','http']:
+                        off=checkout/(name+'.off')
+                        if off.exists():off.rename(checkout/name)
+            for only in ['json.py','urllib','http']:
+                with self.subTest(old=only):
+                    # Some interpreters load urllib or http while starting up
+                    # (a .pth file in site-packages, for example), before the
+                    # working folder is on sys.path; there the old form cannot
+                    # show it.
+                    preloaded=subprocess.run([sys.executable,'-c','import sys; print(%r in sys.modules)'%only.split('.')[0]],
+                                             cwd=temp,env=env,capture_output=True,text=True,timeout=60).stdout.strip()
+                    if preloaded=='True':self.skipTest(only+' is loaded at interpreter startup here')
+                    result=run([sys.executable,'-'],only)
+                    self.assertNotEqual(result.returncode,0)
+                    self.assertIn(only.split('.')[0]+' saw the token',marker.read_text(encoding='utf-8'))
+                    marker.unlink()
+            result=run(argv)
+            self.assertFalse(marker.exists(),marker.read_text(encoding='utf-8') if marker.exists() else '')
+            self.assertEqual(result.returncode,1,result.stdout+result.stderr)
+            self.assertIn('::error::CLOUDFLARE_ACCOUNT_ID is missing.',result.stdout)
+            self.assertNotIn('shadow module',result.stdout+result.stderr)
     def run_upload(self,folder,checkout,runner_temp):
         """Run the upload commands in a fake checkout with a recording npx."""
         bash=shutil.which('bash')
@@ -380,6 +499,6 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
         self.assertNotIn('gh release view',release)
         self.assertNotIn('exit 0',block(text,'Verify source and uploaded draft bytes before publication','step'))
         ci=(ROOT/'.github/workflows/website-ci.yml').read_text(encoding='utf-8')
-        self.assertIn('python tests/test_release_snapshot.py -v',block(ci,'static-checks'))
+        self.assertIn('python -I -B tests/test_release_snapshot.py -v',block(ci,'static-checks'))
 
 if __name__=='__main__':unittest.main()

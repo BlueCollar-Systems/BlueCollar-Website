@@ -30,6 +30,16 @@ concurrency:
   group: website-ci-${{ github.ref }}-${{ ((github.event_name == 'workflow_dispatch' && inputs.deploy_production == true) || (github.event_name == 'repository_dispatch' && github.event.action == 'product-release')) && 'production' || 'validation' }}
   cancel-in-progress: ${{ !(github.event_name == 'repository_dispatch' && github.event.action == 'product-release') }}
 
+# Every Python in this workflow starts as "python -I -B": isolated mode puts
+# neither the checkout root (for "python -" and "-c"), nor the script's own
+# folder (tools/, tests/), nor PYTHONPATH on the import path, so a stray
+# json.py or urllib/ in the repository is never imported in place of the
+# standard library; -B writes no caches. -I also ignores PYTHON* variables,
+# so the variable below covers only Pythons started without -E (test
+# subprocesses, for example).
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+
 jobs:
   static-checks:
     runs-on: ubuntu-latest
@@ -37,9 +47,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Before any other Python from the checkout runs. A tracked Python
+      # cache (__pycache__/, *.pyc, *.pyo) can run in place of the reviewed
+      # .py source (-B stops writing caches, not reading them), and a module
+      # or package at the root, in tools/ or in tests/ named after a standard
+      # module is imported in place of it by any run without -I.
+      - name: Refuse tracked Python caches and standard-module names
+        run: python -I -B tools/check_python_files.py
+
+      - name: Tracked Python file check regression
+        run: python -I -B tests/test_check_python_files.py -v
+
       - name: Validate index.html basics
         run: |
-          python - <<'PY'
+          python -I -B - <<'PY'
           from pathlib import Path
 
           pages = {
@@ -79,7 +100,7 @@ jobs:
 
       - name: Validate sitemap completeness
         run: |
-          python - <<'PY'
+          python -I -B - <<'PY'
           from pathlib import Path
           from urllib.parse import urlparse
           import xml.etree.ElementTree as ET
@@ -122,7 +143,7 @@ jobs:
 
       - name: Validate dynamic release link policy
         run: |
-          python - <<'PY'
+          python -I -B - <<'PY'
           from pathlib import Path
 
           checked_files = ["index.html", "shapes.html"]
@@ -149,13 +170,13 @@ jobs:
         run: node tests/css_class_coverage_test.js
 
       - name: Reject private PDF/CAD artifacts
-        run: python tools/validate_private_artifacts.py
+        run: python -I -B tools/validate_private_artifacts.py
 
       - name: Private artifact guard regression
-        run: python tests/test_validate_private_artifacts.py -v
+        run: python -I -B tests/test_validate_private_artifacts.py -v
 
       - name: Local preview route regression
-        run: python tests/test_preview_site.py -v
+        run: python -I -B tests/test_preview_site.py -v
 
       # R21 corrective §6: syntax-check every shipped script and prove a
       # hostile parts_bootstrap sidecar renders as literal text in Report
@@ -182,30 +203,30 @@ jobs:
           node tests/meta_copy_test.js
 
       - name: Release metadata digest regression
-        run: python tests/test_sync_repo_metadata.py -v
+        run: python -I -B tests/test_sync_repo_metadata.py -v
 
       - name: Manual publication workflow contract
-        run: python tests/test_manual_publication_workflow.py -v
+        run: python -I -B tests/test_manual_publication_workflow.py -v
 
       - name: Source-pinned release snapshot regression
-        run: python tests/test_release_snapshot.py -v
+        run: python -I -B tests/test_release_snapshot.py -v
 
       - name: Public deployment metadata regression
-        run: python tests/test_verify_deployed_metadata.py -v
+        run: python -I -B tests/test_verify_deployed_metadata.py -v
 
       - name: Public link check regression
-        run: python tests/test_check_public_links.py -v
+        run: python -I -B tests/test_check_public_links.py -v
 
       - name: Release drift check regression
-        run: python tests/test_check_release_drift.py -v
+        run: python -I -B tests/test_check_release_drift.py -v
 
       - name: Metadata-only release deploy guard regression
-        run: python tests/test_check_metadata_only_deploy.py -v
+        run: python -I -B tests/test_check_metadata_only_deploy.py -v
 
       - name: Build repository metadata snapshot
         env:
           GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
-        run: python tools/sync_repo_metadata.py
+        run: python -I -B tools/sync_repo_metadata.py
 
       # Every link and download button, checked the way a stranger sees it:
       # no token, no login. A dead link (404/410) or a download that needs a
@@ -214,10 +235,10 @@ jobs:
       # minute and then only warned about, so brief github.com throttling
       # cannot hold back a release deploy.
       - name: Check links the way a visitor sees them
-        run: python tools/check_public_links.py
+        run: python -I -B tools/check_public_links.py
 
       - name: Validate static metadata fallbacks
-        run: python tools/validate_static_metadata.py
+        run: python -I -B tools/validate_static_metadata.py
 
       # Cloudflare Pages publishes every file in the folder it is given and
       # ignores .cfignore. Build the allowlisted public folder here too, so a
@@ -225,8 +246,8 @@ jobs:
       # it can 404 in production.
       - name: Build site folder
         run: |
-          python tools/build_site.py
-          python tests/test_build_site.py -v
+          python -I -B tools/build_site.py
+          python -I -B tests/test_build_site.py -v
 
   # Production deploy. Two ways in, both on main and both only after every
   # static check passed: a manual run with deploy_production=true, or an
@@ -235,6 +256,14 @@ jobs:
   # A release deploy may publish nothing but refreshed download metadata; see
   # the metadata-only guard step below. Pushes, pull requests, the schedule
   # and the other dispatch types never reach this job.
+  #
+  # Trust boundary (README, "Trust boundary"): main changes only through
+  # reviewed pull requests. Code from main runs here as committed: the sync,
+  # validate, build, guard, verify and link-check tools, each as
+  # python -I -B <script path>. Only the Deploy step has the Cloudflare
+  # token, and it runs no repository file: just its own inline script, git
+  # and Wrangler. The guard catches accidental and benign changes; it is not
+  # a sandbox against code written on purpose to get around it.
   deploy-pages:
     needs: static-checks
     if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.deploy_production == true) || (github.event_name == 'repository_dispatch' && github.event.action == 'product-release'))
@@ -250,20 +279,20 @@ jobs:
       - name: Build repository metadata snapshot
         env:
           GH_TOKEN: ${{ secrets.REPO_METADATA_TOKEN || secrets.WEBSITE_DISPATCH_TOKEN || secrets.BLUECOLLAR_WEBSITE_DISPATCH_TOKEN || secrets.REPO_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
-        run: python tools/sync_repo_metadata.py
+        run: python -I -B tools/sync_repo_metadata.py
 
       # Re-run the release gate against the deploy job's fresh API snapshot.
       # This closes the gap where a new mutable release could appear after
       # static-checks completed but before Cloudflare publication.
       - name: Validate final immutable release metadata
-        run: python tools/validate_static_metadata.py
+        run: python -I -B tools/validate_static_metadata.py
 
       # Copy only the public site files (pages, styles, scripts, images,
       # metadata, _headers, _redirects, .well-known/, p/, p-records/) into
       # _site/. Runs after the metadata sync so the stamped HTML and the
       # verified repo-metadata.json are the files that get published.
       - name: Build site folder
-        run: python tools/build_site.py
+        run: python -I -B tools/build_site.py
 
       # A product-release dispatch is not a GO for other website changes.
       # Build this commit and the approved commit (the head of the last
@@ -276,19 +305,26 @@ jobs:
       # commit cannot be found or rebuilt, stop before upload; the manual
       # deploy_production run publishes approved changes. -I keeps tools/
       # off sys.path, so no tools/<standard module>.py on main can replace
-      # json, shutil or filecmp inside the guard.
+      # json, shutil or filecmp inside the guard. Each commit's tools run as
+      # python -I -B with no secret and no GITHUB_ENV/PATH/OUTPUT/STEP_SUMMARY
+      # in their environment, and a commit that tracks a Python cache or a
+      # standard-module name is refused before any of its code runs.
       - name: Confirm a release deploy changes only download metadata
         if: github.event_name == 'repository_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: python -I -B -X utf8 tools/check_metadata_only_deploy.py --site _site --metadata repo-metadata.json
 
+      # The only step with the Cloudflare token. It runs no file from the
+      # repository: the credential check and the label cleaner are this
+      # step's own inline Python, run as python -I -B, so a json.py or
+      # urllib/ in the checkout (the working folder) is never imported here.
       - name: Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN || secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          python - <<'PY'
+          python -I -B - <<'PY'
           import json
           import os
           import urllib.error
@@ -360,7 +396,7 @@ jobs:
           # option of its own, so every option goes in one --name=value
           # argument, and the label is the subject on one line, without
           # leading dashes, at most 200 characters.
-          commit_message="$(git show -s --format=%s HEAD | python -I -X utf8 -c 'import sys; text = sys.stdin.read(); text = " ".join("".join(c if c.isprintable() else " " for c in text).split()).lstrip("- "); print(text[:200].rstrip() or "website-ci deploy")')"
+          commit_message="$(git show -s --format=%s HEAD | python -I -B -X utf8 -c 'import sys; text = sys.stdin.read(); text = " ".join("".join(c if c.isprintable() else " " for c in text).split()).lstrip("- "); print(text[:200].rstrip() or "website-ci deploy")')"
           if [ -n "$(git status --porcelain)" ]; then commit_dirty=true; else commit_dirty=false; fi
           upload_dir="$(cd "$(mktemp -d "$RUNNER_TEMP/pages-upload.XXXXXX")" && pwd -P)"
           case "$upload_dir/" in
@@ -384,13 +420,13 @@ jobs:
       # new download links. Retry bounded propagation delays, then fail closed.
       # The same step proves repository-only files (README, workflows) 404.
       - name: Verify public download metadata
-        run: python tools/verify_deployed_metadata.py
+        run: python -I -B tools/verify_deployed_metadata.py
 
       # Same visitor's-eye check, now against the live site: every page and
       # on-site link. Outside links and download buttons were checked in
       # static-checks a few minutes earlier and are not requested again.
       - name: Check live links the way a visitor sees them
-        run: python tools/check_public_links.py --base https://bluecollar-systems.com
+        run: python -I -B tools/check_public_links.py --base https://bluecollar-systems.com
 
       # Persist only the snapshot verified on the public domain. Failed auth,
       # failed deployments and stale public metadata must not stamp main.

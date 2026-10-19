@@ -15,6 +15,7 @@ import importlib.util
 import io
 import json
 import os
+import py_compile
 import re
 import shutil
 import stat
@@ -301,6 +302,35 @@ def _fresh_metadata(source: Path, tag: str) -> dict:
     return payload
 
 
+def _marker_module(marker: Path) -> str:
+    """A module that records its import in `marker` and then fails.
+
+    The path is written into the source: the guard gives a commit's tools
+    none of the test's environment variables.
+    """
+    return (
+        f"with open({str(marker)!r}, 'a', encoding='utf-8') as _f:\n"
+        "    _f.write(__name__ + '\\n')\n"
+        "raise ImportError('shadow module ' + __name__ + ' was imported')\n"
+    )
+
+
+def _commit_cache(repo: Path, source: str) -> Path:
+    """Commit tools/__pycache__/sync_repo_metadata.<tag>.pyc compiled from `source`.
+
+    An unchecked-hash .pyc: Python uses it without looking at the .py beside
+    it, and -B (which only stops caches being written) does not stop that.
+    """
+    cache = Path(importlib.util.cache_from_source(str(repo / "tools" / "sync_repo_metadata.py")))
+    cache.parent.mkdir(exist_ok=True)
+    staged = repo.parent / "cached_sync_repo_metadata.py"
+    staged.write_text(source, encoding="utf-8", newline="\n")
+    py_compile.compile(str(staged), cfile=str(cache), doraise=True,
+                       invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
+    _git(repo, "add", "-f", str(cache.relative_to(repo)))
+    return cache
+
+
 def _edit(path: Path, old: str, new: str, count: int = 1) -> None:
     text = path.read_text(encoding="utf-8")
     assert text.count(old) >= count, (path, old)
@@ -580,23 +610,26 @@ class GuardEndToEndTests(unittest.TestCase):
         # Review finding B3 (A11): main changes index.html and adds a
         # three-line tools/filecmp.py whose cmp() says every file is equal.
         # Run as `python tools/check_metadata_only_deploy.py`, tools/ is first
-        # on sys.path, so the guard compared with it and passed.
+        # on sys.path, so the guard compared with it and passed. Committed,
+        # that file is now refused by name before anything is compared (last
+        # run below); here it is first left uncommitted, so the guard gets as
+        # far as comparing and must still not import it.
         shutil.copyfile(ROOT / "tools" / "check_metadata_only_deploy.py",
                         self.repo / "tools" / "check_metadata_only_deploy.py")
         self.live_sha = self.commit("the guard is part of the site's tools")
         _edit(self.repo / "index.html", "</body>", "<p>UNAPPROVED PAGE CHANGE</p></body>")
+        self.commit("page change")
         (self.repo / "tools" / "filecmp.py").write_text(
             "import os\n"
             "open(os.environ['SHADOW_MARKER'], 'a', encoding='utf-8').write('filecmp\\n')\n"
             "def cmp(f1, f2, shallow=True):\n    return True\n",
             encoding="utf-8", newline="\n")
-        self.commit("page change and a tools/filecmp.py")
         site, metadata = self.deploy_job()
         shutil.move(str(site), str(self.repo / "_site"))
         marker = self.temp / "shadow-imports.txt"
 
         workflow = (ROOT / ".github" / "workflows" / "website-ci.yml").read_text(encoding="utf-8")
-        command = re.search(r"(?m)^        run: (python -I .*check_metadata_only_deploy\.py.*)$", workflow)
+        command = re.search(r"(?m)^        run: (python -I .*tools/check_metadata_only_deploy\.py.*)$", workflow)
         self.assertIsNotNone(command, "website-ci must run the guard with python -I")
         isolated = [sys.executable, *command.group(1).split()[1:]]
         bare = [sys.executable, "tools/check_metadata_only_deploy.py", "--site", "_site",
@@ -604,7 +637,7 @@ class GuardEndToEndTests(unittest.TestCase):
         env = {name: value for name, value in os.environ.items() if not name.startswith("PYTHON")}
         env["SHADOW_MARKER"] = str(marker)
 
-        def run(label: str, argv: list[str]) -> None:
+        def run(label: str, argv: list[str], expected: str = "changed: index.html") -> None:
             with self.subTest(label):
                 result = subprocess.run([*argv, "--deployed-sha", self.live_sha], cwd=str(self.repo), env=env,
                                         capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -612,7 +645,7 @@ class GuardEndToEndTests(unittest.TestCase):
                 output = result.stdout + result.stderr
                 self.assertFalse(marker.exists(), marker.read_text(encoding="utf-8") if marker.exists() else "")
                 self.assertEqual(result.returncode, 1, output)
-                self.assertIn("changed: index.html", output)
+                self.assertIn(expected, output)
                 self.assertNotIn("Only repo-metadata.json", output)
                 self.assertNotIn("Traceback", output)
 
@@ -625,6 +658,89 @@ class GuardEndToEndTests(unittest.TestCase):
         self.plant_shadow_modules()
         run("as website-ci runs it, all planted", isolated)
         run("without -I, all planted", bare)
+        # Committed, as in A11, a standard-module name in tools/ is refused by
+        # name before anything is built or compared.
+        _git(self.repo, "add", "-f", "tools/filecmp.py")
+        _git(self.repo, "commit", "-q", "-m", "a tools/filecmp.py")
+        refused = "tools/filecmp.py: a module in tools/ named after the standard module filecmp"
+        run("as website-ci runs it, committed", isolated, refused)
+        run("without -I, committed", bare, refused)
+        self.assertNoWorktreesLeft()
+
+    # -- tracked files Python could run instead of the reviewed source ------
+
+    def test_root_json_and_urllib_package_never_reach_the_stamp_driver(self) -> None:
+        # The recheck's route (b): the stamp driver ran as python -B -E -s -c
+        # with the worktree as its working folder, so sys.path[0] was that
+        # folder and a root json.py or urllib/ package was imported by the
+        # driver's own "import json" / "from pathlib import Path". Now the
+        # driver runs isolated (the deploy job below stamps with it and must
+        # not import them), and the guard refuses such a commit by name
+        # before running any of its code.
+        marker = self.temp / "root-imports.txt"
+        (self.repo / "json.py").write_text(_marker_module(marker), encoding="utf-8", newline="\n")
+        (self.repo / "urllib").mkdir()
+        (self.repo / "urllib" / "__init__.py").write_text(_marker_module(marker), encoding="utf-8", newline="\n")
+        self.commit("root json.py and urllib/ package")
+        site, metadata = self.deploy_job()
+        self.assertIn("v9.9.9", (site / "index.html").read_text(encoding="utf-8"))  # stamped all the same
+        self.assertFalse(marker.exists(), marker.read_text(encoding="utf-8") if marker.exists() else "")
+        with self.assertRaises(GUARD.GuardError) as caught:
+            self.guard(site, metadata)
+        message = str(caught.exception)
+        self.assertIn("json.py: a module in the repository root named after the standard module json", message)
+        self.assertIn("urllib/__init__.py: inside urllib/, a package in the repository root", message)
+        self.assertIn("the guard runs none of its tools", message)
+        self.assertFalse(marker.exists())
+        self.assertFalse((self.temp / "work-1" / "deploy-site").exists())
+        self.assertNoWorktreesLeft()
+
+    def test_tracked_python_cache_is_refused_before_any_tool_runs(self) -> None:
+        # The recheck's note: a committed tools/__pycache__ .pyc runs instead
+        # of the reviewed tools/sync_repo_metadata.py, -B or not.
+        marker = self.temp / "cache-ran.txt"
+        _commit_cache(self.repo, f"open({str(marker)!r}, 'a', encoding='utf-8').write('cache ran\\n')\n"
+                                 "def stamp_html_versions(payload):\n    pass\n")
+        self.commit("a committed cache")
+        # The hazard is real: the isolated driver itself runs the cache.
+        self.tool("-c", GUARD.STAMP_DRIVER)
+        self.assertEqual(marker.read_text(encoding="utf-8"), "cache ran\n")
+        marker.unlink()
+        site = self.temp / "site-cache"
+        self.tool(GUARD.BUILD_TOOL, "--source", ".", "--out", str(site))  # imports no sync tool
+        metadata = self.repo / "repo-metadata.json"
+        with self.assertRaises(GUARD.GuardError) as caught:
+            self.guard(site, metadata)
+        cache = f"tools/__pycache__/sync_repo_metadata.{sys.implementation.cache_tag}.pyc"
+        self.assertIn(f"{cache}: Python bytecode is never committed", str(caught.exception))
+        self.assertFalse(marker.exists())
+        self.assertNoWorktreesLeft()
+
+        # The command line refuses the checkout itself first.
+        shutil.move(str(site), str(self.repo / "_site"))
+        previous = os.getcwd()
+        os.chdir(self.repo)
+        self.addCleanup(os.chdir, previous)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(GUARD.main(["--deployed-sha", self.live_sha]), 1)
+        self.assertIn("Release deploy refused, nothing was deployed: The checkout tracks Python files", output.getvalue())
+        self.assertIn(cache, output.getvalue())
+        self.assertNotIn("Approved live commit", output.getvalue())
+        self.assertFalse(marker.exists())
+
+    def test_cache_in_the_approved_commit_is_refused(self) -> None:
+        marker = self.temp / "cache-ran.txt"
+        source = (f"open({str(marker)!r}, 'a', encoding='utf-8').write('cache ran\\n')\n"
+                  "def stamp_html_versions(payload):\n    pass\n")
+        old = self.old_live_commit(lambda: _commit_cache(self.repo, source))
+        site, metadata = self.deploy_job()  # main itself is clean
+        with self.assertRaises(GUARD.GuardError) as caught:
+            self.guard(site, metadata, live_sha=old)
+        self.assertIn(f"Commit {old[:12]} tracks Python files", str(caught.exception))
+        self.assertIn("Python bytecode is never committed", str(caught.exception))
+        self.assertFalse(marker.exists())
+        self.assertFalse((self.temp / "work-1" / "live-site").exists())
         self.assertNoWorktreesLeft()
 
     # -- a release deploy never becomes the approved baseline --------------
@@ -791,13 +907,98 @@ class ToolProcessTests(unittest.TestCase):
         self.assertEqual(run.call_args.kwargs["timeout"], 60)
         self.assertIn("took longer than 60 s", str(caught.exception))
 
-    def test_tools_run_without_secrets(self) -> None:
-        secrets = {"GH_TOKEN": "x", "GITHUB_TOKEN": "x", "CLOUDFLARE_API_TOKEN": "x",
-                   "AWS_SECRET_ACCESS_KEY": "x", "SOME_API_KEY": "x", "DB_PASSWORD": "x"}
-        with patch.dict(os.environ, {**secrets, "KEEP_ME": "1"}):
+    # Variables a commit's tools must never see: tokens under any name, and
+    # GitHub's step files, through which a process could set variables, PATH
+    # entries or outputs for the steps after the guard.
+    WITHHELD = {"GH_TOKEN": "x", "GITHUB_TOKEN": "x", "CLOUDFLARE_API_TOKEN": "x", "CLOUDFLARE_ACCOUNT_ID": "x",
+                "AWS_SECRET_ACCESS_KEY": "x", "SOME_API_KEY": "x", "DB_PASSWORD": "x", "DEPLOY_HOOK_URL": "x",
+                "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "x", "ACTIONS_RUNTIME_TOKEN": "x",
+                "GITHUB_ENV": "x", "GITHUB_PATH": "x", "GITHUB_OUTPUT": "x", "GITHUB_STEP_SUMMARY": "x",
+                "GITHUB_STATE": "x", "PYTHONPATH": "x", "PYTHONSTARTUP": "x", "NODE_OPTIONS": "x",
+                "KEEP_ME": "1"}
+
+    def test_tools_get_no_secrets_and_no_github_step_files(self) -> None:
+        with patch.dict(os.environ, self.WITHHELD):
             env = GUARD._tool_env()
-        self.assertFalse(set(secrets) & set(env))
-        self.assertEqual(env.get("KEEP_ME"), "1")
+        self.assertFalse(set(self.WITHHELD) & set(env), set(self.WITHHELD) & set(env))
+        self.assertEqual(env.get("PYTHONDONTWRITEBYTECODE"), "1")
+        self.assertEqual(env.get("PATH") or env.get("Path"), os.environ.get("PATH"))
+        self.assertTrue(set(env) <= set(os.environ) | {"PYTHONDONTWRITEBYTECODE"})
+
+    def test_a_tool_process_sees_only_the_allowed_variables(self) -> None:
+        # The same through a real tool run: what the commit's stamp function
+        # finds in os.environ, and the interpreter flags it runs under.
+        with tempfile.TemporaryDirectory() as temp:
+            worktree = Path(temp)
+            (worktree / "tools").mkdir()
+            (worktree / "tools" / "sync_repo_metadata.py").write_text(
+                "import json, os, sys\n"
+                "from pathlib import Path\n"
+                "def stamp_html_versions(payload):\n"
+                "    Path('seen.json').write_text(json.dumps({'env': sorted(os.environ),\n"
+                "        'isolated': sys.flags.isolated, 'no_cache': sys.dont_write_bytecode,\n"
+                "        'path': sys.path}), encoding='utf-8')\n",
+                encoding="utf-8",
+            )
+            (worktree / "repo-metadata.json").write_text("{}", encoding="utf-8")
+            with patch.dict(os.environ, self.WITHHELD):
+                result = GUARD._run_tool(worktree, ["-c", GUARD.STAMP_DRIVER])
+            self.assertEqual(result.returncode, 0, result.stderr)
+            seen = json.loads((worktree / "seen.json").read_text(encoding="utf-8"))
+        self.assertFalse(set(self.WITHHELD) & set(seen["env"]), seen["env"])
+        self.assertEqual(seen["isolated"], 1)
+        self.assertTrue(seen["no_cache"])
+        # The worktree's tools/ comes after every other entry; its root is absent.
+        tools = os.path.normcase(str(worktree / "tools"))
+        self.assertEqual(os.path.normcase(seen["path"][-1]), tools)
+        self.assertNotIn("", seen["path"])
+        self.assertNotIn(os.path.normcase(str(worktree)), [os.path.normcase(entry) for entry in seen["path"]])
+
+    def test_stamp_driver_never_imports_standard_module_names_from_the_worktree(self) -> None:
+        # The recheck's route (b), at the process level. Planted: a root
+        # json.py and urllib/ package (sys.path[0] when the driver ran as
+        # -B -E -s -c) and a tools/csv.py, which the commit's sync tool
+        # imports after the driver has put tools/ on sys.path.
+        with tempfile.TemporaryDirectory() as temp:
+            worktree = Path(temp) / "worktree"
+            (worktree / "tools").mkdir(parents=True)
+            marker = Path(temp) / "imports.txt"
+            (worktree / "json.py").write_text(_marker_module(marker), encoding="utf-8")
+            (worktree / "urllib").mkdir()
+            (worktree / "urllib" / "__init__.py").write_text(_marker_module(marker), encoding="utf-8")
+            (worktree / "tools" / "csv.py").write_text(_marker_module(marker), encoding="utf-8")
+            (worktree / "tools" / "sync_repo_metadata.py").write_text(
+                "import csv\n"
+                "from pathlib import Path\n"
+                "def stamp_html_versions(payload):\n"
+                "    Path('stamped.txt').write_text(csv.__file__, encoding='utf-8')\n",
+                encoding="utf-8",
+            )
+            (worktree / "repo-metadata.json").write_text("{}", encoding="utf-8")
+
+            def imported() -> str:
+                text = marker.read_text(encoding="utf-8") if marker.exists() else ""
+                if marker.exists():
+                    marker.unlink()
+                return text
+
+            # Controls: the old flags import the root json.py; tools/ put in
+            # FRONT of the standard library hands the sync tool tools/csv.py.
+            old = subprocess.run([sys.executable, "-B", "-E", "-s", "-X", "utf8", "-c", GUARD.STAMP_DRIVER],
+                                 cwd=str(worktree), env=GUARD._tool_env(), capture_output=True, text=True,
+                                 encoding="utf-8", errors="replace", timeout=60)
+            self.assertNotEqual(old.returncode, 0)
+            self.assertIn("json", imported())
+            in_front = GUARD.STAMP_DRIVER.replace("sys.path.append(", "sys.path.insert(0, ")
+            self.assertNotEqual(GUARD._run_tool(worktree, ["-c", in_front]).returncode, 0)
+            self.assertIn("csv", imported())
+
+            result = GUARD._run_tool(worktree, ["-c", GUARD.STAMP_DRIVER])
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(imported(), "")
+            csv_file = Path((worktree / "stamped.txt").read_text(encoding="utf-8")).resolve()
+            self.assertFalse(csv_file.is_relative_to(worktree.resolve()), csv_file)
+            self.assertFalse((worktree / "tools" / "__pycache__").exists())
 
     def test_guard_refuses_to_run_with_a_repository_module_loaded(self) -> None:
         # Second line of defence: if a repository module is already loaded
@@ -855,8 +1056,9 @@ class ToolProcessTests(unittest.TestCase):
         self.assertEqual([entry.split(" ", 1)[0] for entry in found], ["json", "shutil", "space"])
 
     def test_tools_import_only_their_own_worktree(self) -> None:
-        # -E ignores PYTHONPATH, so today's tools folder cannot shadow the
-        # live commit's; the worktree's own tools folder comes first.
+        # -I ignores PYTHONPATH, so today's tools folder cannot shadow the
+        # live commit's; the only sync_repo_metadata on sys.path is the
+        # worktree's own.
         with tempfile.TemporaryDirectory() as temp:
             worktree = Path(temp)
             (worktree / "tools").mkdir()

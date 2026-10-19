@@ -209,7 +209,14 @@ starts it with `python -I`, which keeps `tools/` off Python's import path: a
 `tools/json.py` or `tools/filecmp.py` on `main` cannot stand in for the
 standard library inside the guard. Started without `-I`, the guard drops every
 import-path entry inside the repository before its first import, and refuses
-to run if any module it loaded comes from the repository.
+to run if any module it loaded comes from the repository. Each commit's own
+stamping and build run as `python -I -B` too, in their worktree, with
+`tools/` added to the end of the import path (after the standard library) and
+an environment holding only what Python needs: no token or other secret, and
+no `GITHUB_ENV`, `GITHUB_PATH`, `GITHUB_OUTPUT`, `GITHUB_STEP_SUMMARY` or
+`GITHUB_STATE`. Before any of a commit's code runs, the guard refuses the
+commit (and the checkout) if it tracks a Python cache or a module named after
+a standard module; see [Python runs isolated](#python-runs-isolated).
 
 So only `repo-metadata.json` and the badges stamped from it can differ from
 production. `repo-metadata.json` itself is written by `main`'s
@@ -233,23 +240,91 @@ older than `tools/build_site.py`, or one whose tools lack
 `stamp_html_versions()` or the `--source` and `--out` options, is refused with the note that a manual deploy is needed. Manual deploys skip
 this step. The guard compares built files only.
 
-**Trust boundary.** Some of `main` runs as committed inside the deploy job,
-before the upload, deployed or not: `website-ci.yml` itself, the metadata sync
-(`tools/sync_repo_metadata.py`, which writes `repo-metadata.json`), the
-metadata check (`tools/validate_static_metadata.py`), the site build
-(`tools/build_site.py`, which writes `_site/`), this guard, and any module in
-`tools/` that the sync, the check or the build imports. The guard compares
-what they build. It cannot see anything else they do while they run, such as
-a file they write for a later step or a process they leave running, so a
-change to any of them is a change to the deploy machinery and needs the same
-review as a change to the workflow.
-
 To see what a release deploy would decide, commit your changes, then run
-`python tools/sync_repo_metadata.py`, `python tools/build_site.py` and
-`python -I tools/check_metadata_only_deploy.py` (add `--deployed-sha <commit>` to
-skip the Actions API lookup). It only reads; it never deploys. An uncommitted
-change to a public file makes `_site/` differ from the clean build of `HEAD`,
-and the guard refuses.
+`python -I -B tools/sync_repo_metadata.py`, `python -I -B tools/build_site.py`
+and `python -I -B tools/check_metadata_only_deploy.py` (add
+`--deployed-sha <commit>` to skip the Actions API lookup). It only reads; it
+never deploys. An uncommitted change to a public file makes `_site/` differ
+from the clean build of `HEAD`, and the guard refuses.
+
+### Trust boundary
+
+**Threat model.** `main` changes only through reviewed pull requests: the
+website ruleset requires a pull request for every change to `main`. The only
+commit the deploy job makes itself is `chore: stamp release badges`, holding
+just the stamped badges and `repo-metadata.json` (if the push is refused, the
+step only warns). The metadata-only release deploy guard exists for two
+things:
+
+- to stop **benign but owner-unapproved** public site changes that are already
+  merged to `main` from being published automatically by an importer-release
+  deploy; and
+- to stop **accidental or unsafe inputs** (stray links, Python caches,
+  helper files named after standard-library modules, odd commit messages)
+  from changing what is uploaded.
+
+It is **not** a sandbox against deliberately malicious code merged to `main`.
+Such code is out of scope: pull request review is what keeps it off `main`.
+Code from `main` runs inside the deploy job, so code written on purpose to get
+around the guard can do so. For example, it could leave a process running that
+rewrites `_site/` after the guard compares it, write to `$GITHUB_ENV` or
+`$GITHUB_PATH` in its own step to change later steps, read the `GITHUB_TOKEN`
+that `actions/checkout` keeps in `.git/config` for the badge push, or change
+`website-ci.yml` itself. The guard does not try to stop that, and a change to
+any file listed below needs the same review as a change to the workflow.
+
+**What code from `main` runs in the deploy job, and which secrets it has.**
+`deploy-pages` runs only on `main`, after `static-checks` passed on the same
+commit (`static-checks` runs that commit's tests and tools; its only secret is
+`GH_TOKEN`, in its own metadata sync step). The deploy job's steps, in order:
+
+| Step | Code from `main` that runs | Secrets in its environment |
+|------|----------------------------|----------------------------|
+| Checkout | none (`actions/checkout@v7`) | `actions/checkout` stores the job's `GITHUB_TOKEN` (contents: write, actions: read) in `.git/config` for the whole job; the last step pushes with it |
+| Build repository metadata snapshot | `python -I -B tools/sync_repo_metadata.py` | `GH_TOKEN` (the metadata read token, or `GITHUB_TOKEN`) |
+| Validate final immutable release metadata | `python -I -B tools/validate_static_metadata.py` | none |
+| Build site folder | `python -I -B tools/build_site.py` | none |
+| Confirm a release deploy changes only download metadata (release deploys only) | `python -I -B -X utf8 tools/check_metadata_only_deploy.py`; it runs, in temporary worktrees, the deployed commit's and the approved commit's `tools/sync_repo_metadata.py` (`stamp_html_versions`) and `tools/build_site.py`, each as `python -I -B` with no secrets and no GitHub step files | guard: `GH_TOKEN` (the job's `GITHUB_TOKEN`); the tools it runs: none |
+| Deploy to Cloudflare Pages | no repository file: only this step's inline script from `website-ci.yml` (the credential check as `python -I -B -`, the label cleaner as `python -I -B -X utf8 -c`, shell checks), `git rev-parse`/`show`/`status`, and `npx --yes wrangler@4.83.0`, started in an empty folder outside the checkout | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (this step only) |
+| Verify public download metadata | `python -I -B tools/verify_deployed_metadata.py` | none |
+| Check live links the way a visitor sees them | `python -I -B tools/check_public_links.py --base https://bluecollar-systems.com` (it imports `tools/build_site.py`, added to the end of the import path) | none |
+| Commit stamped version badges back to repo | `git add`, `git commit`, `git push` (no repository code) | the `GITHUB_TOKEN` stored by Checkout |
+
+The Cloudflare token is present only in the **Deploy to Cloudflare Pages**
+step, after the guard passed (release deploys) and before the upload. Nothing
+in that step imports or runs a file from the repository. Every other step that
+runs code from `main` has no Cloudflare token.
+
+#### Python runs isolated
+
+Every Python in `website-ci.yml`, in both jobs, starts as `python -I -B` and
+is given its script by path (`tools/<name>.py`, `tests/<name>.py`, or the
+step's own inline `-`/`-c` code), never by module name. `-I` puts neither the working folder (the checkout root, for `python -`
+and `-c`), nor the script's own folder (`tools/` or `tests/`), nor
+`PYTHONPATH`, nor the user's site-packages on the import path. So a stray
+`json.py`, `urllib/` or `email/` in the checkout is never imported in place
+of the standard library, and never sees a token. `-B` writes no
+`__pycache__`, and the workflow also sets `PYTHONDONTWRITEBYTECODE=1` for any
+Python started without `-E`. The one deploy tool that imports a sibling module,
+`tools/check_public_links.py` (it uses `tools/build_site.py`), adds `tools/` to
+the **end** of the import path itself, after the standard library; so does the
+guard's stamp driver, to import a commit's `tools/sync_repo_metadata.py`.
+
+Two kinds of tracked file are refused outright. `static-checks` refuses them
+first, before any other Python runs (`python -I -B tools/check_python_files.py`).
+The release deploy guard refuses them in the checkout and in every commit it
+rebuilds:
+
+- **Python caches:** anything in a `__pycache__/` folder, and any `*.pyc` or
+  `*.pyo` file. Python can run a committed `.pyc` instead of the reviewed
+  `.py`, and `-B` does not stop it reading one. `.gitignore` lists
+  `__pycache__/`, `*.pyc` and `*.pyo`.
+- **Standard-module names:** a module (`.py`, `.pyw`, `.pyc`, `.pyo`, `.pyd`,
+  `.so`) or a package (a folder holding any Python file) named after a module
+  in `sys.stdlib_module_names`, or `sitecustomize`/`usercustomize`, at the
+  repository root, in `tools/` or in `tests/`. Those are the folders Python
+  puts first on the import path when this repository's code runs without
+  `-I`. Rename the file instead (for example `json_helpers.py`).
 
 ### Shape pack releases need a manual deploy
 

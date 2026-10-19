@@ -21,8 +21,10 @@ dist/
 .env
 .env.local
 
-# Python
+# Python (website-ci refuses tracked caches: tools/check_python_files.py)
 __pycache__/
+*.pyc
+*.pyo
 
 # Dev artifacts
 dev_logs/

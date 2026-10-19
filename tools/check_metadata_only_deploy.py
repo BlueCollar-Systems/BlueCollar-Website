@@ -21,13 +21,16 @@ guard keeps the automatic deploy to that job:
    git worktree and its own new output folder: one from the commit about to
    be deployed, one from the approved commit. Each worktree gets the same freshly
    synced repo-metadata.json, and each commit's OWN tools do the work, run as
-   a subprocess with that worktree as the working folder and only that
-   worktree's tools importable (python -B -E -s):
+   a subprocess with that worktree as the working folder (see _run_tool):
      - tools/sync_repo_metadata.py stamp_html_versions(payload) stamps the
        version badges in the worktree's *.html pages;
      - python tools/build_site.py --source . --out <folder> builds the folder.
    So a change on main to the public file list or to the badge stamping
    builds differently from the approved commit, and counts as a website change.
+   Before any of a commit's tools run, its tracked files are checked: a
+   tracked Python cache (__pycache__/, *.pyc, *.pyo), which Python can run in
+   place of the reviewed .py source, or a module named after a standard
+   module at the root, in tools/ or in tests/, refuses the deploy.
 3. Require the _site folder about to be uploaded to be byte-for-byte the clean
    build of its own commit (no leftover or uncommitted file rides along), and
    that clean build to be byte-for-byte the approved commit's build.
@@ -47,7 +50,25 @@ with python -I, so that folder is not on sys.path; when started without -I it
 drops every sys.path entry inside the repository before its first import and
 refuses to run if any loaded module comes from the repository. A
 tools/json.py or tools/filecmp.py on main therefore cannot stand in for the
-standard library inside the guard.
+standard library inside the guard. It also refuses when the checkout itself
+tracks a Python cache or a standard-module name (the rule above).
+
+Each commit's tools run as python -I -B -X utf8: neither the worktree root
+nor its tools/ is on sys.path, PYTHON* variables are ignored, and no cache is
+written. The stamp driver appends the worktree's tools/ to the END of
+sys.path, so it can import sync_repo_metadata while every standard module
+still comes from the standard library. Their environment is only what
+Python needs (PATH, the temporary folder, locale and the Windows system
+folders): no token or other secret, and none of GitHub's GITHUB_ENV,
+GITHUB_PATH, GITHUB_OUTPUT, GITHUB_STEP_SUMMARY or GITHUB_STATE files, so they
+cannot set variables, PATH entries or outputs for the steps after the guard.
+
+This is a check against mistakes, not a sandbox: it stops a release deploy
+from publishing benign changes that were merged but never approved for the
+live site, and stops stray links, caches, standard-module names and odd
+inputs from changing what is uploaded. Code written on purpose to get around
+it (a process left running, a tool that rewrites _site/ after the guard) is
+kept off main by pull request review; see the README's trust boundary.
 
 So only repo-metadata.json and the badges stamped from it can differ from
 production. If main holds any other public change that was never deployed,
@@ -59,7 +80,7 @@ guesses, and the manual deploy is the way forward.
 
 Read-only for the site: it never deploys or pushes. Usage, from the
 repository root after tools/sync_repo_metadata.py and tools/build_site.py:
-    python -I tools/check_metadata_only_deploy.py [--site _site] [--deployed-sha SHA]
+    python -I -B tools/check_metadata_only_deploy.py [--site _site] [--deployed-sha SHA]
 
 Exit codes: 0 only metadata differs from production, 1 refused (nothing may
 deploy).
@@ -97,14 +118,13 @@ if __name__ == "__main__":
 import argparse
 import filecmp
 import json
-import re
 import shutil
 import stat
 import subprocess
 import tempfile
 import urllib.error
 import urllib.request
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
 WORKFLOW_FILE = "website-ci.yml"
@@ -136,14 +156,18 @@ TOOL_TIMEOUT = 600
 # Git checkout/fetch/cleanup must also finish or refuse within a bounded time.
 GIT_TIMEOUT = 60
 
-# Runs in the worktree (cwd) with -B -E -s, so the only sync_repo_metadata it
-# can import is that commit's own tools/sync_repo_metadata.py. It calls
-# stamp_html_versions(payload) with the payload alone: every version of the
-# function stamps the *.html pages of the working folder.
+# Runs in the worktree (cwd) with -I -B (see _run_tool), so neither the
+# worktree root nor its tools/ is on sys.path while the standard modules
+# below load. The worktree's tools/ is then APPENDED, after the standard
+# library: the only sync_repo_metadata the driver can import is that commit's
+# own tools/sync_repo_metadata.py, and a tools/json.py or tools/urllib/ there
+# still cannot replace a standard module. It calls stamp_html_versions(payload)
+# with the payload alone: every version of the function stamps the *.html
+# pages of the working folder.
 STAMP_DRIVER = f"""
 import json, sys
 from pathlib import Path
-sys.path.insert(0, str(Path.cwd() / "tools"))
+sys.path.append(str(Path.cwd() / "tools"))
 try:
     import sync_repo_metadata
     stamp = sync_repo_metadata.stamp_html_versions
@@ -335,12 +359,97 @@ def _require_commit(repo_root: Path, sha: str) -> None:
         raise GuardError(f"Could not fetch commit {sha}: {fetched.stderr.strip() or 'not found'}.")
 
 
-_SECRET_NAME = re.compile(r"TOKEN|SECRET|PASSWORD|CREDENTIAL|(^|_)KEY$", re.IGNORECASE)
+# The only variables a commit's tools get: what Python and the file system
+# need on Linux and Windows. Everything else stays out, so whatever name a
+# secret has it never reaches them, nor do GitHub's GITHUB_ENV, GITHUB_PATH,
+# GITHUB_OUTPUT, GITHUB_STEP_SUMMARY and GITHUB_STATE files, through which a
+# process could set variables, PATH entries or outputs for later steps (the
+# Cloudflare upload among them).
+_TOOL_ENV_NAMES = frozenset({
+    "PATH", "PATHEXT", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC",
+    "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "TZ",
+})
 
 
 def _tool_env() -> dict[str, str]:
-    """The environment for a commit's tools: no tokens or other secrets."""
-    return {name: value for name, value in os.environ.items() if not _SECRET_NAME.search(name)}
+    """The environment for a commit's tools: no secrets, no GitHub step files."""
+    env = {name: value for name, value in os.environ.items() if name.upper() in _TOOL_ENV_NAMES}
+    env["PYTHONDONTWRITEBYTECODE"] = "1"  # -B already; this also covers a Python started without -E
+    return env
+
+
+# ---------------------------------------------------------------------------
+# Tracked Python files that could run instead of the reviewed source
+# ---------------------------------------------------------------------------
+# The same rule as tools/check_python_files.py (website-ci static-checks). The
+# guard imports nothing from the repository it judges, so it keeps its own
+# copy; tests/test_check_python_files.py keeps the two the same.
+
+IMPORT_PATH_FOLDERS = ("", "tools", "tests")
+BYTECODE_SUFFIXES = (".pyc", ".pyo")
+MODULE_SUFFIXES = (".py", ".pyw", ".pyc", ".pyo", ".pyd", ".so")
+STARTUP_HOOKS = ("sitecustomize", "usercustomize")
+
+
+def _shadowed_names() -> frozenset:
+    names = getattr(sys, "stdlib_module_names", None)
+    if not names:
+        raise GuardError("The guard needs Python 3.10 or newer (sys.stdlib_module_names).")
+    return frozenset(names) | frozenset(STARTUP_HOOKS)
+
+
+def _is_module_file(name: str) -> bool:
+    return name.lower().endswith(MODULE_SUFFIXES)
+
+
+def python_file_problems(paths, names=None) -> list[str]:
+    """Tracked paths refused because Python could run them in place of reviewed code."""
+    names = _shadowed_names() if names is None else names
+    found = []
+    for path in sorted(set(paths)):
+        parts = PurePosixPath(path).parts
+        if not parts:
+            continue
+        if "__pycache__" in parts or path.lower().endswith(BYTECODE_SUFFIXES):
+            found.append(f"{path}: Python bytecode is never committed; Python can run it instead of the .py source")
+            continue
+        for folder in IMPORT_PATH_FOLDERS:
+            if folder and parts[0] != folder:
+                continue
+            inside = parts[1:] if folder else parts
+            if not inside:
+                continue
+            where = f"{folder}/" if folder else "the repository root"
+            if len(inside) == 1:
+                module = inside[0].split(".", 1)[0]
+                if _is_module_file(inside[0]) and module in names:
+                    found.append(f"{path}: a module in {where} named after the standard module {module}")
+                    break
+            elif inside[0] in names and _is_module_file(inside[-1]):
+                found.append(f"{path}: inside {'/'.join(parts[:len(parts) - len(inside) + 1])}/, a package in "
+                             f"{where} named after the standard module {inside[0]}")
+                break
+    return found
+
+
+def _tracked_paths(repo_root: Path, sha: str | None = None) -> list[str]:
+    """The commit's tracked files (or, with no sha, the checkout's index)."""
+    args = ["ls-tree", "-r", "-z", "--name-only", sha] if sha else ["ls-files", "-z", "--cached"]
+    listed = _git(repo_root, *args)
+    if listed.returncode != 0:
+        raise GuardError(f"Could not list the tracked files of {sha or 'the checkout'}: {listed.stderr.strip()}")
+    return [name for name in listed.stdout.split("\0") if name]
+
+
+def refuse_unsafe_python_files(repo_root: Path, sha: str | None = None) -> None:
+    """GuardError naming every tracked cache or standard-module name in the commit."""
+    found = python_file_problems(_tracked_paths(repo_root, sha))
+    if found:
+        what = f"Commit {sha[:12]}" if sha else "The checkout"
+        raise GuardError(
+            f"{what} tracks Python files that could run in place of its reviewed tools or of the standard "
+            "library, so the guard runs none of its tools: " + "; ".join(found)
+        )
 
 
 def _tail(text: str, lines: int = 12) -> str:
@@ -349,11 +458,17 @@ def _tail(text: str, lines: int = 12) -> str:
 
 
 def _run_tool(worktree: Path, args: list[str]) -> subprocess.CompletedProcess:
-    """Run Python in `worktree` so that only its own files are importable."""
-    command = [sys.executable, "-B", "-E", "-s", "-X", "utf8", *args]
+    """Run one of a commit's tools in `worktree`, isolated, with no secrets.
+
+    -I: neither the worktree root nor its tools/ is on sys.path (the stamp
+    driver appends tools/ itself, after the standard library), PYTHON*
+    variables and the user's site-packages are ignored. -B: no cache is
+    written into the worktree.
+    """
+    command = [sys.executable, "-I", "-B", "-X", "utf8", *args]
     try:
         return subprocess.run(
-            command, cwd=str(worktree), env=_tool_env(), check=False,
+            command, cwd=str(worktree), env=_tool_env(), check=False, stdin=subprocess.DEVNULL,
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=TOOL_TIMEOUT,
         )
     except subprocess.TimeoutExpired as exc:
@@ -374,6 +489,9 @@ def build_commit_site(repo_root: Path, sha: str, metadata: Path, workdir: Path, 
         if path.exists():
             raise GuardError(f"Refusing to reuse {path}: every build starts from a new folder.")
     _require_commit(repo_root, sha)
+    # Before any of the commit's code runs: a tracked cache or a module named
+    # after a standard module could run in place of the code it shows.
+    refuse_unsafe_python_files(repo_root, sha)
     no_hooks = workdir / "no-git-hooks"
     added = _git(repo_root, "-c", f"core.hooksPath={no_hooks}", "worktree", "add", "--detach", str(source), sha)
     if added.returncode != 0:
@@ -532,6 +650,7 @@ def main(argv: list[str] | None = None) -> int:
     head_sha = head.stdout.strip()
 
     try:
+        refuse_unsafe_python_files(repo_root)
         if args.deployed_sha:
             deployed_sha, source = args.deployed_sha, "given on the command line"
         else:
