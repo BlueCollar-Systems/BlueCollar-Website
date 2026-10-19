@@ -275,8 +275,9 @@ any file listed below needs the same review as a change to the workflow.
 
 **What code from `main` runs in the deploy job, and which secrets it has.**
 `deploy-pages` runs only on `main`, after `static-checks` passed on the same
-commit (`static-checks` runs that commit's tests and tools; its only secret is
-`GH_TOKEN`, in its own metadata sync step). The deploy job's steps, in order:
+commit (`static-checks` runs that commit's tests and tools; besides the
+`GITHUB_TOKEN` that its own checkout stores, its only secret is `GH_TOKEN`, in
+its metadata sync step). The deploy job's steps, in order:
 
 | Step | Code from `main` that runs | Secrets in its environment |
 |------|----------------------------|----------------------------|
