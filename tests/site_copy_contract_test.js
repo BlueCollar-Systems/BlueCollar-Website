@@ -163,6 +163,25 @@ for (const name of currentCopyFiles) {
       !/Download (Tag QC|(BlueCollar )?Tag Logic)|1Tag-QC-Builder|OPEN_BlueCollar_Systems_Tag_QC_Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/i.test(text),
       name + " must not offer a BlueCollar Tag Logic download until the owner releases it"
     );
+    // The top menu uses the short form: with the full name the menu breaks
+    // onto a second row at 1024 px; "Tag Logic" keeps it on one row, as
+    // "Tag QC" did. The section heading on the home page carries the full
+    // name.
+    const tagLinks = [...text.matchAll(/<a\b[^>]*href="\/?#tag-qc"[^>]*>([^<]*)<\/a>/g)];
+    if (text.includes('id="nav-menu"')) {
+      assert.strictEqual(
+        tagLinks.length,
+        1,
+        name + " menu must link to the tag tool section once"
+      );
+    }
+    for (const link of tagLinks) {
+      assert.strictEqual(
+        link[1].trim(),
+        "Tag Logic",
+        name + " menu link to the tag tool must read Tag Logic"
+      );
+    }
   }
 }
 
