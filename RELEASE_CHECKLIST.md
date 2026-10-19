@@ -16,13 +16,18 @@ Use this checklist whenever you publish a new app build or update store links.
   - Remove "coming soon" wording once both stores are live.
 - Optional: update product links in `README.md` if needed.
 
-## 3) Commit and push
+## 3) Review and integrate the source
 
 ```bash
+git switch -c website/release-update
 git add index.html README.md RELEASE_CHECKLIST.md
 git commit -m "website: update app store release links"
-git push origin main
+git push -u origin website/release-update
 ```
+
+Open a PR, require its checks/review, merge normally, then fast-forward the
+clean main checkout. Prepare any new snapshot `VERSION` and matching footer
+in that reviewed source; publication does not create a version commit.
 
 ## 4) Validate, then explicitly deploy when authorized
 
@@ -44,7 +49,8 @@ deploy below after each one.
 When production publication is authorized, run **website-ci** manually from
 **main** with **deploy_production=true**. The default is validation only.
 The deployment job re-syncs release metadata, publishes the allowlisted site,
-verifies exact public metadata and routes, then commits stamped badges.
+verifies exact public metadata and routes, then retains the verified HTML and
+metadata artifact for a reviewed source update. It never pushes to main.
 
 ```bash
 gh run list -R BlueCollar-Systems/BlueCollar-Website --workflow website-ci.yml --limit 3
@@ -116,9 +122,10 @@ Confirm `generated_at` is recent and `latest_release.tag` matches the new GitHub
   (`Minted draft missing`). No `v1.0.106` tag or GitHub release was made.
   After the draft-upload fix (`3fb617c`), the next run published `v1.0.107`.
   The gap is expected; do not create a `v1.0.106` by hand.
-- `auto-release` commits and pushes the version bump before it builds and
-  checks the snapshot, so any failed `publish_release=true` run can use up a
-  number the same way. Check
+- That historical workflow committed its bump before checking the snapshot.
+  The current workflow reads an already reviewed version and never creates
+  or pushes a source commit. A failed run retains any draft for explicit
+  inspection; it never clobbers an existing identity. Check
   `gh release list -R BlueCollar-Systems/BlueCollar-Website --limit 5` before
   quoting a website version.
 

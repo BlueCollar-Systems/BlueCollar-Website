@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: 'Publish validated assets after all current work and native checks are complete; false builds only.'
+        description: 'Publish the reviewed, committed VERSION from main; false builds only.'
         type: boolean
         default: false
 
@@ -41,12 +41,12 @@ jobs:
           python-version: '3.12'
       - name: Validate and build allowlisted site without version changes
         run: |
-          python tools/validate_private_artifacts.py
-          python tools/validate_static_metadata.py
-          python tools/build_site.py
-          python tests/test_build_site.py -v
-          python tests/test_release_snapshot.py -v
-          python tools/release_snapshot.py prepare --version "$(cat VERSION)" --repository "$GITHUB_REPOSITORY" --output-dir "$RUNNER_TEMP/website-build-only"
+          python -I -B tools/validate_private_artifacts.py
+          python -I -B tools/validate_static_metadata.py
+          python -I -B tools/build_site.py
+          python -I -B tests/test_build_site.py -v
+          python -I -B tests/test_release_snapshot.py -v
+          python -I -B tools/release_snapshot.py prepare --version "$(cat VERSION)" --repository "$GITHUB_REPOSITORY" --output-dir "$RUNNER_TEMP/website-build-only"
       - name: Upload source and public-site build for inspection
         uses: actions/upload-artifact@v7
         with:
@@ -57,81 +57,50 @@ jobs:
             _site/
 
   release:
-    if: "github.event_name == 'workflow_dispatch' && inputs.publish_release == true && !startsWith(github.event.head_commit.message, 'chore: bump version to') && !contains(github.event.head_commit.message, '[skip release]')"
+    if: "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish_release == true && !contains(github.event.head_commit.message, '[skip release]')"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Read and bump version
+      # VERSION and the footer are prepared through a reviewed PR. Publication
+      # never creates or pushes a source commit and never consumes another version.
+      - name: Read prepared version
         id: version
         run: |
-          python - <<'PY'
-          import datetime
+          python -I -B - <<'PY'
           import os
           import pathlib
           import re
 
           version_file = pathlib.Path("VERSION")
-          current = version_file.read_text(encoding="utf-8").strip() if version_file.exists() else "0.0.0"
-          m = re.match(r"^(\d+)\.(\d+)\.(\d+)$", current)
-          if not m:
-              raise SystemExit(f"Invalid VERSION format: {current!r}")
-
-          major, minor, patch = map(int, m.groups())
-          new_version = f"{major}.{minor}.{patch + 1}"
-          version_file.write_text(new_version + "\n", encoding="utf-8")
-
-          index = pathlib.Path("index.html")
-          if index.exists():
-              index_text = index.read_text(encoding="utf-8")
-              index_text = re.sub(
-                  r'(footer-version">v)(\d+\.\d+\.\d+)',
-                  rf"\g<1>{new_version}",
-                  index_text,
-                  count=1,
-              )
-              index_text = re.sub(
-                  r"(&middot;\s*Updated\s+)[A-Za-z]+ \d{4}",
-                  rf"\g<1>{datetime.date.today().strftime('%B %Y')}",
-                  index_text,
-                  count=1,
-              )
-              index.write_text(index_text, encoding="utf-8")
+          version = version_file.read_text(encoding="utf-8").strip()
+          if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              raise SystemExit(f"Invalid VERSION format: {version!r}")
+          index_text = pathlib.Path("index.html").read_text(encoding="utf-8")
+          footers = re.findall(r'footer-version">v(\d+\.\d+\.\d+)', index_text)
+          if footers != [version]:
+              raise SystemExit(f"Prepare matching VERSION and one footer in a reviewed PR: {footers!r}")
 
           out = pathlib.Path(os.environ["GITHUB_OUTPUT"])
-          out.write_text(f"old_version={current}\nversion={new_version}\n", encoding="utf-8")
+          out.write_text(f"version={version}\n", encoding="utf-8")
           PY
-
-      - name: Sync product repo badges into HTML fallbacks
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python tools/sync_repo_metadata.py
-
-      - name: Commit version bump
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add VERSION index.html shapes.html repo-metadata.json
-          git diff --cached --quiet && echo "No changes to commit" && exit 0
-          git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
-          git push
 
       - name: Build source-pinned release archive and provenance
         run: |
-          python tests/test_release_snapshot.py -v
-          python tools/release_snapshot.py prepare --version "${{ steps.version.outputs.version }}" --repository "$GITHUB_REPOSITORY" --output-dir "$RUNNER_TEMP/website-release"
+          python -I -B tests/test_release_snapshot.py -v
+          python -I -B tools/release_snapshot.py prepare --version "${{ steps.version.outputs.version }}" --repository "$GITHUB_REPOSITORY" --output-dir "$RUNNER_TEMP/website-release"
 
       - name: Verify source and uploaded draft bytes before publication
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python tools/release_snapshot.py publish --provenance "$RUNNER_TEMP/website-release/BlueCollar-Website_v${{ steps.version.outputs.version }}.provenance.json"
+          python -I -B tools/release_snapshot.py publish --provenance "$RUNNER_TEMP/website-release/BlueCollar-Website_v${{ steps.version.outputs.version }}.provenance.json"

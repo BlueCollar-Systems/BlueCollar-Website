@@ -55,7 +55,7 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
         self.assertIsNotNone(match)
         self.assertRegex(match.group(1),r'(?m)^        type: boolean$')
         self.assertRegex(match.group(1),r'(?m)^        default: false$')
-    def test_release_and_version_bump_need_manual_true(self):
+    def test_release_needs_manual_true_on_reviewed_main(self):
         text=(ROOT/'.github/workflows/auto-release.yml').read_text(encoding='utf-8')
         self.boolean_false(text,'publish_release')
         self.manual_gate(guard(block(text,'release')),'publish_release')
@@ -63,9 +63,46 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
         self.assertTrue(run_guard(expression,'workflow_dispatch',False,'publish_release'))
         self.assertFalse(run_guard(expression,'workflow_dispatch',True,'publish_release'))
         self.assertFalse(run_guard(expression,'push',False,'publish_release'))
+        self.assertFalse(run_guard(guard(block(text,'release')),'workflow_dispatch',True,
+                                   'publish_release','refs/heads/unreviewed'))
         readonly=block(text,'build-only')
         for forbidden in ['git push','gh release','write_text','sync_repo_metadata']:
             self.assertNotIn(forbidden,readonly)
+    def test_release_reads_prepared_version_without_mutating_source(self):
+        text=(ROOT/'.github/workflows/auto-release.yml').read_text(encoding='utf-8')
+        step=block(text,'Read prepared version','step')
+        match=re.search(r"python -I -B - <<'PY'\n(.*?)\n\s+PY",step,re.S)
+        self.assertIsNotNone(match)
+        script=textwrap.dedent(match.group(1))
+        cases=[('1.0.110',['1.0.110'],True),('1.0.110',['1.0.109'],False),
+               ('1.0.110',[],False),('1.0.110',['1.0.110','1.0.110'],False),
+               ('invalid',['1.0.110'],False)]
+        for version,footers,success in cases:
+            with self.subTest(version=version,footers=footers),tempfile.TemporaryDirectory() as tmp:
+                folder=Path(tmp)
+                sources={'VERSION':(version+'\n').encode(),
+                         'index.html':(''.join('<p class="footer-version">v'+v+'</p>'
+                                              for v in footers)).encode()}
+                for name,raw in sources.items():(folder/name).write_bytes(raw)
+                output=folder/'github-output'
+                result=subprocess.run([sys.executable,'-I','-B','-c',script],cwd=folder,
+                    env=dict(os.environ,GITHUB_OUTPUT=str(output)),capture_output=True,text=True,timeout=5)
+                self.assertEqual(result.returncode==0,success,result.stdout+result.stderr)
+                self.assertEqual({name:(folder/name).read_bytes() for name in sources},sources)
+                if success:self.assertEqual(output.read_text(),f'version={version}\n')
+                else:self.assertFalse(output.exists())
+    def test_publication_jobs_never_push_source_to_main(self):
+        release=block((ROOT/'.github/workflows/auto-release.yml').read_text(encoding='utf-8'),'release')
+        deploy=block((ROOT/'.github/workflows/website-ci.yml').read_text(encoding='utf-8'),'deploy-pages')
+        for body in (release,deploy):
+            self.assertNotIn('git push',body)
+            self.assertNotIn('git commit',body)
+        self.assertRegex(deploy,r'(?m)^      contents: read$')
+        retained=block(deploy,'Retain verified metadata for a reviewed update','step')
+        self.assertIn('uses: actions/upload-artifact@',retained)
+        self.assertIn('repo-metadata.json',retained)
+        self.assertGreater(deploy.index('Retain verified metadata for a reviewed update'),
+                           deploy.index('Check live links the way a visitor sees them'))
     def test_production_requires_manual_main_or_product_release(self):
         text=(ROOT/'.github/workflows/website-ci.yml').read_text(encoding='utf-8')
         self.boolean_false(text,'deploy_production')
@@ -126,7 +163,7 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
         order=['Build repository metadata snapshot','Validate final immutable release metadata','Build site folder',
                'Confirm a release deploy changes only download metadata','Deploy to Cloudflare Pages',
                'Verify public download metadata','Check live links the way a visitor sees them',
-               'Commit stamped version badges back to repo']
+               'Retain verified metadata for a reviewed update']
         positions=[deploy.index('      - name: '+name+'\n') for name in order]
         self.assertEqual(positions,sorted(positions))
         # One deploy job, one Cloudflare upload: the release path adds no
@@ -495,7 +532,7 @@ class ManualPublicationWorkflowTest(unittest.TestCase):
         release=block(text,'release')
         self.assertIn('tools/release_snapshot.py prepare',release)
         self.assertIn('tools/release_snapshot.py publish --provenance',release)
-        self.assertIn('python tests/test_release_snapshot.py -v',release)
+        self.assertIn('python -I -B tests/test_release_snapshot.py -v',release)
         self.assertNotIn('gh release view',release)
         self.assertNotIn('exit 0',block(text,'Verify source and uploaded draft bytes before publication','step'))
         ci=(ROOT/'.github/workflows/website-ci.yml').read_text(encoding='utf-8')
