@@ -402,7 +402,10 @@ class PublicLinkCheckTests(unittest.TestCase):
         deploy_job = workflow[workflow.index("deploy-pages:"):]
         live_check = deploy_job.index("python -I -B tools/check_public_links.py --base https://bluecollar-systems.com")
         self.assertLess(deploy_job.index("- name: Verify public download metadata"), live_check)
-        self.assertLess(live_check, deploy_job.index("- name: Commit stamped version badges back to repo"))
+        retention = deploy_job.index("- name: Retain verified metadata for a reviewed update")
+        self.assertLess(live_check, retention)
+        self.assertNotIn("continue-on-error", deploy_job[live_check:retention])
+        self.assertNotIn("if: always()", deploy_job[live_check:retention])
 
 
 if __name__ == "__main__":

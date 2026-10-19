@@ -245,17 +245,21 @@ class DeployedMetadataTests(unittest.TestCase):
         self.assertIn("Verified public download metadata", self.stdout.getvalue())
         self.assertIn("/README.md is still public", self.stderr.getvalue())
 
-    def test_workflow_only_commits_badges_after_live_verification(self):
+    def test_workflow_only_retains_metadata_after_live_verification(self):
         workflow = (ROOT / ".github" / "workflows" / "website-ci.yml").read_text()
         validation = workflow.index("- name: Validate final immutable release metadata")
         deployment = workflow.index("npx --yes wrangler@")
         verification = workflow.index("- name: Verify public download metadata")
-        commit = workflow.index("- name: Commit stamped version badges back to repo")
+        live_links = workflow.index("- name: Check live links the way a visitor sees them")
+        retention = workflow.index("- name: Retain verified metadata for a reviewed update")
         self.assertLess(validation, deployment)
         self.assertLess(deployment, verification)
-        self.assertLess(verification, commit)
-        self.assertNotIn("continue-on-error", workflow[verification:commit])
-        self.assertNotIn("if: always()", workflow[verification:commit])
+        self.assertLess(verification, live_links)
+        self.assertLess(live_links, retention)
+        self.assertNotIn("continue-on-error", workflow[verification:retention])
+        self.assertNotIn("if: always()", workflow[verification:retention])
+        self.assertIn("uses: actions/upload-artifact@", workflow[retention:])
+        self.assertNotIn("git push", workflow[retention:])
 
 
 if __name__ == "__main__":
