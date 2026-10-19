@@ -7,54 +7,124 @@ GO (owner decision O13, deploy-only). Every other website change still goes
 live only through a manual website-ci run with deploy_production=true. This
 guard keeps the automatic deploy to that job:
 
-1. Find the commit that is live now: the head commit of the newest website-ci
-   run whose "Deploy to Cloudflare Pages" step succeeded (GitHub Actions API,
-   read back through the newest 1,000 runs of each dispatch kind).
+1. Find the approved commit: the head commit of the newest MANUAL website-ci
+   run (workflow_dispatch on main, so deploy_production=true) whose "Deploy to
+   Cloudflare Pages" step succeeded (GitHub Actions API, read back through the
+   newest 1,000 manual runs). Release deploys never become this baseline. A
+   release deploy uploads a commit that was only proven to build the same as
+   the approved commit for that day's metadata; if its tools behave
+   differently for some later metadata, that difference was never approved.
+   So every release deploy is compared with the last manually deployed commit,
+   and what it uploads is always what that commit builds with the new
+   metadata.
 2. Build two public folders the same clean way, each in its own new temporary
    git worktree and its own new output folder: one from the commit about to
-   be deployed, one from the live commit. Each worktree gets the same freshly
+   be deployed, one from the approved commit. Each worktree gets the same freshly
    synced repo-metadata.json, and each commit's OWN tools do the work, run as
-   a subprocess with that worktree as the working folder and only that
-   worktree's tools importable (python -B -E -s):
+   a subprocess with that worktree as the working folder (see _run_tool):
      - tools/sync_repo_metadata.py stamp_html_versions(payload) stamps the
        version badges in the worktree's *.html pages;
      - python tools/build_site.py --source . --out <folder> builds the folder.
    So a change on main to the public file list or to the badge stamping
-   builds differently from the live commit, and counts as a website change.
+   builds differently from the approved commit, and counts as a website change.
+   Before any of a commit's tools run, its tracked files are checked: a
+   tracked Python cache (__pycache__/, *.pyc, *.pyo), which Python can run in
+   place of the reviewed .py source, or a module named after a standard
+   module at the root, in tools/ or in tests/, refuses the deploy.
 3. Require the _site folder about to be uploaded to be byte-for-byte the clean
    build of its own commit (no leftover or uncommitted file rides along), and
-   that clean build to be byte-for-byte the live commit's build.
+   that clean build to be byte-for-byte the approved commit's build.
+
+The folder is the whole upload: website-ci runs Wrangler from a new empty
+folder outside the checkout and hands it the absolute path of _site, so no
+repository file outside _site reaches Cloudflare. (Run from the repository
+root, Wrangler 4.83.0 would also build and upload Pages Functions from
+./functions, read a wrangler.toml/json/jsonc found in that folder or any
+parent, and load .env and .env.local; none of those are compared here.)
+Wrangler follows links when it walks that folder, so a link, junction or any
+entry that is not a plain file or folder, in _site or in either clean build,
+is refused rather than compared.
+
+The guard runs from tools/ of the checkout it judges. website-ci starts it
+with python -I, so that folder is not on sys.path; when started without -I it
+drops every sys.path entry inside the repository before its first import and
+refuses to run if any loaded module comes from the repository. A
+tools/json.py or tools/filecmp.py on main therefore cannot stand in for the
+standard library inside the guard. It also refuses when the checkout itself
+tracks a Python cache or a standard-module name (the rule above).
+
+Each commit's tools run as python -I -B -X utf8: neither the worktree root
+nor its tools/ is on sys.path, PYTHON* variables are ignored, and no cache is
+written. The stamp driver appends the worktree's tools/ to the END of
+sys.path, so it can import sync_repo_metadata while every standard module
+still comes from the standard library. Their environment is only what
+Python needs (PATH, the temporary folder, locale and the Windows system
+folders): no token or other secret, and none of GitHub's GITHUB_ENV,
+GITHUB_PATH, GITHUB_OUTPUT, GITHUB_STEP_SUMMARY or GITHUB_STATE files, so they
+cannot set variables, PATH entries or outputs for the steps after the guard.
+
+This is a check against mistakes, not a sandbox: it stops a release deploy
+from publishing benign changes that were merged but never approved for the
+live site, and stops stray links, caches, standard-module names and odd
+inputs from changing what is uploaded. Code written on purpose to get around
+it (a process left running, a tool that rewrites _site/ after the guard) is
+kept off main by pull request review; see the README's trust boundary.
 
 So only repo-metadata.json and the badges stamped from it can differ from
 production. If main holds any other public change that was never deployed,
 the deploy stops before upload and names the files; the manual deploy
-publishes them (and the new downloads) once they are approved. When the live
-commit cannot be found, fetched or rebuilt with its own tools (for example a
+publishes them (and the new downloads) once they are approved. When the
+approved commit cannot be found, fetched or rebuilt with its own tools (for example a
 commit older than tools/build_site.py), the guard refuses too: it never
 guesses, and the manual deploy is the way forward.
 
 Read-only for the site: it never deploys or pushes. Usage, from the
 repository root after tools/sync_repo_metadata.py and tools/build_site.py:
-    python tools/check_metadata_only_deploy.py [--site _site] [--deployed-sha SHA]
+    python -I -B tools/check_metadata_only_deploy.py [--site _site] [--deployed-sha SHA]
 
 Exit codes: 0 only metadata differs from production, 1 refused (nothing may
 deploy).
 """
 
-from __future__ import annotations
+# No "from __future__ import": it imports a module through sys.path before
+# anything below could run.
+import os
+import sys
+
+
+def _inside(path: str, folder: str) -> bool:
+    """True when path (any form) resolves to folder or something in it."""
+    try:
+        path, folder = os.path.normcase(os.path.realpath(path)), os.path.normcase(os.path.realpath(folder))
+    except (OSError, ValueError):
+        return True  # cannot tell: treat it as the repository's
+    return path == folder or path.startswith(folder.rstrip(os.sep) + os.sep)
+
+
+# The repository this copy of the guard belongs to (tools/..).
+_REPOSITORY = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
+if __name__ == "__main__":
+    # Python puts the script's own folder, tools/, first on sys.path (and
+    # PYTHONPATH may add more), so a tools/<standard module>.py would be
+    # imported in place of the real one. Drop every entry inside the
+    # repository (a relative entry counts from the working folder, as for
+    # imports) before the imports below. sys is built in and os is frozen
+    # into the interpreter (or already loaded), so neither is read from
+    # sys.path; _repository_modules() confirms that before the guard runs.
+    sys.path[:] = [entry for entry in sys.path
+                   if isinstance(entry, str) and not _inside(entry or os.curdir, _REPOSITORY)]
 
 import argparse
 import filecmp
 import json
-import os
-import re
 import shutil
+import stat
 import subprocess
-import sys
 import tempfile
 import urllib.error
 import urllib.request
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
 WORKFLOW_FILE = "website-ci.yml"
@@ -63,18 +133,17 @@ DEPLOY_STEP = "Deploy to Cloudflare Pages"
 PRODUCTION_BRANCH = "main"
 DEFAULT_SITE = "_site"
 
+# Only manual runs can set the approved baseline. A repository_dispatch run
+# (a release deploy among them) is never read, so dispatch traffic cannot push
+# the last manual deploy out of the listing either.
+BASELINE_EVENT = "workflow_dispatch"
 # The run history is read newest first, 100 runs a page. The Actions API lists
 # at most 1,000 runs for one event filter, so ten pages is all there is.
 RUNS_PER_PAGE = 100
 MAX_RUN_PAGES = 10
-# Jobs are read only for runs that could have deployed; past this many the
-# guard stops looking and refuses rather than guessing.
+# Jobs are read only for manual runs on main; past this many the guard stops
+# looking and refuses rather than guessing.
 MAX_JOB_LOOKUPS = 100
-# website-ci.yml has no run-name, so GitHub titles a repository_dispatch run
-# with its event type. These types only validate (deploy-pages needs
-# product-release), so their runs are skipped without reading their jobs. A
-# title outside this set is looked at, so a future run-name only costs calls.
-VALIDATION_ONLY_DISPATCHES = frozenset({"product-update", "steel-shapes-release", "steel-shapes-update"})
 
 # What a commit must hold for the guard to rebuild its public folder.
 BUILD_TOOL = "tools/build_site.py"
@@ -87,14 +156,18 @@ TOOL_TIMEOUT = 600
 # Git checkout/fetch/cleanup must also finish or refuse within a bounded time.
 GIT_TIMEOUT = 60
 
-# Runs in the worktree (cwd) with -B -E -s, so the only sync_repo_metadata it
-# can import is that commit's own tools/sync_repo_metadata.py. It calls
-# stamp_html_versions(payload) with the payload alone: every version of the
-# function stamps the *.html pages of the working folder.
+# Runs in the worktree (cwd) with -I -B (see _run_tool), so neither the
+# worktree root nor its tools/ is on sys.path while the standard modules
+# below load. The worktree's tools/ is then APPENDED, after the standard
+# library: the only sync_repo_metadata the driver can import is that commit's
+# own tools/sync_repo_metadata.py, and a tools/json.py or tools/urllib/ there
+# still cannot replace a standard module. It calls stamp_html_versions(payload)
+# with the payload alone: every version of the function stamps the *.html
+# pages of the working folder.
 STAMP_DRIVER = f"""
 import json, sys
 from pathlib import Path
-sys.path.insert(0, str(Path.cwd() / "tools"))
+sys.path.append(str(Path.cwd() / "tools"))
 try:
     import sync_repo_metadata
     stamp = sync_repo_metadata.stamp_html_versions
@@ -119,6 +192,38 @@ class GuardError(RuntimeError):
 
 class ToolsUnsupported(GuardError):
     """A commit's own tools cannot rebuild its public folder the guard's way."""
+
+
+def _repository_modules(repository: str = _REPOSITORY, modules: dict | None = None) -> list[str]:
+    """Loaded modules (other than the guard itself) whose code is inside the repository."""
+    found = []
+    for name, module in list((sys.modules if modules is None else modules).items()):
+        if name == "__main__" or module is None:
+            continue
+        spec = getattr(module, "__spec__", None)
+        places = [getattr(module, "__file__", None)]
+        if getattr(spec, "has_location", False):  # not "built-in" or "frozen"
+            places.append(getattr(spec, "origin", None))
+        try:
+            places += list(getattr(module, "__path__", None) or [])
+        except TypeError:
+            pass
+        for place in places:
+            if isinstance(place, str) and place and _inside(place, repository):
+                found.append(f"{name} ({place})")
+                break
+    return sorted(found)
+
+
+def _refuse_repository_modules() -> bool:
+    """Print the refusal and return True when repository code was imported."""
+    loaded = _repository_modules()
+    if not loaded:
+        return False
+    print("::error::Release deploy refused, nothing was deployed: the guard imported code from the "
+          "repository it is checking instead of the standard library, so its result cannot be trusted: "
+          + "; ".join(loaded) + f". Run it as python -I tools/check_metadata_only_deploy.py. {MANUAL_DEPLOY_HINT}")
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +260,8 @@ def _completed_runs(repo: str, event: str, api_get: Callable[[str], Any]) -> tup
     total = 0
     for page in range(1, MAX_RUN_PAGES + 1):
         data = api_get(runs_url(repo, event, page)) or {}
+        if not isinstance(data, dict) or not isinstance(data.get("workflow_runs") or [], list):
+            raise GuardError(f"The Actions API returned an unexpected run listing ({type(data).__name__}).")
         batch = [run for run in data.get("workflow_runs") or [] if isinstance(run, dict)]
         try:
             total = max(total, int(data.get("total_count") or 0))
@@ -169,21 +276,25 @@ def _completed_runs(repo: str, event: str, api_get: Callable[[str], Any]) -> tup
 
 
 def _could_have_deployed(run: dict[str, Any], current_run_id: str | None) -> bool:
+    """A manual run on main: the only kind whose upload sets the baseline."""
     if current_run_id and str(run.get("id")) == str(current_run_id):
         return False
-    if run.get("head_branch") != PRODUCTION_BRANCH or not run.get("head_sha"):
+    if run.get("event") != BASELINE_EVENT:
         return False
-    if run.get("event") == "repository_dispatch" and run.get("display_title") in VALIDATION_ONLY_DISPATCHES:
+    if run.get("head_branch") != PRODUCTION_BRANCH or not run.get("head_sha"):
         return False
     return True
 
 
 def _uploaded(jobs: Any) -> bool:
-    for job in (jobs or {}).get("jobs") or []:
-        if job.get("name") != DEPLOY_JOB:
+    jobs = {} if jobs is None else jobs
+    if not isinstance(jobs, dict) or not isinstance(jobs.get("jobs") or [], list):
+        raise GuardError(f"The Actions API returned an unexpected jobs listing ({type(jobs).__name__}).")
+    for job in jobs.get("jobs") or []:
+        if not isinstance(job, dict) or job.get("name") != DEPLOY_JOB:
             continue
         for step in job.get("steps") or []:
-            if step.get("name") == DEPLOY_STEP and step.get("conclusion") == "success":
+            if isinstance(step, dict) and step.get("name") == DEPLOY_STEP and step.get("conclusion") == "success":
                 return True
     return False
 
@@ -194,34 +305,35 @@ def find_deployed_commit(
     *,
     current_run_id: str | None = None,
 ) -> tuple[str, int]:
-    """(head commit, run id) of the newest run that uploaded the site."""
-    read: list[str] = []
-    candidates: list[dict[str, Any]] = []
-    for event in ("workflow_dispatch", "repository_dispatch"):
-        runs, total, more = _completed_runs(repo, event, api_get)
-        read.append(
-            f"the newest {len(runs)} of {total} {event} runs (the Actions API lists no more)"
-            if more else f"all {len(runs)} completed {event} runs"
-        )
-        candidates.extend(run for run in runs if _could_have_deployed(run, current_run_id))
+    """(head commit, run id) of the newest manual run that uploaded the site.
+
+    Release deploys (repository_dispatch runs) are never read: they are not an
+    approval, so they never become the commit a release deploy is held to.
+    """
+    runs, total, more = _completed_runs(repo, BASELINE_EVENT, api_get)
+    candidates = [run for run in runs if _could_have_deployed(run, current_run_id)]
     candidates.sort(key=lambda run: run.get("run_started_at") or run.get("created_at") or "", reverse=True)
 
     for run in candidates[:MAX_JOB_LOOKUPS]:
         if _uploaded(api_get(jobs_url(repo, run.get("id")))):
             return str(run["head_sha"]), int(run["id"])
 
+    read = (
+        f"the newest {len(runs)} of {total} {BASELINE_EVENT} runs (the Actions API lists no more)"
+        if more else f"all {len(runs)} completed {BASELINE_EVENT} runs"
+    )
     checked = min(len(candidates), MAX_JOB_LOOKUPS)
     why = (
-        f"It read {' and '.join(read)} of {WORKFLOW_FILE}. {len(candidates)} of them could have deployed "
-        f"(manual runs and product-release dispatches on {PRODUCTION_BRANCH}); the jobs of "
-        f"{'all of them' if checked == len(candidates) else f'the newest {checked}'} were read and none "
-        f"has a successful '{DEPLOY_STEP}' step."
+        f"It read {read} of {WORKFLOW_FILE}. {len(candidates)} of them ran on {PRODUCTION_BRANCH}; "
+        f"the jobs of {'all of them' if checked == len(candidates) else f'the newest {checked}'} were "
+        f"read and none has a successful '{DEPLOY_STEP}' step, so none was a manual "
+        "deploy_production=true deploy. Release deploys do not count: they are not an approval."
     )
     if checked < len(candidates):
-        why += f" The guard reads at most {MAX_JOB_LOOKUPS} runs' jobs, so the last deploy is older than that."
-    elif any("lists no more" in part for part in read):
-        why += " The last deploy is older than the run history the Actions API lists."
-    raise GuardError(f"The live commit is unknown, so the guard cannot compare against it. {why}")
+        why += f" The guard reads at most {MAX_JOB_LOOKUPS} runs' jobs, so the last manual deploy is older than that."
+    elif more:
+        why += " The last manual deploy is older than the run history the Actions API lists."
+    raise GuardError(f"The approved live commit is unknown, so the guard cannot compare against it. {why}")
 
 
 # ---------------------------------------------------------------------------
@@ -247,12 +359,97 @@ def _require_commit(repo_root: Path, sha: str) -> None:
         raise GuardError(f"Could not fetch commit {sha}: {fetched.stderr.strip() or 'not found'}.")
 
 
-_SECRET_NAME = re.compile(r"TOKEN|SECRET|PASSWORD|CREDENTIAL|(^|_)KEY$", re.IGNORECASE)
+# The only variables a commit's tools get: what Python and the file system
+# need on Linux and Windows. Everything else stays out, so whatever name a
+# secret has it never reaches them, nor do GitHub's GITHUB_ENV, GITHUB_PATH,
+# GITHUB_OUTPUT, GITHUB_STEP_SUMMARY and GITHUB_STATE files, through which a
+# process could set variables, PATH entries or outputs for later steps (the
+# Cloudflare upload among them).
+_TOOL_ENV_NAMES = frozenset({
+    "PATH", "PATHEXT", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC",
+    "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "TZ",
+})
 
 
 def _tool_env() -> dict[str, str]:
-    """The environment for a commit's tools: no tokens or other secrets."""
-    return {name: value for name, value in os.environ.items() if not _SECRET_NAME.search(name)}
+    """The environment for a commit's tools: no secrets, no GitHub step files."""
+    env = {name: value for name, value in os.environ.items() if name.upper() in _TOOL_ENV_NAMES}
+    env["PYTHONDONTWRITEBYTECODE"] = "1"  # -B already; this also covers a Python started without -E
+    return env
+
+
+# ---------------------------------------------------------------------------
+# Tracked Python files that could run instead of the reviewed source
+# ---------------------------------------------------------------------------
+# The same rule as tools/check_python_files.py (website-ci static-checks). The
+# guard imports nothing from the repository it judges, so it keeps its own
+# copy; tests/test_check_python_files.py keeps the two the same.
+
+IMPORT_PATH_FOLDERS = ("", "tools", "tests")
+BYTECODE_SUFFIXES = (".pyc", ".pyo")
+MODULE_SUFFIXES = (".py", ".pyw", ".pyc", ".pyo", ".pyd", ".so")
+STARTUP_HOOKS = ("sitecustomize", "usercustomize")
+
+
+def _shadowed_names() -> frozenset:
+    names = getattr(sys, "stdlib_module_names", None)
+    if not names:
+        raise GuardError("The guard needs Python 3.10 or newer (sys.stdlib_module_names).")
+    return frozenset(names) | frozenset(STARTUP_HOOKS)
+
+
+def _is_module_file(name: str) -> bool:
+    return name.lower().endswith(MODULE_SUFFIXES)
+
+
+def python_file_problems(paths, names=None) -> list[str]:
+    """Tracked paths refused because Python could run them in place of reviewed code."""
+    names = _shadowed_names() if names is None else names
+    found = []
+    for path in sorted(set(paths)):
+        parts = PurePosixPath(path).parts
+        if not parts:
+            continue
+        if "__pycache__" in parts or path.lower().endswith(BYTECODE_SUFFIXES):
+            found.append(f"{path}: Python bytecode is never committed; Python can run it instead of the .py source")
+            continue
+        for folder in IMPORT_PATH_FOLDERS:
+            if folder and parts[0] != folder:
+                continue
+            inside = parts[1:] if folder else parts
+            if not inside:
+                continue
+            where = f"{folder}/" if folder else "the repository root"
+            if len(inside) == 1:
+                module = inside[0].split(".", 1)[0]
+                if _is_module_file(inside[0]) and module in names:
+                    found.append(f"{path}: a module in {where} named after the standard module {module}")
+                    break
+            elif inside[0] in names and _is_module_file(inside[-1]):
+                found.append(f"{path}: inside {'/'.join(parts[:len(parts) - len(inside) + 1])}/, a package in "
+                             f"{where} named after the standard module {inside[0]}")
+                break
+    return found
+
+
+def _tracked_paths(repo_root: Path, sha: str | None = None) -> list[str]:
+    """The commit's tracked files (or, with no sha, the checkout's index)."""
+    args = ["ls-tree", "-r", "-z", "--name-only", sha] if sha else ["ls-files", "-z", "--cached"]
+    listed = _git(repo_root, *args)
+    if listed.returncode != 0:
+        raise GuardError(f"Could not list the tracked files of {sha or 'the checkout'}: {listed.stderr.strip()}")
+    return [name for name in listed.stdout.split("\0") if name]
+
+
+def refuse_unsafe_python_files(repo_root: Path, sha: str | None = None) -> None:
+    """GuardError naming every tracked cache or standard-module name in the commit."""
+    found = python_file_problems(_tracked_paths(repo_root, sha))
+    if found:
+        what = f"Commit {sha[:12]}" if sha else "The checkout"
+        raise GuardError(
+            f"{what} tracks Python files that could run in place of its reviewed tools or of the standard "
+            "library, so the guard runs none of its tools: " + "; ".join(found)
+        )
 
 
 def _tail(text: str, lines: int = 12) -> str:
@@ -261,11 +458,17 @@ def _tail(text: str, lines: int = 12) -> str:
 
 
 def _run_tool(worktree: Path, args: list[str]) -> subprocess.CompletedProcess:
-    """Run Python in `worktree` so that only its own files are importable."""
-    command = [sys.executable, "-B", "-E", "-s", "-X", "utf8", *args]
+    """Run one of a commit's tools in `worktree`, isolated, with no secrets.
+
+    -I: neither the worktree root nor its tools/ is on sys.path (the stamp
+    driver appends tools/ itself, after the standard library), PYTHON*
+    variables and the user's site-packages are ignored. -B: no cache is
+    written into the worktree.
+    """
+    command = [sys.executable, "-I", "-B", "-X", "utf8", *args]
     try:
         return subprocess.run(
-            command, cwd=str(worktree), env=_tool_env(), check=False,
+            command, cwd=str(worktree), env=_tool_env(), check=False, stdin=subprocess.DEVNULL,
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=TOOL_TIMEOUT,
         )
     except subprocess.TimeoutExpired as exc:
@@ -286,6 +489,9 @@ def build_commit_site(repo_root: Path, sha: str, metadata: Path, workdir: Path, 
         if path.exists():
             raise GuardError(f"Refusing to reuse {path}: every build starts from a new folder.")
     _require_commit(repo_root, sha)
+    # Before any of the commit's code runs: a tracked cache or a module named
+    # after a standard module could run in place of the code it shows.
+    refuse_unsafe_python_files(repo_root, sha)
     no_hooks = workdir / "no-git-hooks"
     added = _git(repo_root, "-c", f"core.hooksPath={no_hooks}", "worktree", "add", "--detach", str(source), sha)
     if added.returncode != 0:
@@ -325,12 +531,74 @@ def build_commit_site(repo_root: Path, sha: str, metadata: Path, workdir: Path, 
     return out
 
 
+_REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+
+
+def _odd_kind(info: os.stat_result) -> str | None:
+    """None for a plain file or folder; otherwise what the entry is."""
+    if stat.S_ISLNK(info.st_mode):
+        return "symbolic link"
+    if getattr(info, "st_file_attributes", 0) & _REPARSE_POINT:
+        return "junction or other reparse point"
+    if stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode):
+        return None
+    return "special file"
+
+
 def _files(root: Path) -> set[str]:
-    return {p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()}
+    """The plain files under root, as POSIX paths relative to it.
+
+    Wrangler follows links when it walks the upload folder, so a link would
+    upload whatever it points at, while a comparison that does not follow it
+    sees nothing there. Any link, junction, reparse point or other entry that
+    is not a plain file or folder, anywhere in the folder or as the folder
+    itself, is refused instead. Nothing is followed while looking.
+    """
+    root = Path(root)
+    try:
+        top = os.lstat(root)
+    except OSError as exc:
+        raise GuardError(f"Cannot read the folder {root}: {exc}") from exc
+    kind = _odd_kind(top)
+    if kind or not stat.S_ISDIR(top.st_mode):
+        raise GuardError(f"{root} is a {kind or 'file'}, not a plain folder, so it cannot be compared.")
+
+    def unreadable(exc: OSError) -> None:
+        raise GuardError(f"Cannot read {exc.filename} in {root}: {exc}")
+
+    files: set[str] = set()
+    odd: list[str] = []
+    for current, folders, names in os.walk(root, onerror=unreadable, followlinks=False):
+        plain_folders = []
+        for name in folders + names:
+            path = os.path.join(current, name)
+            rel = Path(path).relative_to(root).as_posix()
+            try:
+                info = os.lstat(path)
+            except OSError as exc:
+                raise GuardError(f"Cannot read {rel} in {root}: {exc}") from exc
+            kind = _odd_kind(info)
+            if kind:
+                odd.append(f"{rel} ({kind})")
+            elif stat.S_ISDIR(info.st_mode):
+                plain_folders.append(name)
+            else:
+                files.add(rel)
+        folders[:] = [name for name in folders if name in plain_folders]
+    if odd:
+        raise GuardError(
+            f"{root} holds entries that are not plain files or folders. Wrangler would follow or upload "
+            "them, but the guard cannot compare what they point at, so nothing may deploy: "
+            + ", ".join(sorted(odd))
+        )
+    return files
 
 
 def compare_sites(new_site: Path, live_site: Path) -> list[str]:
-    """One line per public file that differs between two built folders."""
+    """One line per public file that differs between two built folders.
+
+    Both folders must hold nothing but plain files and folders (see _files).
+    """
     new_files, live_files = _files(new_site), _files(live_site)
     problems = [f"new public file: {name}" for name in sorted(new_files - live_files)]
     problems += [f"removed public file: {name}" for name in sorted(live_files - new_files)]
@@ -358,7 +626,7 @@ def check(
             + "; ".join(leftovers)
         )
     if deployed_sha == head_sha:
-        print(f"The commit about to be deployed is the live one ({head_sha[:12]}); only metadata can change.")
+        print(f"The commit about to be deployed is the approved live commit ({head_sha[:12]}); only metadata can change.")
         return []
     live_site = build_commit_site(repo_root, deployed_sha, metadata, workdir, "live")
     return compare_sites(head_site, live_site)
@@ -371,7 +639,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--metadata", type=Path, default=Path("repo-metadata.json"),
                         help="the freshly synced metadata about to be deployed")
     parser.add_argument("--repo", default=os.getenv("GITHUB_REPOSITORY", "BlueCollar-Systems/BlueCollar-Website"))
-    parser.add_argument("--deployed-sha", help="the live commit, instead of reading it from the run history")
+    parser.add_argument("--deployed-sha", help="the approved commit, instead of reading the last manual deploy from the run history")
     args = parser.parse_args(argv)
 
     repo_root = Path(".").resolve()
@@ -382,6 +650,7 @@ def main(argv: list[str] | None = None) -> int:
     head_sha = head.stdout.strip()
 
     try:
+        refuse_unsafe_python_files(repo_root)
         if args.deployed_sha:
             deployed_sha, source = args.deployed_sha, "given on the command line"
         else:
@@ -390,10 +659,11 @@ def main(argv: list[str] | None = None) -> int:
                 args.repo, lambda url: _api_get(url, token),
                 current_run_id=os.getenv("GITHUB_RUN_ID"),
             )
-            source = f"deployed by run {run_id}"
-        print(f"Live commit: {deployed_sha} ({source}); about to deploy: {head_sha}")
+            source = f"the last manual deploy, run {run_id}"
+        print(f"Approved live commit: {deployed_sha} ({source}); about to deploy: {head_sha}")
         with tempfile.TemporaryDirectory(prefix="metadata-only-deploy-") as temp:
-            problems = check(repo_root, args.site.resolve(), args.metadata.resolve(),
+            # absolute(), not resolve(): a _site that is itself a link is refused, not followed.
+            problems = check(repo_root, args.site.absolute(), args.metadata.resolve(),
                              deployed_sha, head_sha, Path(temp))
     except ToolsUnsupported as exc:
         print(f"::error::Release deploy refused, nothing was deployed: {exc} "
@@ -405,7 +675,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if problems:
         print("::error::Release deploy refused, nothing was deployed: main has website changes "
-              f"that are not live yet (live commit {deployed_sha[:12]}). A release deploy may only "
+              f"that were never approved by a manual deploy (approved live commit {deployed_sha[:12]}). "
+              "A release deploy may only "
               "refresh download metadata. Run website-ci manually on main with "
               "deploy_production=true once these changes are approved; it publishes them and the "
               "new downloads together.")
@@ -417,4 +688,11 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # Checked before the guard starts and again before a pass is reported,
+    # in case a later import was served from the repository.
+    if _refuse_repository_modules():
+        raise SystemExit(1)
+    status = main()
+    if _refuse_repository_modules():
+        status = 1
+    raise SystemExit(status)

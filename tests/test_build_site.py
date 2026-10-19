@@ -289,16 +289,19 @@ await import(pathToFileURL(builder).href);
     def test_workflow_deploys_only_the_built_folder(self):
         workflow = (ROOT / ".github" / "workflows" / "website-ci.yml").read_text(encoding="utf-8")
         self.assertFalse("pages deploy . " in workflow, "deploy must not upload the repository root")
-        self.assertTrue("pages deploy _site " in workflow, "deploy must upload the built _site folder")
+        # Wrangler runs from an empty folder outside the checkout (see
+        # tests/test_manual_publication_workflow.py), given _site by path.
+        self.assertIn('site="$(pwd -P)/_site"', workflow, "deploy must upload the built _site folder")
+        self.assertTrue('pages deploy "$site" ' in workflow, "deploy must upload the built _site folder")
         deploy_job = workflow[workflow.index("deploy-pages:"):]
         validation = deploy_job.index("- name: Validate final immutable release metadata")
-        build = deploy_job.index("python tools/build_site.py")
+        build = deploy_job.index("python -I -B tools/build_site.py")
         deployment = deploy_job.index("npx --yes wrangler@")
         self.assertLess(validation, build)
         self.assertLess(build, deployment)
         static_job = workflow[workflow.index("static-checks:"):workflow.index("deploy-pages:")]
-        self.assertIn("python tools/build_site.py", static_job)
-        self.assertIn("python tests/test_build_site.py -v", static_job)
+        self.assertIn("python -I -B tools/build_site.py", static_job)
+        self.assertIn("python -I -B tests/test_build_site.py -v", static_job)
         self.assertIn("_site/", (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines())
         self.assertFalse((ROOT / ".cfignore").exists(), ".cfignore is not read by Cloudflare Pages")
 
