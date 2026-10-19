@@ -397,10 +397,10 @@ class PublicLinkCheckTests(unittest.TestCase):
         workflow = (ROOT / ".github" / "workflows" / "website-ci.yml").read_text(encoding="utf-8")
         static_job = workflow[workflow.index("static-checks:"):workflow.index("deploy-pages:")]
         self.assertLess(static_job.index("- name: Build repository metadata snapshot"),
-                        static_job.index("python tools/check_public_links.py"))
-        self.assertIn("python tests/test_check_public_links.py -v", static_job)
+                        static_job.index("python -I -B tools/check_public_links.py"))
+        self.assertIn("python -I -B tests/test_check_public_links.py -v", static_job)
         deploy_job = workflow[workflow.index("deploy-pages:"):]
-        live_check = deploy_job.index("python tools/check_public_links.py --base https://bluecollar-systems.com")
+        live_check = deploy_job.index("python -I -B tools/check_public_links.py --base https://bluecollar-systems.com")
         self.assertLess(deploy_job.index("- name: Verify public download metadata"), live_check)
         self.assertLess(live_check, deploy_job.index("- name: Commit stamped version badges back to repo"))
 
