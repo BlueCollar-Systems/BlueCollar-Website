@@ -104,12 +104,68 @@ assert(
   /<h2\b[^>]*>\s*BlueCollar Tag Logic\s*<\/h2>/.test(html),
   "site must advertise the exact BlueCollar Tag Logic product heading"
 );
-// Owner decision 2026-10-05: no direct download of the tag tool (BlueCollar
-// Tag Logic, formerly Tag QC Builder) from the website yet.
-assert(
-  html.includes("BlueCollar Tag Logic is not available for download from this website yet"),
-  "BlueCollar Tag Logic section must say it is not available for download yet"
+// Owner release 2026-10-20: Tag Logic v10.46 is published on GitHub
+// (release 418392578, source 35c2013). Repository access is required;
+// allow only the exact release page, not direct ZIP or anonymous access.
+const tagReleaseUrl = "https://github.com/BlueCollarSys-0628/1Tag-QC-Builder/releases/tag/v10.46";
+const tagReleaseLabel = "Open v10.46 release (GitHub access required)";
+const tagSectionOpening = elementTags.find(
+  (tag) => /^<section\b/i.test(tag) && attributeValue(tag, "id") === "tag-qc"
 );
+assert(tagSectionOpening, "Tag Logic must keep its existing section anchor");
+const tagCard = balancedElementBlock(html, tagSectionOpening);
+const tagCardText = tagCard.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+assert(
+  /<span\b[^>]*>\s*v10\.46\s*<\/span>/.test(tagCard) &&
+    /Published on GitHub:\s*v10\.46\s*\./.test(tagCardText),
+  "Tag Logic badge and published-version copy must name released v10.46"
+);
+assert(
+  [...tagCardText.matchAll(/\bv[0-9]+\.[0-9]+\b/g)].every((match) => match[0] === "v10.46"),
+  "Tag Logic card must not advertise stale or unpublished versions"
+);
+assert(
+  tagCardText.includes("Repository access is required to open the release and download its files."),
+  "Tag Logic must state the GitHub repository access requirement visibly"
+);
+assert(
+  tagCardText.includes("Save a JSON Job Backup before changing versions.") &&
+    tagCardText.includes("Extract the whole ZIP, keep its files together and run the inner") &&
+    tagCardText.includes("OPEN_BlueCollar_Systems_Tag_QC_Builder.bat") &&
+    /choose a PNG or JPG.*preview.*click Apply logo.*save another Job Backup/.test(tagCardText),
+  "Tag Logic setup must preserve backup, whole ZIP, inner launcher and logo preview/Apply steps"
+);
+
+function assertTagReleaseLinks(source, name) {
+  const links = [...source.matchAll(/(<a\b[^>]*>)([\s\S]*?)<\/a>/gi)]
+    .map((match) => ({
+      opening: match[1],
+      href: attributeValue(match[1], "href") || "",
+      label: match[2].trim(),
+    }))
+    .filter((link) =>
+      /1Tag-QC-Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/i.test(link.href) ||
+      /Download (Tag QC|(BlueCollar )?Tag Logic)|Open v10\.[0-9]+ release/i.test(link.label)
+    );
+  for (const link of links) {
+    assert.strictEqual(link.href, tagReleaseUrl, name + " must link only the exact released Tag v10.46 page");
+    assert.strictEqual(link.label, tagReleaseLabel, name + " Tag release label must plainly require GitHub access");
+    assert(
+      !/\b(hidden|sr-only)\b/.test(attributeValue(link.opening, "class") || ""),
+      name + " must not hide the Tag release access label"
+    );
+  }
+  assert.strictEqual(
+    (source.match(/1Tag-QC-Builder/gi) || []).length,
+    links.length,
+    name + " must not add other Tag repository URLs or script-only access"
+  );
+  assert(
+    !/Tag_QC_Builder_v[0-9_]+_Portable\.zip/i.test(source),
+    name + " must use the access-qualified release page rather than a direct Tag ZIP"
+  );
+  return links.length;
+}
 assert(
   html.includes("BCS1:") && html.includes("CS1:"),
   "BlueCollar Tag Logic copy must name the BCS1: prefix and say older CS1: tags still scan"
@@ -122,24 +178,26 @@ assert(
   !/v10\.37/.test(html),
   "site must not advertise the unpublished BlueCollar Tag Logic v10.37 build"
 );
-assert(
-  !/1Tag-QC-Builder|Download Tag QC|Download (BlueCollar )?Tag Logic|OPEN_BlueCollar_Systems_Tag_QC_Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/.test(html),
-  "site must not offer a BlueCollar Tag Logic download until the owner releases it"
+assert.strictEqual(
+  assertTagReleaseLinks(html, "index.html"),
+  1,
+  "Tag Logic card must offer exactly one access-qualified v10.46 release page"
 );
 assert(
   html.includes("GitHub Release"),
   "importer badges must be described as GitHub Release versions"
 );
 assert(
-  !html.includes("1Tag-QC-Builder/releases"),
-  "site must not expose direct download access to the Tag tool yet"
+  !/anonymous(?:ly)?|unrestricted|public download|no (?:GitHub |repository )?access required|without (?:GitHub |repository )?access|no sign[- ]?in required/i.test(tagCardText),
+  "Tag Logic must not promise anonymous or unrestricted repository access"
 );
 
 // Owner decision 2026-10-18: the tag tool is named "BlueCollar Tag Logic"
 // ("Tag Logic" where space is tight), always two words. Current pages,
 // shipped scripts and docs must not show the old name or the one-word
-// spelling, and no page may offer a download under either name. The
-// #tag-qc anchor stays because outside links use it. Dated records under
+// spelling. Release access is limited to the exact published v10.46
+// page with its access-qualified label; direct ZIP links remain forbidden.
+// The #tag-qc anchor stays because outside links use it. Dated records under
 // docs/validation/ keep the name they were written with and are not checked.
 const currentCopyFiles = [
   ...fs.readdirSync(".").filter((name) => /\.(html|js|md)$/i.test(name)),
@@ -159,10 +217,7 @@ for (const name of currentCopyFiles) {
     name + " must call the tag tool BlueCollar Tag Logic, not Tag QC Builder"
   );
   if (/\.html$/i.test(name)) {
-    assert(
-      !/Download (Tag QC|(BlueCollar )?Tag Logic)|1Tag-QC-Builder|OPEN_BlueCollar_Systems_Tag_QC_Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/i.test(text),
-      name + " must not offer a BlueCollar Tag Logic download until the owner releases it"
-    );
+    assertTagReleaseLinks(text, name);
     // The top menu uses the short form: with the full name the menu breaks
     // onto a second row at 1024 px; "Tag Logic" keeps it on one row, as
     // "Tag QC" did. The section heading on the home page carries the full
