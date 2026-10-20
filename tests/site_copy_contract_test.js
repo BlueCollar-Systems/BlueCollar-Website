@@ -105,10 +105,10 @@ assert(
   "site must advertise the exact BlueCollar Tag Logic product heading"
 );
 // Owner release 2026-10-20: Tag Logic v10.46 is published on GitHub
-// (release 418392578, source 35c2013). Repository access is required;
-// allow only the exact release page, not direct ZIP or anonymous access.
-const tagReleaseUrl = "https://github.com/BlueCollarSys-0628/1Tag-QC-Builder/releases/tag/v10.46";
-const tagReleaseLabel = "Open v10.46 release (GitHub access required)";
+// (release 418392578, source 35c2013), but its repository requires access.
+// PR 27 run 39430180933 confirmed an anonymous visitor gets HTTP 404.
+// Preserve the anonymous-link gate and offer the existing support route.
+const tagAccessLabel = "Ask for Tag Logic access";
 const tagSectionOpening = elementTags.find(
   (tag) => /^<section\b/i.test(tag) && attributeValue(tag, "id") === "tag-qc"
 );
@@ -117,7 +117,7 @@ const tagCard = balancedElementBlock(html, tagSectionOpening);
 const tagCardText = tagCard.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 assert(
   /<span\b[^>]*>\s*v10\.46\s*<\/span>/.test(tagCard) &&
-    /Published on GitHub:\s*v10\.46\s*\./.test(tagCardText),
+    /Tag Logic v10\.46 is published on GitHub\./.test(tagCardText),
   "Tag Logic badge and published-version copy must name released v10.46"
 );
 assert(
@@ -125,8 +125,10 @@ assert(
   "Tag Logic card must not advertise stale or unpublished versions"
 );
 assert(
-  tagCardText.includes("Repository access is required to open the release and download its files."),
-  "Tag Logic must state the GitHub repository access requirement visibly"
+  tagCardText.includes("Downloads currently require access to its GitHub repository.") &&
+    tagCardText.includes("Contact support if you need access.") &&
+    tagCardText.includes("There is no public download from this website."),
+  "Tag Logic must visibly explain private GitHub access and the lack of a public website download"
 );
 assert(
   tagCardText.includes("Save a JSON Job Backup before changing versions.") &&
@@ -135,36 +137,32 @@ assert(
     /choose a PNG or JPG.*preview.*click Apply logo.*save another Job Backup/.test(tagCardText),
   "Tag Logic setup must preserve backup, whole ZIP, inner launcher and logo preview/Apply steps"
 );
+const tagAccessLinks = [...tagCard.matchAll(/(<a\b[^>]*>)([\s\S]*?)<\/a>/gi)];
+assert.strictEqual(tagAccessLinks.length, 1, "Tag Logic card must offer one support-access action");
+assert.strictEqual(attributeValue(tagAccessLinks[0][1], "href"), "#contact", "Tag Logic access action must use the existing contact section");
+assert.strictEqual(tagAccessLinks[0][2].trim(), tagAccessLabel, "Tag Logic access action must ask for access rather than promise a download");
+assert(
+  !/\b(hidden|sr-only)\b/.test(attributeValue(tagAccessLinks[0][1], "class") || ""),
+  "Tag Logic access label must remain visible"
+);
+const contactSectionOpening = elementTags.find(
+  (tag) => /^<section\b/i.test(tag) && attributeValue(tag, "id") === "contact"
+);
+assert(contactSectionOpening, "Tag Logic access action must have a real contact target");
+assert(
+  balancedElementBlock(html, contactSectionOpening).includes('href="mailto:support@bluecollar-systems.com"'),
+  "Contact section must keep its existing support email action"
+);
 
-function assertTagReleaseLinks(source, name) {
-  const links = [...source.matchAll(/(<a\b[^>]*>)([\s\S]*?)<\/a>/gi)]
-    .map((match) => ({
-      opening: match[1],
-      href: attributeValue(match[1], "href") || "",
-      label: match[2].trim(),
-    }))
-    .filter((link) =>
-      /1Tag-QC-Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/i.test(link.href) ||
-      /Download (Tag QC|(BlueCollar )?Tag Logic)|Open v10\.[0-9]+ release/i.test(link.label)
-    );
-  for (const link of links) {
-    assert.strictEqual(link.href, tagReleaseUrl, name + " must link only the exact released Tag v10.46 page");
-    assert.strictEqual(link.label, tagReleaseLabel, name + " Tag release label must plainly require GitHub access");
-    assert(
-      !/\b(hidden|sr-only)\b/.test(attributeValue(link.opening, "class") || ""),
-      name + " must not hide the Tag release access label"
-    );
-  }
-  assert.strictEqual(
-    (source.match(/1Tag-QC-Builder/gi) || []).length,
-    links.length,
-    name + " must not add other Tag repository URLs or script-only access"
+function assertNoTagDownloadActivation(source, name) {
+  assert(
+    !/1Tag-QC-Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/i.test(source),
+    name + " must not activate or hide a private Tag repository, release or ZIP URL"
   );
   assert(
-    !/Tag_QC_Builder_v[0-9_]+_Portable\.zip/i.test(source),
-    name + " must use the access-qualified release page rather than a direct Tag ZIP"
+    !/Download (Tag QC|(BlueCollar )?Tag Logic)|Open v10\.[0-9]+ release/i.test(source),
+    name + " must not offer an anonymous-unusable Tag release or download action"
   );
-  return links.length;
 }
 assert(
   html.includes("BCS1:") && html.includes("CS1:"),
@@ -178,25 +176,22 @@ assert(
   !/v10\.37/.test(html),
   "site must not advertise the unpublished BlueCollar Tag Logic v10.37 build"
 );
-assert.strictEqual(
-  assertTagReleaseLinks(html, "index.html"),
-  1,
-  "Tag Logic card must offer exactly one access-qualified v10.46 release page"
-);
+assertNoTagDownloadActivation(html, "index.html");
 assert(
   html.includes("GitHub Release"),
   "importer badges must be described as GitHub Release versions"
 );
+const tagClaimsText = tagCardText.replace("There is no public download from this website.", "");
 assert(
-  !/anonymous(?:ly)?|unrestricted|public download|no (?:GitHub |repository )?access required|without (?:GitHub |repository )?access|no sign[- ]?in required/i.test(tagCardText),
+  !/anonymous(?:ly)?|unrestricted|public download|no (?:GitHub |repository )?access required|without (?:GitHub |repository )?access|no sign[- ]?in required/i.test(tagClaimsText),
   "Tag Logic must not promise anonymous or unrestricted repository access"
 );
 
 // Owner decision 2026-10-18: the tag tool is named "BlueCollar Tag Logic"
 // ("Tag Logic" where space is tight), always two words. Current pages,
 // shipped scripts and docs must not show the old name or the one-word
-// spelling. Release access is limited to the exact published v10.46
-// page with its access-qualified label; direct ZIP links remain forbidden.
+// spelling. The public site offers support access to published v10.46;
+// private repository, release and direct ZIP activation remain forbidden.
 // The #tag-qc anchor stays because outside links use it. Dated records under
 // docs/validation/ keep the name they were written with and are not checked.
 const currentCopyFiles = [
@@ -217,7 +212,7 @@ for (const name of currentCopyFiles) {
     name + " must call the tag tool BlueCollar Tag Logic, not Tag QC Builder"
   );
   if (/\.html$/i.test(name)) {
-    assertTagReleaseLinks(text, name);
+    assertNoTagDownloadActivation(text, name);
     // The top menu uses the short form: with the full name the menu breaks
     // onto a second row at 1024 px; "Tag Logic" keeps it on one row, as
     // "Tag QC" did. The section heading on the home page carries the full
