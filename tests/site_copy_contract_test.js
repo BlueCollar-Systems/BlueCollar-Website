@@ -122,6 +122,32 @@ assert(
   !/v10\.37/.test(html),
   "site must not advertise the unpublished BlueCollar Tag Logic v10.37 build"
 );
+// The tag tool's version is typed by hand in three places: the badge beside
+// the section heading, the "Latest published build" line under it, and the
+// README product table. They drifted apart once (page v10.43, README v10.45),
+// so all three must name the same build.
+const tagBadge = html.match(
+  /<h2\b[^>]*>\s*BlueCollar Tag Logic\s*<\/h2>\s*<span\b[^>]*>\s*v(\d+\.\d+)\s*<\/span>/
+);
+assert(tagBadge, "BlueCollar Tag Logic heading must carry a version badge");
+const tagLatestLine = html.match(
+  /Latest published build: <strong>v(\d+\.\d+)<\/strong>\. BlueCollar Tag Logic/
+);
+assert(tagLatestLine, "BlueCollar Tag Logic section must name its latest published build");
+assert.strictEqual(
+  tagLatestLine[1],
+  tagBadge[1],
+  "BlueCollar Tag Logic badge and latest-build line must name the same version"
+);
+const readmeTagRow = fs
+  .readFileSync("README.md", "utf8")
+  .match(/^\| \*\*BlueCollar Tag Logic\*\* \|[^\n]*Latest published build v(\d+\.\d+);/m);
+assert(readmeTagRow, "README product table must name the BlueCollar Tag Logic build");
+assert.strictEqual(
+  readmeTagRow[1],
+  tagBadge[1],
+  "README and the home page must name the same BlueCollar Tag Logic build"
+);
 assert(
   !/1Tag-QC-Builder|Download Tag QC|Download (BlueCollar )?Tag Logic|OPEN_BlueCollar_Systems_Tag_QC_Builder|Tag_QC_Builder_v[0-9_]+_Portable\.zip/.test(html),
   "site must not offer a BlueCollar Tag Logic download until the owner releases it"
