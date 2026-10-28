@@ -6,9 +6,9 @@ This repository is [BlueCollar-Systems/BlueCollar-Website](https://github.com/Bl
 
 ## Full private pack (not in git)
 
-`C:\Users\Rowdy Payton\Desktop\PDFTest Files\Q&A\` — `START_HERE.md`, `ONBOARDING.md`, `COMMUNICATION.md`.
+The authoritative handoff is `MASTER_HANDOFF_ALL_7_REPOS_2026-10-27.md` in the owner's Desktop `PDFTest Files\Q&A` folder. Read newer owner instructions and the latest entries in `Q&A\Achived Q&A\WORKER_STATUS_LOG.md` before claiming a task. Older `START_HERE.md`, `ONBOARDING.md` and `COMMUNICATION.md` are archived there.
 
-GitHub clones do not include that hub; ask the owner. **Communicate there and with GitHub PRs/issues on this repo.** No Slack/Discord.
+GitHub clones do not include that hub. **Communicate there and with GitHub PRs/issues on this repo.** No Slack/Discord. Read [AGENTS.md](AGENTS.md) for worktree, release, deployment and privacy rules.
 
 ## Standing rules
 
