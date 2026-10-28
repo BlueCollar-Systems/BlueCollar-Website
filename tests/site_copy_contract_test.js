@@ -104,12 +104,12 @@ assert(
   /<h2\b[^>]*>\s*BlueCollar Tag Logic\s*<\/h2>/.test(html),
   "site must advertise the exact BlueCollar Tag Logic product heading"
 );
-// Latest published Tag Logic build is v10.47. Its repository requires access:
+// Latest published Tag Logic build is v10.48. Its repository requires access:
 // an anonymous request for the prior release URL returned HTTP 404. Offer the
 // existing support route and do not publish a repository, release, or ZIP
 // link. The version is typed in the badge, the published-build sentence, and
 // the README product table; all three must name this same build.
-const tagPublishedVersion = "10.47";
+const tagPublishedVersion = "10.48";
 const tagAccessLabel = "Ask for Tag Logic access";
 const tagSectionOpening = elementTags.find(
   (tag) => /^<section\b/i.test(tag) && attributeValue(tag, "id") === "tag-qc"
@@ -237,7 +237,7 @@ assert(
 // Owner decision 2026-10-18: the tag tool is named "BlueCollar Tag Logic"
 // ("Tag Logic" where space is tight), always two words. Current pages,
 // shipped scripts and docs must not show the old name or the one-word
-// spelling. The public site offers support access to published v10.47;
+// spelling. The public site offers support access to published v10.48;
 // private repository, release and direct ZIP activation remain forbidden.
 // The #tag-qc anchor stays because outside links use it. Dated records under
 // docs/validation/ keep the name they were written with and are not checked.
