@@ -198,7 +198,7 @@ assert(
 );
 const readme = fs.readFileSync("README.md", "utf8");
 const readmeTagRow = readme.match(
-  /^\| \*\*BlueCollar Tag Logic\*\* \|[^\n]*Published v(\d+\.\d+) on GitHub;/m
+  /^\| \*\*BlueCollar Tag Logic\*\* \|.*Published v(\d+\.\d+) on GitHub;.*$/m
 );
 assert(readmeTagRow, "README product table must name the BlueCollar Tag Logic build");
 assert.strictEqual(
