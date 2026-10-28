@@ -104,10 +104,12 @@ assert(
   /<h2\b[^>]*>\s*BlueCollar Tag Logic\s*<\/h2>/.test(html),
   "site must advertise the exact BlueCollar Tag Logic product heading"
 );
-// Owner release 2026-10-20: Tag Logic v10.46 is published on GitHub
-// (release 418392578, source 35c2013), but its repository requires access.
-// PR 27 run 39430180933 confirmed an anonymous visitor gets HTTP 404.
-// Preserve the anonymous-link gate and offer the existing support route.
+// Latest published Tag Logic build is v10.47. Its repository requires access:
+// an anonymous request for the prior release URL returned HTTP 404. Offer the
+// existing support route and do not publish a repository, release, or ZIP
+// link. The version is typed in the badge, the published-build sentence, and
+// the README product table; all three must name this same build.
+const tagPublishedVersion = "10.47";
 const tagAccessLabel = "Ask for Tag Logic access";
 const tagSectionOpening = elementTags.find(
   (tag) => /^<section\b/i.test(tag) && attributeValue(tag, "id") === "tag-qc"
@@ -115,13 +117,27 @@ const tagSectionOpening = elementTags.find(
 assert(tagSectionOpening, "Tag Logic must keep its existing section anchor");
 const tagCard = balancedElementBlock(html, tagSectionOpening);
 const tagCardText = tagCard.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
-assert(
-  /<span\b[^>]*>\s*v10\.46\s*<\/span>/.test(tagCard) &&
-    /Tag Logic v10\.46 is published on GitHub\./.test(tagCardText),
-  "Tag Logic badge and published-version copy must name released v10.46"
+const tagBadge = tagCard.match(
+  /<h2\b[^>]*>\s*BlueCollar Tag Logic\s*<\/h2>\s*<span\b[^>]*>\s*v(\d+\.\d+)\s*<\/span>/
+);
+assert(tagBadge, "BlueCollar Tag Logic heading must carry a version badge");
+assert.strictEqual(
+  tagBadge[1],
+  tagPublishedVersion,
+  "Tag Logic badge must name the latest published build v" + tagPublishedVersion
 );
 assert(
-  [...tagCardText.matchAll(/\bv[0-9]+\.[0-9]+\b/g)].every((match) => match[0] === "v10.46"),
+  new RegExp(
+    "Tag Logic v" +
+      tagPublishedVersion.replace(".", "\\.") +
+      " is published on GitHub\\."
+  ).test(tagCardText),
+  "Tag Logic published-version copy must name released v" + tagPublishedVersion
+);
+assert(
+  [...tagCardText.matchAll(/\bv[0-9]+\.[0-9]+\b/g)].every(
+    (match) => match[0] === "v" + tagPublishedVersion
+  ),
   "Tag Logic card must not advertise stale or unpublished versions"
 );
 assert(
@@ -176,7 +192,38 @@ assert(
   !/v10\.37/.test(html),
   "site must not advertise the unpublished BlueCollar Tag Logic v10.37 build"
 );
+assert(
+  !/v10\.46/.test(html),
+  "site must not advertise the superseded BlueCollar Tag Logic v10.46 build"
+);
+const readme = fs.readFileSync("README.md", "utf8");
+const readmeTagRow = readme.match(
+  /^\| \*\*BlueCollar Tag Logic\*\* \|[^\n]*Published v(\d+\.\d+) on GitHub;/m
+);
+assert(readmeTagRow, "README product table must name the BlueCollar Tag Logic build");
+assert.strictEqual(
+  readmeTagRow[1],
+  tagBadge[1],
+  "README and the home page must name the same BlueCollar Tag Logic build"
+);
+assert(
+  /downloads require access to its GitHub repository/.test(readmeTagRow[0]) &&
+    /there is no public download from this website/.test(readmeTagRow[0]) &&
+    /Save a JSON Job Backup before changing versions and extract the whole ZIP/.test(
+      readmeTagRow[0]
+    ),
+  "README must explain private GitHub access, no public website download, and the Job Backup / whole ZIP steps"
+);
+assert(
+  readme.includes("[Tag Logic access](https://bluecollar-systems.com/#tag-qc)"),
+  "README Tag Logic link must point at the on-site access section"
+);
+assert(
+  !/v10\.46/.test(readme),
+  "README must not advertise the superseded BlueCollar Tag Logic v10.46 build"
+);
 assertNoTagDownloadActivation(html, "index.html");
+assertNoTagDownloadActivation(readme, "README.md");
 assert(
   html.includes("GitHub Release"),
   "importer badges must be described as GitHub Release versions"
@@ -190,7 +237,7 @@ assert(
 // Owner decision 2026-10-18: the tag tool is named "BlueCollar Tag Logic"
 // ("Tag Logic" where space is tight), always two words. Current pages,
 // shipped scripts and docs must not show the old name or the one-word
-// spelling. The public site offers support access to published v10.46;
+// spelling. The public site offers support access to published v10.47;
 // private repository, release and direct ZIP activation remain forbidden.
 // The #tag-qc anchor stays because outside links use it. Dated records under
 // docs/validation/ keep the name they were written with and are not checked.
