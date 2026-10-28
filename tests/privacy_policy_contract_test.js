@@ -35,6 +35,18 @@ assert(
   /Names and PINs stay on this device/i.test(privacyText),
   "privacy.html must say worker names and PINs stay on the device"
 );
+assert(
+  /phone camera to read that QR code/i.test(privacyText),
+  "privacy.html must say a tag scan uses the phone camera"
+);
+assert(
+  /consent prompt/i.test(privacyText),
+  "privacy.html must say ads can show a consent prompt"
+);
+assert(
+  /support@bluecollar-systems.com/i.test(privacyText) && /clear the App's data or uninstall it/i.test(privacyText),
+  "privacy.html must say how to remove local data and how to ask about service data"
+);
 
 for (const page of [
   "index.html",
@@ -43,12 +55,17 @@ for (const page of [
   "report-doctor.html",
   "404.html",
   "privacy.html",
+  "terms.html",
 ]) {
   const footer = (read(page).match(/<footer\b[\s\S]*?<\/footer>/i) || [])[0];
   assert(footer, page + " must have a <footer>");
   assert(
     /href="\/privacy"/.test(footer),
     page + " footer must link to the privacy policy (/privacy)"
+  );
+  assert(
+    /href="\/terms"/.test(footer),
+    page + " footer must link to the terms (/terms)"
   );
 }
 

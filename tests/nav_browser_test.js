@@ -9,7 +9,7 @@ var fs = require('fs');
 var path = require('path');
 var harness = require('./browser_harness');
 
-var PAGES = ['index.html', 'shapes.html', 'feedback.html', 'report-doctor.html', 'privacy.html'];
+var PAGES = ['index.html', 'shapes.html', 'feedback.html', 'report-doctor.html', 'privacy.html', 'terms.html'];
 
 var NAV_TEST = String.raw`
 (function() {

@@ -381,7 +381,11 @@ for (const repo of [
 for (const host of ["After upgrading FreeCAD", "after upgrading SketchUp", "after upgrading Blender"]) {
   assert(html.includes(host), "install steps must tell people what to do " + host.toLowerCase());
 }
-assert(html.includes("Tools → Addon Manager"), "FreeCAD install copy must name the Addon Manager path");
+assert(
+  html.includes("not listed in FreeCAD’s Addon Manager") && !html.includes("Tools → Addon Manager"),
+  "FreeCAD install copy must say the importer is not in the Addon Manager"
+);
+assert(html.includes("Windows may warn that the publisher is unknown"), "FreeCAD and LibreCAD install copy must mention the unsigned-publisher warning");
 assert(html.includes("Window → Extension Manager → Install Extension"), "SketchUp install copy must name Extension Manager");
 assert(html.includes("Edit → Preferences → Add-ons → Install"), "Blender install copy must name Preferences → Add-ons");
 assert(html.includes("Plugins → Import PDF (BlueCollar)"), "LibreCAD install copy must name the Plugins menu");
