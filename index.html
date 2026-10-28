@@ -168,7 +168,7 @@
                     <h3 class="text-2xl font-bold group-hover:text-blue-400">FreeCAD PDF Importer</h3>
                     <span class="text-xs font-mono bg-gray-700 text-blue-300 px-2 py-0.5 rounded" data-repo-version="BlueCollar-Systems/PDF-Importer-FreeCAD">v4.0.115</span>
                 </div>
-                <p class="text-gray-400 mb-6">Import PDF lines, text, and images into FreeCAD. Download Latest is the Windows setup file. On a Mac or Linux PC, use FreeCAD’s Addon Manager — the steps are below.</p>
+                <p class="text-gray-400 mb-6">Import PDF lines, text, and images into FreeCAD. Download Latest is the Windows setup file. This importer is not listed in FreeCAD’s Addon Manager. On a Mac or Linux PC, use the manual install notes on GitHub. Those steps are untested from this site.</p>
                 <div class="flex flex-wrap gap-3">
                     <a href="https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD/releases/latest" target="_blank" rel="noopener" class="inline-block bg-blue-700 hover:bg-blue-600 px-5 py-3 rounded font-semibold transition text-sm" data-repo-asset-link="BlueCollar-Systems/PDF-Importer-FreeCAD">Download Latest</a>
                     <a href="https://github.com/BlueCollar-Systems/PDF-Importer-FreeCAD" target="_blank" rel="noopener" class="inline-block bg-gray-700 hover:bg-gray-600 px-5 py-3 rounded font-semibold transition text-sm" data-repo-release-link="BlueCollar-Systems/PDF-Importer-FreeCAD">View on GitHub &rarr;</a>
@@ -275,8 +275,8 @@
             </div>
             <div class="bg-gray-800/50 p-6 rounded-xl border border-gray-700">
                 <h3 class="text-lg font-bold text-blue-300 mb-2">FreeCAD</h3>
-                <p><strong>From inside FreeCAD (Mac, Linux, or Windows):</strong> open <strong>Tools → Addon Manager</strong>, search for <em>PDF Vector Importer</em>, click Install, then restart FreeCAD.</p>
-                <p class="mt-2"><strong>Windows setup file:</strong> Download <code>FreeCAD-PDF-Importer-Setup_vX.Y.Z.exe</code>, close FreeCAD, and run it. No administrator password is required. Then restart and choose the <em>PDF Vector Importer</em> workbench, or use <strong>File → Import</strong>.</p>
+                <p><strong>Windows:</strong> Download <code>FreeCAD-PDF-Importer-Setup_vX.Y.Z.exe</code>, close FreeCAD, and run it. No administrator password is required. Then restart and choose the <em>PDF Vector Importer</em> workbench, or use <strong>File → Import</strong>. Windows may warn that the publisher is unknown until the file is code-signed.</p>
+                <p class="mt-2"><strong>Mac and Linux:</strong> This site’s download is a Windows setup file and will not run there. The importer is not listed in FreeCAD’s Addon Manager. Follow the manual install notes on the GitHub page. Those steps are untested from this site.</p>
                 <p class="mt-2 text-gray-400">Current installers include the private PyMuPDF runtime required by the workbench.</p>
                 <p class="mt-2 text-gray-400">After upgrading FreeCAD (for example to 1.1), run the Setup .exe again; new FreeCAD versions use a new settings folder.</p>
             </div>
@@ -291,7 +291,7 @@
                 <p><strong>Step 1:</strong> Download the Windows portable ZIP (e.g. <code>LibreCAD-PDF-Importer-Windows-Portable_vX.Y.Z.zip</code>) and extract it anywhere you can save files.</p>
                 <p class="mt-2"><strong>Step 2:</strong> Run <code>lcpdf-gui.exe</code> from the extracted folder, or use the bundled CLI (<code>pdf2dxf.exe</code> / <code>lcpdf-batch.exe</code>).</p>
                 <p class="mt-2"><strong>Inside LibreCAD:</strong> close LibreCAD, open <code>lcpdf-gui.exe</code>, and press <em>Install LibreCAD menu entry</em>. Start LibreCAD 2.2 for Windows (64-bit). The command is <strong>Plugins → Import PDF (BlueCollar)</strong>. That menu was checked with LibreCAD 2.2.1.5.</p>
-                <p class="mt-2 text-gray-400">The portable ZIP bundles the runtime and GUI — no separate install required. All six text modes are available. <strong>LibreCAD is a 2D host:</strong> a 3D Text request uses a verified 2D alternative, with the delivered representation explained in the import report.</p>
+                <p class="mt-2 text-gray-400">The portable ZIP bundles the runtime and GUI — no separate install required. Windows may warn that the publisher is unknown until the file is code-signed. All six text modes are available. <strong>LibreCAD is a 2D host:</strong> a 3D Text request uses a verified 2D alternative, with the delivered representation explained in the import report.</p>
             </div>
         </div>
 
@@ -352,7 +352,7 @@
 
     <footer class="text-center py-12 border-t border-gray-800 text-gray-400 text-sm px-6">
         <p class="mb-4">&copy; <span id="copyright-year"></span> BlueCollar-Systems. Built for the shop floor.</p>
-        <p class="mb-4"><a href="/privacy" class="hover:text-white underline">Privacy Policy</a></p>
+        <p class="mb-4"><a href="/privacy" class="hover:text-white underline">Privacy Policy</a> · <a href="/terms" class="hover:text-white underline">Terms</a></p>
         <p class="text-xs text-gray-400 mt-2 footer-version">v1.0.110 <span class="text-gray-400">&middot; Updated October 2026</span></p>
         <p class="max-w-2xl mx-auto text-xs uppercase tracking-tighter text-gray-400">
             Disclaimer: All structural data provided by BlueCollar-Systems tools is for reference only.

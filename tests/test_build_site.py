@@ -20,7 +20,7 @@ assert SPEC is not None and SPEC.loader is not None
 BUILD = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BUILD)
 
-PAGES = ("index.html", "feedback.html", "shapes.html", "report-doctor.html", "privacy.html", "404.html")
+PAGES = ("index.html", "feedback.html", "shapes.html", "report-doctor.html", "privacy.html", "terms.html", "404.html")
 REQUIRED = PAGES + (
     "p/index.html",
     "p-records/demo-part.json",
@@ -156,6 +156,7 @@ await import(pathToFileURL(builder).href);
             "/report-doctor.html": "report-doctor.html",
             "/feedback": "feedback.html",
             "/privacy": "privacy.html",
+            "/terms": "terms.html",
             "/p/demo-part": "p/index.html",
             "/p/": "p/index.html",
             "/p-records/demo-part.json": "p-records/demo-part.json",
