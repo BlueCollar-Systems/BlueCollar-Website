@@ -36,17 +36,30 @@ var REPORT_TEST = String.raw`
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  function waitForValue(input, expected) {
-    return new Promise(function(resolve, reject) {
-      var attempts = 0;
-      function poll() {
-        if (input.value === expected) return resolve();
-        attempts += 1;
-        if (attempts >= 100) return reject(new Error('#' + input.id + ' was not populated by FileReader'));
-        setTimeout(poll, 10);
-      }
-      poll();
+  // The harness runs Chrome with --virtual-time-budget. Whenever this page
+  // is idle, Chrome moves its clock straight to the next timer, and a
+  // FileReader read in progress does not hold it back. A setTimeout poll
+  // therefore spent its whole 1 s limit in a few real milliseconds and failed
+  // whenever the read was slightly slow (CI 2026-10-28, 2026-11-24 and
+  // 2026-11-25). Wait between MessageChannel tasks instead: the page is never
+  // idle, so its clock barely moves until the read completes, and the
+  // 1 s limit (on that clock) still fails a read that never fills the field.
+  var waitChannel = new MessageChannel();
+  function nextTask() {
+    return new Promise(function(resolve) {
+      waitChannel.port1.onmessage = function() { resolve(); };
+      waitChannel.port2.postMessage(null);
     });
+  }
+
+  async function waitForValue(input, expected) {
+    var start = performance.now();
+    while (input.value !== expected) {
+      if (performance.now() - start >= 1000) {
+        throw new Error('#' + input.id + ' was not populated by FileReader');
+      }
+      await nextTask();
+    }
   }
 
   Promise.resolve().then(async function() {
